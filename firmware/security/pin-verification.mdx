@@ -1,65 +1,136 @@
 ---
 title: "PIN Verification"
-description: "Unlock flow, retry delays, and secure handling of the Master PIN."
+description: "Unlock flow, Counter0 hardware rate-limiting, SHA-256 hash comparison, and adaptive delays for the Master PIN."
 ---
 
-ZeroKeyUSB relies on a single Master PIN to authenticate the user and derive the encryption key. The verification process is intentionally strict to block brute-force attempts while keeping the device usable day-to-day.
+ZeroKeyUSB uses a Master PIN (1–16 digits) to authenticate the user. The verification process combines a **software constant-time hash comparison** with a **hardware monotonic counter** in the ATECC608A to block brute-force attempts at both software and hardware levels.
+
+---
+
+## How the PIN is stored
+
+The PIN is **never stored in plaintext**. At PIN setup time (`storeSignature()`):
+
+1. The user's PIN digits are read from `pinArray[16]` (each byte holds a digit value 0–9).
+2. `derivePinKey()` computes: `SHA-256(pinArray[16] ∥ chip_serial[9])`.
+   - `chip_serial` is the 9-byte unique serial read from the ATECC608A Config Zone.
+3. The resulting 32-byte hash is written to EEPROM at `0x0038–0x0057`.
+4. The same 32-byte hash is also written to **ATECC slot 9** (for potential future CheckMac use).
+
+The chip serial acts as a hardware salt: the same numeric PIN on a different device produces a completely different 32-byte hash.
 
 ---
 
 ## Unlock sequence
 
-1. User enters a PIN using the capacitive touch pads.
-2. Firmware normalizes the digits (ensuring only `0–9` and optional `ENTER`).
-3. The PIN is hashed with SHA-256 and truncated to 16 bytes.
-4. Using this key, the firmware decrypts the **signature block** stored at EEPROM address `0x0003`.
-5. If the decrypted bytes match the known pattern `"ZKUSB\0\0\0\0"`, access is granted.
+Each unlock attempt executes the following steps in `verifySignature()`:
 
-If the comparison fails, the attempt counter increments and the device enforces a delay before the next try.
+```
+1. zerokeyAtecc.counterIncrement(Counter0) → new_counter
+2. Read threshold from EEPROM [0x0020]
+3. If new_counter >= threshold → eraseAll() + halt (hard lockout)
+4. derivePinKey(pinArray, derived):
+       serial = ATECC608A.readSerial()
+       derived = SHA-256(pinArray[16] || serial[9])
+5. Read stored hash from EEPROM [0x0038] → stored[32]
+6. diff = 0; for i in 0..31: diff |= stored[i] ^ derived[i]  // constant-time
+7. If diff == 0:
+       writeThreshold(new_counter + 50)   // reset budget
+       writeFailedAttemptsCounter(0)
+       → ACCESS GRANTED
+8. Else:
+       incrementFailedAttemptsCounter()
+       waitFromEeprom()                   // exponential backoff
+       → ACCESS DENIED
+```
 
 ---
 
-## Adaptive delays
+## Hardware counter — hard limit
 
-| Failed attempts | Lockout time |
-| --- | --- |
-| 1 | 5 seconds |
-| 2 | 10 seconds |
-| 3 | 20 seconds |
-| 4 | 40 seconds |
-| 5+ | Doubles each time up to 2560 seconds |
+**Counter0 in the ATECC608A** is a monotonic hardware counter. Its key properties:
 
-- The counter is stored in EEPROM at `0x0002` so power cycling does not reset it.
-- Successful unlock resets the counter to zero.
-- During the delay the OLED shows a countdown and the keyboard interface remains idle.
+- Increments by 1 on every `counterIncrement()` call — once per PIN attempt.
+- **Cannot be decremented, reset, or rolled back** by any software, power cycle, or hardware reset.
+- Persists across power loss inside the chip's non-volatile memory.
+- The threshold stored at EEPROM `0x0020` is a uint32 (little-endian) representing the counter value at which the next wipe occurs.
+
+| Event | Counter effect | Threshold effect |
+|-------|---------------|-----------------|
+| Wrong PIN attempt | +1 | unchanged |
+| Correct PIN | +1 | reset to `Counter0 + 50` |
+| Counter ≥ threshold | — | `eraseAll()` triggered |
+
+With an uninterrupted stream of wrong PINs the counter catches up to the threshold in exactly **50 attempts** and triggers a full credential wipe.
+
+---
+
+## Adaptive delays — soft backoff
+
+Stored at EEPROM `0x0002`. This UX-layer counter is reset on a correct PIN:
+
+| Failed attempts | Wait time |
+|-----------------|-----------|
+| 0 | none |
+| 1 | 5 s |
+| 2 | 10 s |
+| 3 | 20 s |
+| 4 | 40 s |
+| 5 | 80 s |
+| 6 | 160 s |
+| 7 | 320 s |
+| 8 | 640 s |
+| 9 | 1 280 s |
+| ≥ 10 | 2 560 s (≈ 43 min) |
+
+Formula: `wait = 5 × 2^(min(attempts, 10) − 1)` seconds, capped at 2 560 s.
+
+During the delay the OLED shows a progress bar and countdown. The device does not accept new input until the timer expires.
 
 ---
 
 ## Secure input handling
 
-- Digits are buffered in a 16-byte array within SRAM and cleared after verification.
-- Touch events are ignored during lockout to prevent queue overflow.
-- The serial interface cannot send PIN digits; only physical touch input is accepted.
-
-This ensures that malware on the host computer cannot brute-force the PIN without user awareness.
+- Digits are buffered in `pinArray[16]` in SRAM and cleared after verification.
+- Touch events are ignored during the lockout wait (`waitFromEeprom()`).
+- SerialUSB **cannot** inject PIN digits — only physical capacitive-touch input is accepted.
+- The PIN comparison uses a constant-time XOR accumulator (`diff |= stored[i] ^ derived[i]`) to avoid timing side-channels.
 
 ---
 
 ## Changing the PIN
 
-1. Unlock the device and open **Menu → Security → Change PIN**.
-2. Enter the current PIN for confirmation.
-3. Enter and confirm the new PIN.
-4. The firmware re-encrypts all credential pages with the new key and updates the signature block.
+Initiated via **Menu → Change PIN** → `storeSignature()`:
 
-If the process is interrupted, the firmware rolls back to the previous key to avoid data loss.
+1. 3-second on-screen countdown (allows safe abort).
+2. `derivePinKey(pinArray, derived)` computes the new hash.
+3. New 32-byte hash written to ATECC slot 9.
+4. New 32-byte hash written to EEPROM `0x0038`.
+5. Current Counter0 is read; threshold is set to `Counter0 + 50`.
+6. AES master key is checked — if already present, it is not replaced. The **AES key is independent of the PIN**.
+7. IV is loaded or generated.
+8. Setup config flag is written (`0x42`).
+9. All credential slots are silently re-initialised with encrypted blanks.
+
+<Note>
+Changing the PIN does **not** change the AES master key or re-encrypt existing credentials. Credentials encrypted under the old key remain readable as long as the AES master at `0x0028` has not changed.
+</Note>
 
 ---
 
 ## Forgotten PIN
 
-ZeroKeyUSB has no recovery mechanism. The only option is to perform a **factory reset**, which wipes all EEPROM contents and clears the PIN signature. You can then set a new PIN, but previously stored credentials are unrecoverable unless you have a backup.
+ZeroKeyUSB has no PIN recovery mechanism. The only option is a **factory reset** (`eraseAll()`), which:
 
-<Alert type="warning">
-Choose a PIN you can remember but others cannot guess, and keep an encrypted backup of your credentials in case of emergencies.
-</Alert>
+1. Shows a 3-second countdown.
+2. Loads the device IV.
+3. Overwrites all 62 credential slots × 4 pages with encrypted blanks.
+4. Clears TOTP metadata.
+
+After reset the device halts with a "LOCKED — reflash" error. The bootloader must be used to flash new firmware and re-provision the device from scratch.
+
+Previously stored credentials are unrecoverable unless you have a plaintext backup exported before the reset.
+
+<Warning>
+Choose a PIN you can remember but others cannot guess. A PIN of 4 digits or fewer is vulnerable to offline SHA-256 dictionary attacks if an adversary gains I²C access to the device.
+</Warning>

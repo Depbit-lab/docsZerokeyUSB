@@ -35,6 +35,7 @@
               "hardware/display-ssd1306",
               "hardware/touch-sensor",
               "hardware/eeprom",
+              "hardware/atecc608a",
               "hardware/usb-interface"
             ]
           },

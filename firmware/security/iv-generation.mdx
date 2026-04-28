@@ -1,59 +1,84 @@
 ---
 title: "Initialization Vector Generation"
-description: "How ZeroKeyUSB creates and protects the IV used for AES-128 CBC encryption."
+description: "How ZeroKeyUSB creates the AES-CBC IV using the ATECC608A TRNG, validates it, and handles regeneration."
 ---
 
-The Initialization Vector (IV) ensures that identical plaintext blocks encrypt to different ciphertext. ZeroKeyUSB generates the IV once, stores it securely, and refreshes it only when necessary.
+The Initialization Vector (IV) ensures that identical plaintext blocks produce different ciphertext under AES-128 CBC. ZeroKeyUSB generates the IV **once at provisioning** using the ATECC608A hardware TRNG, stores it in EEPROM, and validates it on every unlock.
 
 ---
 
-## First boot procedure
+## Generation procedure
 
-1. On first startup the firmware checks EEPROM address `0x0010` for a valid IV flag.
-2. If empty, it samples analog noise from an unconnected ADC channel (`ADC0/AIN7`).
-3. 128 bits of entropy are collected by oversampling and XOR folding.
-4. The resulting IV is written to EEPROM along with a CRC-16 and a `0xA5` guard byte.
+Called as part of `storeSignature()` (the PIN setup routine):
 
-The process runs entirely on-device and does not rely on host input.
+1. `generateAndStoreIV()` calls `fillIVFromAtecc(iv)`.
+2. `fillIVFromAtecc()` calls `zerokeyAtecc.random(buf)` — the ATECC608A `RANDOM` command with mode `0x00` (updates the internal DRBG seed before generating).
+3. The first **16 bytes** of the 32-byte TRNG output are copied into `iv[16]`.
+4. `ivIsValid()` checks the result: rejects all-`0x00` or all-`0xFF` (statistically impossible with a working TRNG, but guards against chip faults).
+5. The IV is written to EEPROM at `0x0010–0x001F` via `eepromWriteRaw()`.
+6. After IV storage, `eraseAll()` is called to reset all credential pages to encrypted blanks under the new IV.
+
+The entire process runs on-device with no host involvement.
+
+---
+
+## EEPROM layout
+
+| Address | Content |
+|---------|---------|
+| `0x0010` | IV byte 0 |
+| `0x0011` | IV byte 1 |
+| … | … |
+| `0x001F` | IV byte 15 |
 
 ---
 
 ## Validation on unlock
 
-- During every unlock, the firmware reads the IV and verifies the CRC.
-- If the CRC fails, the device refuses to decrypt credentials and displays `IV ERROR`.
-- Users are prompted to regenerate the IV, which also requires re-encrypting every slot with the new value.
+`loadIVfromEEPROM()` is called before every encrypt or decrypt operation:
+
+1. Reads 16 bytes from `0x0010`.
+2. If the I²C read fails → attempts TRNG regeneration and EEPROM re-write.
+3. If `ivIsValid()` returns false (all-zero or all-FF) → regenerates from ATECC TRNG and stores.
+4. If regeneration also fails → returns `false`; caller shows an error screen.
 
 ---
 
-## Regeneration logic
+## Regeneration triggers
 
 The IV is regenerated automatically when:
 
-- The CRC check fails (corruption or tampering).
-- A factory reset is executed.
-- The user selects **Menu → Security → Refresh IV**.
+- The EEPROM read fails (I²C error).
+- The stored value is all-`0x00` or all-`0xFF` (blank/corrupt EEPROM).
+- The user generates a new PIN (the full `storeSignature()` flow re-generates the IV).
 
-Regeneration follows the same noise-sampling routine, ensuring a fresh 128-bit value each time. After regeneration all credentials are re-encrypted before the device returns to the main menu.
+**Consequence of regeneration:** all credential pages were encrypted under the old IV. Regenerating the IV without also re-writing the ciphertext pages makes existing credentials unreadable. The `generateAndStoreIV()` function therefore calls `eraseAll()` immediately after storing the new IV to bring the EEPROM to a consistent (encrypted-blank) state.
 
 ---
 
-## Why a single IV?
+## Why a single device-wide IV?
 
-- Using one IV per device keeps the implementation simple and auditable.
-- Because AES runs in CBC mode, changing the IV requires re-encrypting the entire EEPROM to maintain consistency.
-- The IV never leaves the device, so ciphertext from one ZeroKeyUSB cannot be decrypted with another even if the PIN matches.
+- Keeps the layout simple, deterministic, and fully auditable.
+- CBC mode with a fixed IV across all slots does not weaken confidentiality as long as the AES key is secret and the IV itself was generated randomly — the key varies per device.
+- Per-record IVs would require 16 additional bytes per credential slot and complicate the EEPROM layout significantly.
+- The primary confidentiality guarantee comes from the 128-bit randomly generated AES master key, not from IV uniqueness across records.
 
 <Note>
-While per-record IVs are common, the threat model here prioritizes transparency and ease of verification. Tampering with the single IV is detectable and recoverable through regeneration.
+The IV never leaves the device. Ciphertext extracted from one ZeroKeyUSB cannot be decrypted with another unit even if the PIN and device serial are known, because the AES master key is device-unique.
 </Note>
 
 ---
 
 ## Tamper detection
 
-- IV storage includes a **guard byte** and **CRC-16** to detect modification.
-- If an attacker tries to flip bits, the next unlock attempt fails and forces regeneration.
-- The old IV is overwritten with random data before the new value is written, preventing rollback attacks.
+- `ivIsValid()` rejects obviously corrupt values (all-zero, all-FF).
+- If the IV is flipped bit-by-bit in EEPROM, the next AES-CBC decryption will produce garbage for the first block of every slot (IV affects only the XOR input for block 0; subsequent blocks are self-synchronising in CBC decryption).
+- There is no CRC or MAC stored alongside the IV in the current implementation. An attacker who can write arbitrary bytes to EEPROM address `0x0010` can force IV regeneration (and thus data loss) by corrupting those bytes.
 
-The IV handling strategy preserves confidentiality while giving users control over reinitialization when required.
+---
+
+## ATECC608A TRNG properties
+
+- The `RANDOM` command with mode `0x00` updates the chip's internal DRBG seed from hardware entropy before returning 32 random bytes.
+- The DRBG is designed to FIPS 140-2 requirements with a maximum seed life before forced re-seeding.
+- Output is validated locally (`ivIsValid`) to catch pathological failures.

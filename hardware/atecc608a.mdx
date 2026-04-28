@@ -1,0 +1,154 @@
+---
+title: "ATECC608A Secure Element"
+description: "Role, slot configuration, commands, and security properties of the ATECC608A in ZeroKeyUSB."
+---
+
+The **Microchip ATECC608A** (SKU: MAHDA-T) is the hardware secure element at the heart of ZeroKeyUSB's security architecture. It provides the entropy, identity, and rate-limiting that make PIN-based protection meaningful.
+
+---
+
+## Why a secure element?
+
+The SAMD21 MCU alone cannot provide:
+
+- **True random numbers** — MCUs generate pseudo-random numbers from software seeds; quality is hard to verify.
+- **Tamper-resistant monotonic counters** — software counters can be reset by erasing EEPROM or reflashing firmware.
+- **Device-unique identity** — a chip serial baked into the die at manufacture provides an unforgeable hardware salt.
+
+The ATECC608A fills all three roles without requiring the AES master key to live inside the chip.
+
+---
+
+## Hardware connection
+
+| Signal | SAMD21 pin | ATECC608A pin |
+|--------|-----------|---------------|
+| SDA | PA08 | SDA |
+| SCL | PA09 | SCL |
+| GND | GND | GND |
+| VCC | 3.3 V | VCC |
+
+I²C address: **`0x60`**  
+Bus speed: **100 kHz** (set at startup and matched by the bootloader)
+
+---
+
+## SKU note — MAHDA-T
+
+The `MAHDA-T` variant ships with:
+
+- Hardware AES command **disabled** (cannot perform on-chip AES ECB/CBC).
+- Standard TRNG, Counter, CheckMac, and ReadSerial commands enabled.
+- Factory-default slot configuration (all slots unlocked, readable, and writable until provisioning locks them).
+
+This is why ZeroKeyUSB uses **software AES** on the MCU rather than hardware AES inside the chip (Camino B architecture).
+
+---
+
+## Slot map
+
+Established at provisioning and locked permanently:
+
+| Slot | Size | Purpose | Write policy |
+|------|------|---------|--------------|
+| **9** | 32 B | PIN key: `SHA-256(pinArray[16] ∥ chip_serial[9])` | Clear 32-byte write allowed (IsSecret=0, WriteConfig=Always) |
+| **8** | 16 B | Reserved for AES key (provisioning path) | — |
+| **Counter 0** | 4 B mono | PIN attempt counter | Increment-only, read-allowed |
+
+> **Slot 9 security note:** Because `MAHDA-T` rejects clear writes to IsSecret slots (slots 0–7), the PIN key is stored in slot 9 which keeps `IsSecret=0`. This means the 32-byte PIN hash is **readable** over I²C by anyone with physical access. An adversary could read the hash and attempt offline SHA-256(PIN∥serial) dictionary attacks. Short PINs (< 6 digits) are particularly vulnerable to this approach.
+
+---
+
+## Commands used
+
+### `RANDOM` (opcode `0x1B`)
+- Mode `0x00`: refreshes the internal DRBG seed from hardware entropy before generating 32 random bytes.
+- Used to generate the AES master key (16 B) and the IV (16 B) at provisioning, and to regenerate the IV on demand.
+
+### `INFO` (opcode `0x30`)
+- Mode `0x00`: returns 4-byte revision word.
+- Used as a liveness check (`ping()`) to detect an unprovisioned or missing chip at boot.
+
+### `READ` (opcode `0x02`)
+- 32-byte block read from Config Zone.
+- Used by `readSerial()` to extract the 9-byte chip serial (bytes 0–3 and 8–12 of Config Zone block 0).
+- Used by `readConfigBlock()` (provisioning only) and `readLockStatus()`.
+
+### `COUNTER` (opcode `0x24`)
+- Mode `0x00` (read): returns current Counter0 value.
+- Mode `0x01` (increment): atomically increments Counter0 and returns the new value.
+- Called before every PIN verification attempt. The counter is hardware monotonic — no software path can decrement it.
+
+### `WRITE` (opcode `0x12`)
+- 32-byte clear write to data zone (slot 9).
+- Used by `writeSlot32(ATECC_SLOT_PIN, derived_key)` during PIN setup and PIN change.
+
+### `CHECKMAC` (opcode `0x28`) — defined but not used in primary verify path
+- Computes `SHA-256(slot_key ∥ ClientChallenge ∥ OtherData)` inside the chip and compares it to a host-computed response.
+- Implemented in `checkMacAgainstPin()` for future use. Current `verifySignature()` uses a direct EEPROM hash comparison instead.
+
+### `LOCK` (opcode `0x17`) — provisioning only
+- Irreversibly locks the Config Zone and/or Data+OTP Zone.
+- Called by the provisioning kit after all slots and config words are written.
+
+---
+
+## Wake / sleep protocol
+
+The ATECC608A uses a non-standard I²C wake sequence:
+
+1. Drive SDA low for > 60 µs. Achieved by addressing `0x00` at 100 kHz (ignored NACK expected).
+2. Wait ≥ 1.5 ms (t_WHI).
+3. Read 4-byte wake response: expect `[0x04, 0x11, CRC_lo, CRC_hi]`.
+4. Validate CRC-16 (poly `0x8005`, init `0x0000`, no reflection) over first 2 bytes.
+
+All commands follow the pattern: `wake()` → `execute()` → `sleep()`. The chip returns to low-power sleep after every operation.
+
+---
+
+## PIN key derivation
+
+```
+derivePinKey(pin_bytes[16], out[32]):
+    serial[9] = ATECC608A.readSerial()
+    buf[25] = pin_bytes[16] || serial[9]
+    out[32] = SHA-256(buf)
+```
+
+- `pin_bytes` are the raw digit values from `pinArray[16]` (each byte = 0–9 from touch input).
+- `serial` is the 9-byte device-unique identifier (irreversible, factory-programmed).
+- The same formula is used by the **provisioning kit** when writing slot 9, ensuring the app and chip agree.
+
+Because `serial` is unique per chip, the same PIN on two different ZeroKeyUSB devices produces completely different 32-byte keys.
+
+---
+
+## Counter0 — hard PIN limit
+
+Counter0 is initialised at provisioning to its current factory value `cur_counter`. The threshold stored in EEPROM at `0x0020` is set to `cur_counter + 50`.
+
+Each PIN attempt — right or wrong — calls `counterIncrement()`. On a correct PIN the threshold is reset to `new_counter + 50`. On wrong PINs the threshold stays fixed, so after **50 consecutive wrong attempts** without a correct one, `new_counter ≥ threshold` and the firmware wipes all credential slots (`eraseAll()`).
+
+The counter's maximum value is `2^20 - 1` (≈ 1 048 575) per the ATECC608A datasheet. This is enough for decades of normal use.
+
+---
+
+## CRC protocol
+
+All ATECC608A command packets use a custom CRC-16:
+- Polynomial: `0x8005`
+- Initial value: `0x0000`
+- No input/output reflection
+- No final XOR
+
+The CRC covers the packet bytes from `count` through the last data byte, excluding the CRC bytes themselves. Response CRC covers from byte 0 (`count`) through the last data byte.
+
+---
+
+## Lock status
+
+`readLockStatus()` reads Config Zone block 2 (bytes 64–95):
+- Byte 86 (`LockValue`): `0x55` = Data+OTP zone unlocked; any other value = locked.
+- Byte 87 (`LockConfig`): `0x55` = Config zone unlocked; any other value = locked.
+
+A fully provisioned device should have both zones locked. The provisioning kit calls `lockConfig()` then `lockData()` as the final step.

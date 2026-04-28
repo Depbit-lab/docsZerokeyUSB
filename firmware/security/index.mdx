@@ -1,108 +1,212 @@
 ---
 title: "Security System"
-description: "How ZeroKeyUSB protects your credentials through encryption, isolation, and offline architecture."
+description: "How ZeroKeyUSB protects your credentials through a hardware secure element, AES-128 CBC software encryption, and offline-only operation."
 ---
 
 ## Offline by design
 
 ZeroKeyUSB does not rely on the Internet, cloud storage, or companion apps.
-Everything — from encryption to key handling — happens **inside the device**, powered directly through USB.
+Everything — from random number generation to PIN verification — happens **inside the device**, powered directly through USB.
 
 Your passwords **never leave the hardware** and **cannot be accessed remotely**, even by the manufacturer.
 
 ---
 
+## Two cooperating chips
+
+Security is split across two pieces of silicon so neither one alone can leak the vault:
+
+| Chip | Role |
+|------|------|
+| **SAMD21E18A (MCU)** | Runs the application firmware, performs software AES-128 CBC, drives the OLED, USB HID, touch, and I²C bus. |
+| **ATECC608A-MAHDA-T (secure element)** | Generates true random numbers (TRNG), holds a unique 9-byte chip serial used as PIN salt, and provides a tamper-resistant **monotonic hardware counter** (Counter0) that gates PIN attempts and cannot be rolled back. |
+
+The MCU and ATECC608A share an I²C bus at address `0x60`. Neither chip stores the entire secret on its own: the AES master key lives in EEPROM but its entropy comes from the secure element's TRNG, and the PIN is verified through a hash that mixes the user's digits with the secure element's serial.
+
+> **Crypto model — Camino B (software AES, chip-assisted PIN auth).**
+> The ATECC608A SKU in use (`MAHDA-T`) ships with the standalone hardware AES command **disabled at the factory**, so the AES master key cannot live inside the chip. See the trade-off section below.
+
+---
+
 ## Encryption architecture
 
-All sensitive data is stored in the external **EEPROM M24C64-WMN6TP**, encrypted using **AES-128 CBC (Cipher Block Chaining)**.
+All sensitive data is stored in the external **EEPROM M24C64-WMN6TP**, encrypted using **AES-128 in CBC mode** (software, AESLib on Cortex-M0+).
 
-The encryption key is derived from your **Master PIN**: the digits are hashed with SHA-256 and the first 16 bytes form the AES key. The original PIN is never stored or transmitted in plain text.
+| Element | Source / Location |
+|----------|-------------------|
+| **Cipher** | AES-128 CBC — software implementation via AESLib. Manual per-block XOR chaining for full control of IV handling. |
+| **AES master key** | 16 random bytes produced by the ATECC608A TRNG at provisioning. Stored in EEPROM at `0x0028–0x0037`. Loaded into a static RAM buffer on first use and cached for the session. |
+| **IV (Initialization Vector)** | 16 random bytes produced by the ATECC608A TRNG at provisioning. Stored in EEPROM at `0x0010–0x001F`. |
+| **PIN binding** | The AES master key is **not** derived from the PIN. The PIN is verified separately via an EEPROM-stored hash and gates access to the unlock routine. |
+| **Credential layout** | Each slot holds up to four 32-byte encrypted EEPROM pages: site (p0), username (p1), password (p2), TOTP secret (p3). Each 32-byte page encrypts 16 bytes of plaintext padded to 32 bytes with `0xFF`. |
 
-| Element | Description |
-|----------|-------------|
-| **Encryption algorithm** | AES-128 in CBC mode (industry-standard symmetric cipher). |
-| **Key source** | Master PIN → SHA-256 → 128-bit AES key. |
-| **IV (Initialization Vector)** | Generated from analog noise on first startup and stored securely in EEPROM. |
-| **Data blocks** | Each credential uses three 32-byte encrypted pages (site, username, password). |
-| **Verification** | Each write is confirmed via I²C acknowledgment to ensure completion. |
+### CBC chaining detail
 
-If the EEPROM were removed from the board, its contents would appear as **random ciphertext**, with no recognizable structure or patterns.
+`cbcEncrypt32` / `cbcDecrypt32` process each 32-byte credential in two 16-byte blocks:
+
+1. Block is XORed with the previous ciphertext (or the device IV for the first block).
+2. The XOR result is fed to AESLib as a single-block ECB operation with a zero IV — this collapses to ECB, but the manual XOR step restores CBC semantics.
+3. The resulting 16-byte ciphertext becomes `prev` for the next block.
+
+**Note:** a zero local IV is intentionally used to avoid the AESLib CBC API's IV-write-back behavior, which would trigger a HardFault on SAMD21 if the IV were flash-resident.
+
+---
+
+## EEPROM security map
+
+| Address | Size | Content |
+|---------|------|---------|
+| `0x0000` | 1 B | Configuration wizard flag (`0x42` = done) |
+| `0x0001` | 1 B | Screen mode / orientation |
+| `0x0002` | 1 B | Soft failed-attempts counter (UX backoff) |
+| `0x0010–0x001F` | 16 B | AES-CBC Initialization Vector (TRNG-generated) |
+| `0x0020–0x0023` | 4 B | PIN attempt threshold (LE uint32 = Counter0 value + 50 on last success) |
+| `0x0024` | 1 B | Provisioning flag (`0xA5` = provisioned) |
+| `0x0028–0x0037` | 16 B | AES-128 master key (TRNG-generated, plaintext) |
+| `0x0038–0x0057` | 32 B | PIN hash = SHA-256(pinArray\[16\] ∥ chip_serial\[9\]) |
+| `0x0040–0x0047` | 8 B | Last TOTP epoch (persisted across power cycles) |
+| `0x003E` | 1 B | Keyboard layout selector |
+| `0x0060+` | — | TOTP metadata (algorithm + secret length, 2 B × 62 slots) |
+| `0x0100+` | — | Credential pages (4 × 32 B × 62 slots = 7936 B max) |
 
 ---
 
 ## The Master PIN
 
-Your PIN acts as your personal encryption key.
-It is never transmitted, stored in plain text, or shared with any external system.
+The PIN authorises an unlock cycle; it is **never used directly as an encryption key**. The verification flow is:
 
-When you enter your PIN:
-1. ZeroKeyUSB derives the AES-128 key.
-2. This key decrypts an 8-byte **signature block** stored in EEPROM.
-3. If the decrypted result matches the expected pattern, access is granted.
-4. Otherwise, the failed-attempt counter increments and the device enforces a delay before retry.
+1. The user enters up to **16 digits** on the capacitive pads.
+2. The firmware increments **Counter0** in the ATECC608A. This counter is monotonic and survives power cycles — it cannot be rolled back by software or by desoldering the MCU.
+3. The firmware reads the **attempt threshold** from EEPROM (`0x0020`). If `Counter0 ≥ threshold`, the device calls `eraseAll()` (wipes all credential slots) and halts.
+4. Otherwise, the firmware calls `derivePinKey()`: computes `SHA-256(pinArray[16] ∥ chip_serial[9])` to produce the 32-byte PIN hash.
+5. It reads the stored 32-byte hash from EEPROM (`0x0038`) and runs a **constant-time compare** (`diff |= stored[i] ^ derived[i]`).
+6. **On match:** the threshold is reset to `Counter0 + 50`, the soft failed-attempt counter is cleared, and the unlock proceeds.
+7. **On mismatch:** the soft counter increments and the device enforces an exponential backoff delay before the next attempt.
 
----
+Because the rate-limit counter is in hardware, an attacker who dumps EEPROM still cannot brute-force the PIN against the device — Counter0 keeps marching forward with each attempt and the firmware wipes the vault once the threshold is crossed.
 
-### Intelligent lockout
+### Adaptive lockout — soft backoff (UX layer)
 
-Each incorrect PIN attempt increases the waiting time **exponentially**, and the count is stored persistently in EEPROM (`0x0002`):
+Stored at EEPROM `0x0002`. Independent of the hard counter; reset on correct PIN.
 
 | Failed attempts | Wait time |
-|------------------|-----------|
-| 1 | 5 seconds |
-| 2 | 10 seconds |
-| 3 | 20 seconds |
-| 4 | 40 seconds |
-| 5 | 80 seconds |
-| … | up to 2560 seconds (≈ 43 minutes) |
+|-----------------|-----------|
+| 1 | 5 s |
+| 2 | 10 s |
+| 3 | 20 s |
+| 4 | 40 s |
+| 5 | 80 s |
+| … | doubles up to **2 560 s (≈ 43 min)** |
 
-This mechanism prevents brute-force attempts and persists even after unplugging the device.
+Formula: `wait = BASE_SECONDS (5) × 2^(min(attempts,10)−1)`, capped at `MAX_WAIT_SECONDS` (2 560).
+
+### Hard limit — hardware counter
+
+- Threshold initialised at provisioning: `cur_counter + 50` (where `cur_counter` is read from the chip at that moment).
+- Each PIN attempt — right or wrong — increments Counter0 by one.
+- The threshold is bumped by 50 **only on a correct PIN**, so a stream of wrong attempts will eventually exhaust the budget.
+- The chip's monotonic counter **cannot be reset** — no software path, no power cycle, no physical reset resets it.
+- The hard limit is `ATTEMPT_BUDGET = 50`. After 50 consecutive wrong PINs without a correct one, the vault is wiped.
 
 ---
 
-## Secure Initialization Vector (IV)
+## ATECC608A slot map
 
-Every device generates a unique **Initialization Vector** on first startup.
-The IV is created using **analog noise** read from a floating pin on the SAMD21 and saved in the EEPROM.
-If the IV becomes corrupted or missing, it is regenerated automatically with fresh entropy.
+Established at provisioning time and **locked permanently**:
 
-A single IV per device is used for all AES operations, ensuring every encryption chain is unique to that specific unit.
+| Slot | Size | Content | Access |
+|------|------|---------|--------|
+| **9** | 32 B | `SHA-256(PIN_padded ∥ device_serial)` — the PIN key | Clear write allowed (IsSecret=0, WriteConfig=Always). Readable over I²C. |
+| **8** | 16 B | AES-128 master key (provisioning path, currently unused by app) | — |
+| **Counter 0** | monotonic | PIN attempt counter | Increment-only. Read by app before each unlock. |
+
+> **Known trade-off (Slot 9 readable):** Slot 9 is not locked as secret because the MAHDA-T SKU rejects clear writes to IsSecret slots. This means an attacker with physical I²C access can read the 32-byte PIN hash and attempt an offline dictionary attack against SHA-256(PIN∥serial). Counter0 hardware lockout limits how fast they can then USE a recovered PIN against the device, but offline hash cracking is unbounded. Short PINs are vulnerable to offline attack if the attacker obtains I²C access.
+
+---
+
+## Initialization Vector
+
+The IV is generated **once** during provisioning by the ATECC608A's TRNG and stored in EEPROM at `0x0010`. Two sanity guards protect it:
+
+- A read returning all-`0x00` or all-`0xFF` is treated as uninitialised and triggers regeneration from the TRNG.
+- If EEPROM read fails at unlock time, the firmware attempts TRNG regeneration and re-stores the IV.
+
+**Single device-wide IV:** all credential pages are chained against the same IV. This keeps the layout simple and auditable. The threat model leans on TRNG quality and Counter0, not on per-record nonces.
+
+**Regeneration consequence:** if the IV is lost or regenerated without re-encrypting credentials, existing slots will decrypt to garbage (the ciphertext was produced under the old IV). The firmware's self-healing routine (`silentEraseAll`) is called automatically on first unlock if slot 0 page 0 is still raw `0xFF` (EEPROM default), and can be called again manually via `generateAndStoreIV()`.
+
+---
+
+## Self-healing initialisation
+
+On the first unlock after provisioning, `ZerokeySecurity::unlock()` checks whether credential slot 0, page 0 is still at the EEPROM factory default (`0xFF` across all 32 bytes). If so, it calls `silentEraseAll()`:
+
+1. Loads the device IV from EEPROM.
+2. For each of the 62 credential slots × 4 pages: encrypts a 32-byte `0xFF` blank under AES-128 CBC and writes it to EEPROM.
+3. Clears TOTP metadata for every slot.
+
+This ensures fresh units always have consistent, properly encrypted blank entries before any credential is written.
 
 ---
 
 ## Data segmentation
 
-Each credential is divided into **independent encrypted pages** to minimize correlation:
+Each credential slot occupies 4 consecutive EEPROM pages (128 bytes total):
 
-- Page 1 → Site or domain
-- Page 2 → Username
-- Page 3 → Password
-- Page 4 (optional) → TOTP secret
+| Page | Content (plaintext, 16 B + 16 B padding) | EEPROM bytes |
+|------|----------------------------------------|--------------|
+| 0 | Site / domain | 32 B ciphertext |
+| 1 | Username | 32 B ciphertext |
+| 2 | Password | 32 B ciphertext |
+| 3 | TOTP secret | 32 B ciphertext |
 
-This segmented structure isolates corruption, avoids recognizable patterns, and extends memory endurance.
+Splitting fields keeps recognisable plaintext patterns out of the ciphertext stream and limits the blast radius of a corrupt EEPROM page. Padding bytes are `0xFF`; trailing `0x20` (space) chars are replaced with `0xFF` before encryption to avoid pattern leakage.
 
 ---
 
 ## Tamper protection
 
-- The entire PCB is **encapsulated in epoxy resin**, making component access virtually impossible without destroying the device.
+- The PCB is **encapsulated in epoxy resin**; opening the device destroys the board and the chip connections.
+- **No wireless interfaces** (no Wi-Fi, no Bluetooth, no NFC).
+- The **bootloader region is BOOTPROT-locked** in hardware fuses (`BOOTPROT = 7`, protecting the first 16 KB) — application firmware cannot rewrite or relocate the bootloader.
+- The bootloader will only jump to **ECDSA P-256-signed firmware**; an unsigned or tampered image falls into USB-CDC recovery mode instead of executing.
+- All decrypted credentials live in **temporary RAM buffers** (`currentSite`, `currentUser`, `currentPass`) that are populated at unlock and overwritten at the next lock or power cycle.
+- **Write-protect pin** (`EEPROM_WP_PIN = PA01`) can be driven high by firmware to hardware-lock EEPROM writes.
 
-- **No wireless interfaces** (Wi-Fi, Bluetooth, NFC) are present.
-- The firmware is **static** — flashed at the factory and cannot be updated remotely.
-- All sensitive operations occur only in **temporary RAM buffers**, which are cleared immediately after use.
+---
+
+## Backup and restore
+
+Credentials can be exported and imported over the USB CDC serial interface:
+
+- **Export (`backupAllCredentials`):** decrypts all 62 slots in-device and sends them as comma-delimited plaintext lines over SerialUSB. The host receives credentials in clear — **ensure the USB connection is trusted**.
+- **Import (`loadAllbackupCredentials`):** receives records from the host, re-encrypts them under the current device IV/master, and writes them to EEPROM. TOTP secrets are parsed and stored in page 3 of each slot.
+
+> **Security note:** backup transmits decrypted credentials in plaintext over USB. Only perform backup/restore on a trusted, air-gapped host.
+
+---
+
+## Known limitations and trade-offs
+
+| Limitation | Impact | Mitigation |
+|-----------|--------|------------|
+| AES master key stored in EEPROM (Camino B) | Attacker with I²C access can dump the key and decrypt offline without PIN | Epoxy encapsulation; physical access destroys the device |
+| Slot 9 PIN hash readable over I²C | Offline SHA-256 brute-force if I²C accessible | Short PINs (< 6 digits) are vulnerable; use max-length PINs |
+| Single device-wide IV | Same IV for all slots; no per-record nonces | IV entropy from ATECC TRNG; IV loss requires re-initialisation |
+| PIN comparison in software (not CheckMac) | Side-channel timing (mitigated by constant-time compare) | Hardware Counter0 still gates attempts |
+| Backup is plaintext over USB | Physical host can capture credentials | Document clearly; use only on trusted machines |
 
 ---
 
 ## Transparency, not dependence
 
-ZeroKeyUSB’s firmware is fully open-source and available for public **audit and verification**.
-Anyone can review how encryption, IV handling, and access control are implemented to confirm that:
+ZeroKeyUSB's firmware is fully open-source and available for public **audit and verification**. Anyone can review:
 
-- There are **no backdoors or remote commands**.
-- All cryptographic processes occur **locally and deterministically**.
-- Security depends on design, not trust.
+- How the ATECC608A is driven (`zerokey-atecc.cpp`).
+- How the AES master, IV, and PIN hash are written and read (`zerokey-security.cpp`).
+- How the bootloader hashes and verifies the application (`bootloader/src/main.c`).
 
-ZeroKeyUSB intentionally avoids OTA or wireless updates — physical access is required for reflashing if ever needed.
+There are **no remote update mechanisms**: re-flashing requires physical access via SWD pogo pins or the local USB-CDC bootloader, and any new image must be signed by the offline ECDSA key.
 
 ---
 
@@ -110,17 +214,16 @@ ZeroKeyUSB intentionally avoids OTA or wireless updates — physical access is r
 
 <CardGroup cols={3}>
   <Card title="AES-128 Encryption" icon="lock" href="/firmware/security/aes-128-encryption">
-    Learn how the Master PIN turns into an AES key and how CBC mode protects each credential page.
+    How the ATECC-generated master key and IV are used to chain credential pages with software AES-CBC.
   </Card>
   <Card title="PIN Verification" icon="shield" href="/firmware/security/pin-verification">
-    Explore the unlock flow, adaptive delays, and how retries are enforced in hardware.
+    Counter0, the EEPROM-stored SHA-256 hash, and the constant-time compare that gates unlock.
   </Card>
   <Card title="IV Generation" icon="dice" href="/firmware/security/iv-generation">
-    Understand how entropy is gathered and how the IV is validated and regenerated.
+    How the ATECC608A TRNG seeds the device-wide IV and how regeneration is handled.
   </Card>
 </CardGroup>
 
 <Note>
-ZeroKeyUSB’s encryption follows the same core principles found in certified hardware tokens and wallets —
-with a focus on simplicity, transparency, and complete offline operation.
+ZeroKeyUSB pairs an MCU with a hardened secure element. The MCU does the cryptographic *work*; the secure element provides the *entropy*, the *identity* (chip serial used as PIN salt), and the *rate limit* (Counter0) that makes the PIN protection meaningful against online attacks.
 </Note>
