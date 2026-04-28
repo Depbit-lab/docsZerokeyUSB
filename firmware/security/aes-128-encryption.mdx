@@ -37,6 +37,27 @@ The ATECC608A variant used (`MAHDA-T`) ships with the hardware AES command **dis
 
 The `cbcEncrypt32` / `cbcDecrypt32` functions in `zerokey-security.cpp` process each 32-byte credential field (two 16-byte blocks) as follows:
 
+```mermaid
+flowchart LR
+    subgraph Encryption
+        IV["IV (16B)"] --> XOR0["⊕"]
+        P0["Plain Block 0"] --> XOR0
+        XOR0 --> AES0["AES-ECB<br/>Encrypt"]
+        AES0 --> C0["Cipher Block 0"]
+        C0 --> XOR1["⊕"]
+        P1["Plain Block 1"] --> XOR1
+        XOR1 --> AES1["AES-ECB<br/>Encrypt"]
+        AES1 --> C1["Cipher Block 1"]
+    end
+    
+    style IV fill:#fef3c7,stroke:#d97706,color:#000
+    style AES0 fill:#dbeafe,stroke:#2563eb,color:#000
+    style AES1 fill:#dbeafe,stroke:#2563eb,color:#000
+    style C0 fill:#dcfce7,stroke:#16a34a,color:#000
+    style C1 fill:#dcfce7,stroke:#16a34a,color:#000
+```
+
+
 ### Encryption
 
 ```

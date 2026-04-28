@@ -1,150 +1,173 @@
 ---
 title: "Menu System"
-description: "Explore the ZeroKeyUSB menu and learn how to use its features safely and efficiently."
+description: "Explore the ZeroKeyUSB menu structure, setup wizard, and how to use every feature safely."
 ---
 
 ## Simple control, powerful features
 
-ZeroKeyUSB has no buttons, no apps, and no hidden menus — only **five golden touch points** that control everything you need.  
-The main menu becomes accessible **after entering your Master PIN**.
-
-From navigating credentials to backing up your data, every function is available through a clear on-screen interface designed for clarity and safety.
+ZeroKeyUSB has no buttons, no apps, and no hidden menus — only **five golden touch points** that control everything.  
+The menu becomes accessible **after entering your Master PIN** by scrolling past the last credential slot.
 
 ---
 
-## Navigating the interface
+## Menu structure
 
-The capacitive touch controls are intuitive and responsive:
+```mermaid
+graph TD
+    ROOT["Main Menu"]
+    ROOT --> BACKUP["Backup"]
+    ROOT --> SETTINGS["Settings"]
+    ROOT --> DANGER["Danger Zone"]
+    ROOT --> INFO["Info"]
+    
+    BACKUP --> IMP["Import"]
+    BACKUP --> EXP["Export"]
+    
+    SETTINGS --> ROT["Rotate Screen"]
+    SETTINGS --> KB["Keyboard: XX-XX"]
+    SETTINGS --> ABOUT["About"]
+    
+    DANGER --> RPIN["Reset PIN"]
+    DANGER --> DEL["Delete Credentials"]
+    DANGER --> FACTORY["Factory Reset"]
+    DANGER --> BOOT["Bootloader Mode"]
+    
+    INFO --> SW["SW: x.x.x"]
+    INFO --> SN["SN: XXXXXXXX"]
+    
+    style ROOT fill:#dbeafe,stroke:#2563eb,color:#000
+    style DANGER fill:#fee2e2,stroke:#dc2626,color:#000
+```
+
+---
+
+## Navigating the menu
 
 | Gesture | Action |
-|----------|---------|
-| **Right →** | Move forward / Confirm / Open submenu |
-| **Left ←** | Go back / Exit current screen |
-| **Up ↑ / Down ↓** | Scroll through options or change characters |
-| **Center •** | Select / Confirm |
-| **Long press** | Triggers special functions (e.g. factory-reset confirmation) |
+|---------|--------|
+| **Up ↑** | Move selection up (wraps to bottom) |
+| **Down ↓** | Move selection down (wraps to top) |
+| **Center ●** | Select / Execute the highlighted item |
+| **Left ←** | Go back to parent menu or exit to credentials |
+| **Right →** | Exit menu, jump to credential slot 0 |
 
-A small label at the top of the display shows your current context (`MENU`, `SITE`, `TOTP`, or `SETUP`).
-
----
-
-## Main menu overview
-
-When you enter the main menu, you’ll see five sections:
-
-1. **Backup**  
-2. **Settings**  
-3. **TOTP**  
-4. **Danger Zone**  
-5. **Info**
-
-Each section is explained below.
+When a menu has more items than fit on the 4-row display, a **scrollbar with thumb** appears on the right edge. The selection stays visible as you scroll.
 
 ---
 
 ### 🔁 Backup
 
-ZeroKeyUSB allows you to **export and import** credentials through the USB serial interface.
+| Item | Action |
+|------|--------|
+| **Import** | Receives credentials from the host via USB serial (CDC). Device shows "Waiting for data from the web app." |
+| **Export** | Sends all 62 credential slots as plaintext CSV over USB serial. Requires long-press Center authorization. |
 
-#### **Import credentials**
-Used to restore data previously exported from the same device.  
-After selecting **Import**, ZeroKeyUSB waits for data sent from the local web manager or a trusted terminal.  
-If the current PIN differs from the one used to create the backup, restoration will fail.
+The export/import flow shows an authorization prompt before transferring any data:
 
-#### **Export credentials**
-Sends all stored entries over USB serial in **plain CSV-like text** (site, username, password, optional TOTP).  
-Although data is decrypted for transmission, it is never stored externally unless you save it manually.
+```mermaid
+sequenceDiagram
+    participant Host
+    participant Device
 
-> 💡 **Tip:** Always make a local backup before performing a factory reset, and keep it offline.
+    Host->>Device: "EXPORT" or "IMPORT"
+    Device-->>Host: "AWAIT_AUTH EXPORT"
+    Device->>Device: Show "Hold center to authorize"
+    
+    alt User holds Center
+        Device->>Host: Stream CSV data (export)<br/>or receive CSV data (import)
+        Device-->>Device: "Export/Import complete"
+    else User releases
+        Device-->>Device: Cancel, return to menu
+    end
+```
+
+<Warning>
+Export sends **plaintext credentials** over USB serial. Only perform this on a trusted computer.
+</Warning>
 
 ---
 
 ### ⚙️ Settings
 
-Adjust how your ZeroKeyUSB behaves — always offline.
-
-#### **Rotate Screen**
-Flips the display orientation for left- or right-handed use.
-
-#### **Keyboard Layout**
-The device emulates a **US-QWERTY keyboard**.  
-Other layouts (ES, FR, DE…) are not stored internally; hosts with different layouts may need to adjust special characters.
-
-#### **About**
-Displays firmware information in a read-only screen:  
-ZeroKey USB
-SW 1.0.0
-SN XXXXXXXX
-github.com/Depbit-lab
-
+| Item | Action |
+|------|--------|
+| **Rotate Screen** | Flips the display 180° for left/right-handed use. Also inverts touch controls. Saved in EEPROM. |
+| **Keyboard: XX-XX** | Cycles through 9 keyboard layouts (EN-US → DA-DK → DE-DE → ES-ES → FR-FR → HU-HU → IT-IT → PT-PT → SV-SE → EN-US). Saved in EEPROM. |
+| **About** | Shows device info: SW version, serial number, and `zerokeyusb.com`. |
 
 ---
 
 ### ⏱️ TOTP
 
-If a credential includes a **two-factor authentication (2FA)** secret, you can generate a time-based code directly from the device.
+TOTP is accessed from the credential view, not the main menu. When viewing a credential, scroll **Down past Password** to the **2FA** field:
 
-When entering **TOTP**:
-- If time has not been set, the screen shows  
-  `Time not set → Request host time`.  
-- Once synchronized, a six-digit code appears with a 30 s countdown.  
-- The code refreshes automatically at the end of each interval.
-
-Currently, ZeroKeyUSB implements **SHA-1** (RFC 6238).  
-Future firmware versions may include optional **SHA-256** and **SHA-512**.
-
-> 🔒 The TOTP system works entirely offline. No app or cloud sync is ever required.
+- If no TOTP secret exists for that slot → shows "No TOTP secret" for 2 seconds.
+- If time is not synced → shows "Time not set — Request host time" and sends `REQTIME` over serial.
+- If ready → displays a **6-digit code** with a 30-second countdown timer. Refreshes automatically each period. Touch any pad to return.
 
 ---
 
 ### ⚠️ Danger Zone
 
-Actions inside this section are **irreversible** and require long-press confirmation.
+Every action in this section shows a **confirmation page** that requires pressing Center to proceed or Left to cancel:
 
-#### **Reset PIN**
-Resets the Master PIN and erases all stored data.  
-The device restarts in initial setup mode and generates a new encryption seed.
-
-#### **Delete Credentials**
-Erases all sites, usernames, passwords, and TOTP secrets.  
-A visual countdown appears before the deletion begins.  
-> 🧠 During deletion, the screen displays:  
-> “Critical process — unplug to cancel.”
-
-#### **Factory Reset**
-Fully restores the device to factory state:  
-- Wipes all memory, including PIN signature and IV.  
-- Regenerates a new encryption seed.  
-- Returns to first-time setup.
+| Item | Effect | Reversible? |
+|------|--------|-------------|
+| **Reset PIN** | Enters the PIN change screen (`EDITPIN`). New PIN + re-provisioning. | Partial — old credentials remain if same AES key |
+| **Delete Credentials** | Calls `eraseAll()`: 3-second countdown, then writes encrypted blanks to all 62 slots + clears TOTP metadata. | ❌ No |
+| **Factory Reset** | Resets config flag to `0x00` + erases all credentials. Next boot starts the setup wizard. | ❌ No |
+| **Bootloader Mode** | Sets double-reset magic word (`0xF01669EF` at `0x20007FFC`), then issues `NVIC_SystemReset()`. Device reboots into USB DFU bootloader for firmware flashing. | ✅ Yes (reflash) |
 
 ---
 
 ### ℹ️ Info
 
-A quick way to view essential device information:
+Read-only submenu showing:
+- **SW: x.x.x** — firmware version from `zerokeyInfo::getSoftwareVersion()`
+- **SN: XXXXXXXX** — hardware serial from the SAMD21 unique ID registers
 
-- **Software version** — e.g. `SW 1.0.0`  
-- **Serial number** — unique per device, hardware-bound  
-- **Open-source link** — [github.com/Depbit-lab/zerokeyusb](https://github.com/Depbit-lab/zerokeyusb)
+---
 
-All information is read-only and cannot be modified from the menu.
+## Setup wizard
+
+The setup wizard runs on first boot (or after factory reset). It consists of **10 internal pages** across **9 visible steps**:
+
+```mermaid
+graph LR
+    W1["1. Welcome"] --> W2["2. Navigation"]
+    W2 --> W3["3. Rotate Screen"]
+    W3 --> W4["4. Keyboard Layout"]
+    W4 --> W5["5. Create PIN"]
+    W5 --> W6["6. Confirm PIN"]
+    W6 --> W7["7. Unlock Info"]
+    W7 --> W8["8. Accounts Info"]
+    W8 --> W9["9. Generate IV"]
+    W9 --> W10["10. Ready!"]
+    
+    style W5 fill:#fef3c7,stroke:#d97706,color:#000
+    style W6 fill:#fef3c7,stroke:#d97706,color:#000
+    style W9 fill:#fee2e2,stroke:#dc2626,color:#000
+```
+
+Pages with more than 4 lines of text are **vertically scrollable** using Up/Down. A scrollbar with thumb appears on the right edge.
+
+Each wizard page supports:
+- **Right** → advance to next page
+- **Left** → go back to previous page
+- **Center** → action (toggle orientation, change layout, start PIN entry)
+- **Up/Down** → scroll content
 
 ---
 
 ## Design philosophy
 
 The menu system is intentionally minimalist:
-- No deep submenus — every option is two taps away.  
-- No unnecessary animations — focused on clarity.  
-- All operations are local and reversible (except secure erasure).  
-- Layout and gestures remain consistent across firmware versions.  
-
-ZeroKeyUSB is built for **confidence, not configuration**.  
-Once you learn the gestures, you can operate it entirely from muscle memory — safely, silently, and offline.
-
----
+- No deep submenus — every option is **two taps away** from the main menu.
+- All destructive actions require explicit Center confirmation on a dedicated page.
+- Layout and gestures remain consistent across firmware versions.
+- Menu items dynamically update their labels (e.g., keyboard layout shows current selection).
 
 <Note>
 ZeroKeyUSB requires no drivers or software installation.  
-It’s recognized as a standard USB keyboard on any operating system.
+It's recognized as a standard USB keyboard on any operating system.
 </Note>

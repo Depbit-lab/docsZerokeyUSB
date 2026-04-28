@@ -1,98 +1,144 @@
 ---
 title: "USB Utilities"
-description: "Keyboard emulation, host commands, and other utilities that make ZeroKeyUSB versatile without sacrificing security."
+description: "Keyboard emulation, serial commands, and backup/restore over the composite USB interface."
 ---
 
 ## Dual USB personality
 
-ZeroKeyUSB operates as a **composite USB device** exposing two interfaces simultaneously:
+ZeroKeyUSB operates as a **composite USB Full-Speed device** exposing two interfaces simultaneously:
 
-1. **HID Keyboard** – types usernames and passwords exactly like a physical keyboard.  
-2. **CDC Serial channel** – a lightweight text-based protocol used for backups, diagnostics, and time synchronization.
+```mermaid
+graph LR
+    USB["USB-C Connector"] --> COMP["Composite USB Device"]
+    COMP --> HID["HID Keyboard<br/>Class 0x03"]
+    COMP --> CDC["CDC Serial<br/>115200 bps"]
+    
+    HID --> TYPE["Types credentials<br/>to host"]
+    CDC --> CMD["Backup, restore,<br/>time sync"]
+    
+    style USB fill:#dbeafe,stroke:#2563eb,color:#000
+    style HID fill:#bbf7d0,stroke:#16a34a,color:#000
+    style CDC fill:#fef3c7,stroke:#d97706,color:#000
+```
 
-Both remain active after unlocking, but any sensitive action requires explicit on-device confirmation.
+Both interfaces remain active after boot, but CDC commands that modify data require PIN unlock + on-device authorization.
 
 ---
 
 ## Keyboard output engine
 
-The firmware uses a compact **US-QWERTY layout** hardcoded in flash memory.  
-Each ASCII character is mapped to its corresponding USB HID keycode.
+The firmware supports **9 keyboard layouts** stored as compiled keyboard maps:
 
-> Future versions may add alternative layouts (ES, FR, DE…), but the current firmware always emulates US-QWERTY.
+| Code | Layout |
+|------|--------|
+| `EN-US` | United States QWERTY (default) |
+| `DA-DK` | Danish |
+| `DE-DE` | German |
+| `ES-ES` | Spanish |
+| `FR-FR` | French |
+| `HU-HU` | Hungarian |
+| `IT-IT` | Italian |
+| `PT-PT` | Portuguese |
+| `SV-SE` | Swedish |
+
+The active layout is stored in EEPROM at `0x003E` and can be changed from **Settings → Keyboard** or during the setup wizard.
 
 ### Typing sequence
 
-When you select a credential, ZeroKeyUSB performs a scripted output:
+When you tap **Center** on the credential main screen, ZeroKeyUSB types:
 
-1. Types the **username**.  
-2. Sends a `Tab` key.  
-3. Types the **password**.  
-4. Finishes with `{ENTER}` if the field includes that token.
+```mermaid
+sequenceDiagram
+    participant User
+    participant Device
+    participant Host as Host Computer
 
-> TOTP codes are displayed on the OLED screen but are **not auto-typed**.
+    User->>Device: Tap Center on credential
+    Device->>Host: Type username (char by char)
+    Device->>Host: Send TAB key
+    Device->>Host: Type password (char by char)
+    Note over Device,Host: Each character sent as<br/>USB HID keypress + release
+```
+
+The typing engine in `zerokey-utils.cpp` converts each ASCII character to the appropriate HID keycode using the selected keyboard layout library.
 
 ---
 
-## Serial command set
+## Serial command protocol
 
-The serial channel communicates over **115200 bps** using simple ASCII commands, one per line.  
-All commands are processed only after successful PIN unlock.
+The CDC channel communicates at **115200 bps** using simple ASCII lines. Commands are processed by `handleIncomingHostRequests()` in `zerokey-io.cpp`.
 
-| Command          | Direction | Description |
-| ---------------- | ---------- | ----------- |
-| `PING`           | Host → Device | Returns `OK` for connection testing. |
-| `REQTIME`        | Device → Host | Requests current Unix time; host replies `SETTIME 1706227200`. |
-| `SETTIME <epoch>` | Host → Device | Stores the given Unix epoch (binary, unencrypted). |
-| `EXPORT`         | Host → Device | Sends all credentials in **plain CSV** format for local backup. |
-| `IMPORT`         | Host → Device | Restores a backup created on the same device and PIN (fails silently if PIN mismatch). |
-| `FACTORY_RESET`  | Host → Device | Arms a secure wipe; requires 5-second long-press confirmation on the device. |
+| Command | Direction | Pre-condition | Description |
+|---------|-----------|---------------|-------------|
+| `EXPORT` or `R` | Host → Device | PIN unlocked | Initiates credential export. Device shows authorization prompt. |
+| `IMPORT` | Host → Device | PIN unlocked | Initiates credential import. Device shows authorization prompt. |
+| `<epoch>` | Host → Device | Device showing `REQTIME` | Sends Unix epoch timestamp for TOTP synchronization. |
 
-Messages are short, human-readable text lines — not JSON — making the protocol easy to audit and debug.
+### Export data format
+
+Each credential is sent as a CSV line:
+
+```
+slotIndex,siteName,userName,password[,totpSecret]
+```
+
+- The TOTP field is optional and only included if the slot has a 2FA secret.
+- The first line sent is the total number of slots (`62`).
+- Example: `0,github.com,alice,MyP@ss123,JBSWY3DPEHPK3PXP`
+
+### Import data format
+
+Same CSV format. The host sends:
+1. The total number of records (integer).
+2. One line per record: `slotIndex,site,user,pass[,totpSecret]`.
+
+The device encrypts each field with AES-128 CBC and writes to the corresponding EEPROM slot.
 
 ---
 
 ## Time synchronization
 
-TOTP codes require accurate timing.  
-When the device shows `REQTIME`, send the current Unix time once:
+TOTP codes require accurate time. Since ZeroKeyUSB has **no hardware RTC**, time is tracked using `millis()` drift from a synced epoch.
 
-REQTIME # displayed on screen
-SETTIME 1706227200
+```mermaid
+sequenceDiagram
+    participant Device
+    participant Host
 
+    Device->>Host: "REQTIME" (via SerialUSB)
+    Note over Device: Shows "Time not set"<br/>on OLED
+    Host->>Device: "1714328400" (Unix epoch)
+    Device->>Device: syncTotpEpoch(epoch)
+    Device->>Device: Save to EEPROM 0x0040
+    Note over Device: TOTP codes now available
+```
 
-
-The firmware stores the epoch as an 8-byte binary value (not encrypted).  
-Elapsed time is tracked in software using the SAMD21’s `millis()` counter — no hardware RTC is used.  
-If drift exceeds roughly ±90 s, the device will request time again.
-
----
-
-## Backup workflow
-
-1. Unlock the device and open **Menu → Backup → Export**.  
-2. Start the local web manager or CLI; it listens to the serial stream.  
-3. The device outputs all credentials in **plain text CSV** format (site, user, password, optional TOTP flag).  
-4. To restore, choose **Import** and send the same file back.  
-   The firmware verifies basic integrity and overwrites existing entries.
-
-> ⚠️ **Backups are not encrypted.** Handle them carefully and store them offline, as they contain readable credentials.
+- The epoch value must be between `946684800` (2000-01-01) and `4102444800` (2099-12-31).
+- The saved epoch persists across power cycles in EEPROM at `0x0040–0x0047`.
+- On each boot, the last saved epoch is loaded and `millis()` tracking resumes from that point.
+- Drift accumulates over time; long sessions or frequent unplugging may require re-sync.
 
 ---
 
-## Safe factory reset
+## Bootloader entry
 
-Executing `FACTORY_RESET` wipes:
+From **Menu → Danger Zone → Bootloader Mode**, the firmware:
 
-- All credential pages  
-- PIN signature and failed-attempt counter  
-- Initialization vector (a new IV is generated on next boot)
+1. Writes `0xF01669EF` to SRAM address `0x20007FFC` (the double-reset magic word).
+2. Calls `NVIC_SystemReset()`.
+3. The bootloader sees the magic word and stays in USB-CDC DFU mode for firmware flashing.
 
-A visible countdown (`Hold to confirm: 5…0`) ensures this cannot be triggered accidentally by software alone.
+This allows firmware updates without physical access to SWD pogo pins.
 
 ---
+
+## Serial security model
+
+- **Before PIN unlock:** `EXPORT` and `IMPORT` commands are rejected with `ERR LOCKED`.
+- **After PIN unlock:** commands are accepted but require **on-device authorization** (long-press Center) before any data transfer begins.
+- **During transfer:** the device shows a progress screen and rejects new commands with `ERR BUSY`.
+- **No hidden commands:** the serial protocol has no debug, dump, or diagnostic commands in production firmware.
 
 <Note>
-There is no hidden debugging interface on the serial channel.  
-All available commands are documented here, and any action affecting stored data requires physical confirmation on the device.
+All serial communication is plaintext. There is no encryption layer on the CDC channel. Treat the USB connection as a direct wire to the device's internals.
 </Note>

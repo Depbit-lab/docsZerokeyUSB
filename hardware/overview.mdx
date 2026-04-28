@@ -6,83 +6,143 @@ description: "Inside ZeroKeyUSB — industrial-grade components designed for off
 ## Built for trust
 
 ZeroKeyUSB is a self-contained, hardware-based password manager.  
-It has been engineered with a single goal in mind: **to protect your credentials without ever connecting to the Internet**.
+Engineered with a single goal: **protect your credentials without ever connecting to the Internet**.
 
-Each unit is assembled, tested, and encapsulated in **industrial-grade epoxy resin** to ensure that no external tampering can occur — and that it remains waterproof, dust-proof, and maintenance-free for years.
+Each unit is assembled, tested, and encapsulated in **industrial-grade epoxy resin** to prevent external tampering — making it waterproof, dust-proof, and maintenance-free.
 
 ---
 
-## Core architecture
+## System architecture
 
-At its heart, ZeroKeyUSB integrates a microcontroller, a secure non-volatile memory, and a minimal user interface — all optimized for **privacy, simplicity, and durability**.
+```mermaid
+graph TB
+    USBC["USB-C Connector<br/>Power + Data"]
+    
+    subgraph PCB["ZeroKeyUSB PCB"]
+        MCU["SAMD21E18A<br/>ARM Cortex-M0+<br/>48 MHz / 256 KB Flash"]
+        ATECC["ATECC608A<br/>MAHDA-T<br/>Secure Element"]
+        EEPROM["M24C64-WMN6TP<br/>64 Kbit EEPROM"]
+        OLED["SSD1306<br/>128×32 OLED"]
+        TS06["TS06<br/>6-ch Touch IC"]
+        PADS["5 Gold Touch Pads"]
+    end
+    
+    USBC -->|"USB FS"| MCU
+    MCU -->|"I²C 0x60"| ATECC
+    MCU -->|"I²C 0x50"| EEPROM
+    MCU -->|"I²C 0x3C"| OLED
+    MCU -->|"I²C 0x69"| TS06
+    TS06 --- PADS
+    
+    style MCU fill:#dbeafe,stroke:#2563eb,color:#000
+    style ATECC fill:#fef3c7,stroke:#d97706,color:#000
+    style EEPROM fill:#dcfce7,stroke:#16a34a,color:#000
+    style OLED fill:#e0e7ff,stroke:#4f46e5,color:#000
+    style TS06 fill:#fce7f3,stroke:#db2777,color:#000
+```
 
-| Component | Model | Purpose |
-|------------|--------|----------|
-| **Main MCU** | Microchip SAMD21 | Executes encryption, menu logic, and USB keyboard emulation. |
-| **Secure EEPROM** | ST M24C64-WMN6TP | Stores encrypted credentials, TOTP secrets, and configuration data. |
-| **Display** | OLED 128×32 px (white) | Shows credentials, menu items, and 2FA codes. |
-| **Touch Sensor** | TS06 (6-channel, 5 used) | Replaces mechanical buttons with durable capacitive input. |
-| **USB Interface** | USB-C | Provides both power and data — no battery or charging circuit required. |
+---
 
-All internal communication uses **I²C** for memory access and **USB HID** for host interaction.  
-Data written to the EEPROM is encrypted before transmission, so even if the I²C bus were probed, stored information would remain unreadable.
+## Component list
+
+| Component | Model | I²C Addr | Purpose |
+|-----------|-------|----------|---------|
+| **MCU** | Microchip SAMD21E18A | — | ARM Cortex-M0+ @ 48 MHz. Runs firmware, AES-128 CBC encryption, USB HID keyboard + CDC serial. |
+| **Secure Element** | Microchip ATECC608A (MAHDA-T) | `0x60` | Hardware TRNG for key/IV generation, monotonic Counter0 for PIN rate-limiting, 9-byte chip serial as PIN salt. |
+| **EEPROM** | ST M24C64-WMN6TP | `0x50` | 64 Kbit (8 KB) non-volatile storage. Holds encrypted credentials, AES key, IV, PIN hash, TOTP metadata. >1M write cycles. |
+| **Display** | SSD1306 OLED | `0x3C` | 128×32 pixel monochrome white OLED. Shows credentials, menus, PIN entry, TOTP codes, progress bars. |
+| **Touch Controller** | TS06 | `0x69` | 6-channel capacitive touch IC (5 channels used). Gold-plated PCB pads for Up/Down/Left/Right/Center. |
+| **USB** | USB-C connector | — | USB Full-Speed. Powers the device (~20 mA) and provides HID keyboard + CDC serial interfaces. |
+| **Write Protect** | GPIO PA01 | — | EEPROM write-protect pin. Can be driven high to hardware-lock EEPROM writes. |
 
 ---
 
 ## Why these components
 
-### 🧠 SAMD21 microcontroller
-The ARM® Cortex-M0+ processor balances performance, size, and power efficiency.  
-It allows secure **AES-128 (CBC)** encryption in firmware while keeping the device fully offline.  
-The USB interface implements standard **HID keyboard emulation** using a **US-QWERTY** layout for universal compatibility.
+### 🧠 SAMD21E18A microcontroller
 
-### 🔐 M24C64-W EEPROM
-Chosen for its high reliability and write endurance (>1,000,000 cycles), this memory chip stores all encrypted user data.  
-Each credential is divided into **three 32-byte encrypted blocks** — one for site, one for username, and one for password — totaling **96 bytes per entry**, aligned with the EEPROM memory map.  
-The encryption key never leaves the MCU.  
-Each write operation is confirmed at the I²C level to ensure successful completion.
+The ARM Cortex-M0+ processor balances performance, size, and power efficiency:
+- **256 KB Flash** — room for firmware, fonts, 9 keyboard layouts, and PROGMEM icon bitmaps.
+- **32 KB SRAM** — enough for display buffer, credential cache, and TOTP workspace without dynamic allocation.
+- **Native USB** — hardware USB Full-Speed peripheral eliminates the need for external USB bridge chips.
+- **Hardware DSU** — Data Scrambling Unit provides hardware CRC32 for fast boot-time firmware integrity checks.
+- **BOOTPROT fuse** — `BOOTPROT=7` locks the first 16 KB of Flash, preventing application code from modifying the bootloader.
 
-### 🖐️ TS06 touch sensor
-ZeroKeyUSB replaces physical buttons with a **sealed, six-channel capacitive touch controller**, of which five channels are actively used.  
-The five golden touch points on the front panel provide intuitive navigation:
-- **Up / Down:** Scroll or change characters  
-- **Left / Right:** Move between fields  
-- **Center:** Confirm selections  
+### 🔐 ATECC608A secure element
 
-Long presses perform shortcuts (e.g., next credential or return to menu), keeping the interface simple yet powerful.
+The ATECC608A provides three capabilities that software alone cannot guarantee:
 
-### 💡 OLED display
-The 128×32-pixel OLED offers high contrast and excellent visibility, even in daylight.  
-It displays site names, usernames, passwords, and real-time TOTP codes.  
-Long fields automatically **scroll** for improved readability.
+| Capability | Why it matters |
+|-----------|---------------|
+| **Hardware TRNG** | Generates the AES master key (16 B) and IV (16 B) with true hardware entropy — not pseudo-random. |
+| **Monotonic Counter0** | Irreversible hardware counter for PIN attempts. Cannot be reset by software, power cycling, or chip erasing. After 50 consecutive wrong PINs, credentials are wiped. |
+| **Chip serial (9 B)** | Factory-programmed unique identifier used as salt in PIN hashing: `SHA-256(PIN ∥ serial)`. Same PIN on a different device produces a completely different hash. |
+
+> The MAHDA-T SKU has **hardware AES disabled at factory**, so encryption runs in software on the MCU. The ATECC is still critical for entropy, identity, and rate-limiting.
+
+### 💾 M24C64-WMN6TP EEPROM
+
+- **8 KB** of non-volatile storage organized in 32-byte pages.
+- **>1 million write cycles per page** — decades of normal use.
+- All credential data is **AES-128 CBC encrypted before writing** — the I²C bus only sees ciphertext.
+- Page boundary awareness: the firmware splits writes that cross 32-byte page boundaries to avoid the M24C64's address wrap-around behavior.
+
+### 🖐️ TS06 touch controller
+
+- **Sealed, six-channel capacitive touch IC** (five channels actively used).
+- Internal baseline calibration — no analog tuning required.
+- Minimum sensitivity (`0x3F`) set at boot to prevent false triggers through the epoxy encapsulation.
+- 80 ms debounce, 800 ms long-press threshold, 150 ms channel lockout — all handled in firmware.
+
+### 💡 SSD1306 OLED
+
+- **128×32 pixels**, white-on-black, high contrast.
+- Driven via I²C at address `0x3C`.
+- Full-frame refresh (~512 bytes per frame) through `Adafruit_SSD1306` library.
+- Excellent visibility in both daylight and darkness.
+- Protected behind the sealed epoxy window.
 
 ### ⚡ USB-C connection
-ZeroKeyUSB typically draws **under 20 mA** — similar to a wireless mouse.  
-Since it relies entirely on the host for power, there are **no batteries to charge or replace**, and it works on any device supporting USB keyboards (Windows, macOS, Linux, Android, etc.).
+
+- Draws approximately **20 mA** — similar to a wireless mouse.
+- **No battery** — fully powered from the host USB port.
+- **No wireless** — no Wi-Fi, Bluetooth, or NFC hardware exists on the PCB.
+- Works with Windows, macOS, Linux, Android, and iPadOS.
 
 ---
 
-## Designed for resilience
+## I²C bus
 
-- **Encapsulated electronics** prevent corrosion, dust, and moisture ingress.  
-- **No wireless interfaces** (Bluetooth, Wi-Fi, NFC) — eliminating remote attack surfaces.  
-- **Static, offline firmware** — updates can only be done locally via USB bootloader, never remotely.  
-- **Universal compatibility** — recognized as a standard USB keyboard, requiring no drivers or apps.
+All peripherals share a single I²C bus at **100 kHz**:
+
+| Device | Address | Role |
+|--------|---------|------|
+| SSD1306 OLED | `0x3C` | Display |
+| M24C64 EEPROM | `0x50` | Credential storage |
+| ATECC608A | `0x60` | Secure element |
+| TS06 | `0x69` | Touch controller |
+
+SDA and SCL are on **PA08** and **PA09** respectively. External pull-up resistors are present on the PCB.
+
+---
+
+## Physical design
+
+- **Encapsulated in epoxy resin** — prevents corrosion, dust, moisture ingress, and physical tampering.
+- **No wireless interfaces** — eliminates remote attack surfaces entirely.
+- **No external screws or seams** — the device cannot be non-destructively opened.
+- **Gold-plated touch pads** — durable, corrosion-resistant, and visible through the resin.
 
 ---
 
 ## Transparency, not exposure
 
-ZeroKeyUSB is **open source by philosophy, not by necessity**.  
-The full firmware and hardware schematics are publicly available on  
-[GitHub → Depbit-lab/zerokeyusb](https://github.com/Depbit-lab/zerokeyusb),  
-allowing anyone to verify exactly what code runs on their device — without exposing private data.
+ZeroKeyUSB is **fully open source**. The firmware and hardware schematics are publicly available on  
+[GitHub → Depbit-lab/zerokeyusb](https://github.com/Depbit-lab/zerokeyusb).  
+Anyone can verify exactly what code runs on their device.
 
-You never need to modify or program your unit manually.  
-It simply works, securely and offline, from the moment you plug it in.
-
----
+Firmware updates require **physical access** — either via SWD pogo pins or the USB bootloader with signed firmware. There is no remote update mechanism.
 
 <Note>
-ZeroKeyUSB is a sealed product — opening or reprogramming the device voids the warranty and destroys its waterproof encapsulation.
+ZeroKeyUSB is a sealed product — opening or reprogramming the device voids the warranty and destroys the epoxy encapsulation.
 </Note>

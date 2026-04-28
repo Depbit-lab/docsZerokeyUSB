@@ -3,88 +3,112 @@ title: "Touch Input Handling"
 description: "How the capacitive keys are scanned, debounced, and mapped to menu navigation."
 ---
 
-ZeroKeyUSB replaces mechanical buttons with **five copper touch pads** connected to a dedicated TS06 capacitive controller. The firmware polls this controller over SPI and translates gestures into navigation events.
+ZeroKeyUSB replaces mechanical buttons with **five copper touch pads** connected to a dedicated **TS06 capacitive controller**. The firmware polls this controller over I²C and translates touches into navigation events.
 
 ---
 
 ## Hardware overview
 
-| Component | Purpose |
-| --- | --- |
-| **TS06** | Capacitive touch controller handling up to six channels |
-| **Pads** | Left, Right, Up, Down, Center (gold-plated on PCB) |
-| **SPI bus** | SERCOM1 @ 2 MHz |
-| **IRQ line** | Signals when a pad changes state |
+| Component | Detail |
+|-----------|--------|
+| **Controller** | TS06 — 6-channel capacitive touch IC |
+| **I²C address** | `0xD2 >> 1 = 0x69` |
+| **Pads used** | 5 of 6 channels: Left, Right, Up, Down, Center |
+| **Status register** | `0x25` — bitmask of currently touched channels |
+| **Sensitivity** | Set to `0x3F` (minimum) on channels 0–2 at boot to avoid false triggers |
 
-The controller runs with its own baseline calibration and reports 8-bit touch intensity values, eliminating the need for analog tuning in firmware.
+The controller handles baseline calibration internally and reports which channels are active via the status register.
+
+---
+
+## Touch initialization
+
+At startup (`zerokey-setup.cpp`), the firmware:
+
+1. Probes the TS06 at `0x69` with up to **5 retries** (20 ms apart).
+2. If detected, writes minimum sensitivity (`0x3F`) to registers `0x00–0x02`.
+3. Configures operation mode via registers `0x05–0x06`.
+4. Sets `ts06_ok = true` — if the controller isn't found, touch is disabled and the serial log shows `"TS06 not found on I2C"`.
 
 ---
 
 ## Polling cycle
 
-1. The TS06 asserts the **IRQ** pin when a pad crosses the sensitivity threshold.
-2. The SAMD21 wakes (if sleeping) and performs an SPI transaction to read the status register.
-3. A 5-sample moving average filters noise and prevents accidental triggers.
-4. The debounced result is converted into one of the logical actions: `LEFT`, `RIGHT`, `UP`, `DOWN`, `CENTER`, or `LONG_PRESS`.
+```mermaid
+flowchart TD
+    A["Read status register 0x25"] --> B{"Any channel active?"}
+    B -->|No| C["Clear all press timers"]
+    B -->|Yes| D{"Same channel as locked?"}
+    D -->|No| E["Ignore — lockout active"]
+    D -->|Yes / None locked| F{"Press duration?"}
+    F -->|"< 80 ms"| G["Still debouncing"]
+    F -->|"80–800 ms"| H["Short press event"]
+    F -->|"> 800 ms"| I["Long press event"]
+    
+    H --> J["Dispatch to current screen"]
+    I --> J
+    C --> A
+    G --> A
+    
+    style A fill:#dbeafe,stroke:#2563eb,color:#000
+    style H fill:#bbf7d0,stroke:#16a34a,color:#000
+    style I fill:#fef3c7,stroke:#d97706,color:#000
+```
 
-The loop runs every 8 ms at most, balancing responsiveness with low power consumption.
+The `handleButtonChecker()` method runs in the main loop:
+
+1. Reads `STATUS_REGISTER` (0x25) via `readRegister()` over I²C.
+2. For each channel bit:
+   - Records `pressStartTime` when a channel first becomes active.
+   - Applies a **80 ms debounce** (`DEBOUNCE_MS`) — releases shorter than this are ignored.
+   - Enforces a **150 ms channel lockout** (`CHANNEL_LOCKOUT_MS`) — touching a different pad while one is active is ignored.
+3. On release:
+   - If held > `LONG_PRESS_THRESHOLD` (800 ms) → dispatches long-press handler.
+   - Otherwise → dispatches short-press handler.
 
 ---
 
 ## Gesture mapping
 
-| Gesture | Trigger | Action |
-| --- | --- | --- |
-| Tap left/right | Single press | Navigate between menu screens |
-| Tap up/down | Single press | Change character or scroll items |
-| Tap center | Single press | Confirm selection / open item |
-| Hold center | >700 ms | Approve sensitive actions (import, erase, backup) |
-| Hold right | >700 ms | Jump to next credential slot |
-| Hold left | >700 ms | Return to previous menu level |
-
-Long presses require the pad to remain above the threshold for the duration; releasing early cancels the action.
-
----
-
-## Debounce algorithm
-
-```c
-if (raw_state != stable_state) {
-  counter++;
-  if (counter > 3) {
-    stable_state = raw_state;
-    emit_event(stable_state);
-    counter = 0;
-  }
-} else {
-  counter = 0;
-}
-```
-
-- The counter increments every poll when the raw state differs from the last stable state.
-- After four consecutive mismatches, the change is accepted.
-- Returning to the neutral state follows the same logic, avoiding rapid toggling.
-
-This simple approach handles electrical noise and finger gliding without adding latency.
+| Gesture | Trigger | Main screen | Editor | Menu |
+|---------|---------|-------------|--------|------|
+| Tap Left | < 800 ms | Previous slot | Move cursor left | Go back / Exit submenu |
+| Tap Right | < 800 ms | Next slot | Move cursor right / Enter keyboard | Enter submenu / Exit to credentials |
+| Tap Up | < 800 ms | Cycle to Site view | Change character | Navigate up |
+| Tap Down | < 800 ms | Cycle to 2FA view | Switch keyboard page | Navigate down |
+| Tap Center | < 800 ms | Type credential to host | Insert character | Select / Confirm |
+| Hold Left | ≥ 800 ms | Jump 10 slots back | — | — |
+| Hold Right | ≥ 800 ms | Jump 10 slots forward | — | — |
+| Hold Center | ≥ 800 ms | Enter edit mode | Save and exit editor | Authorize import/export |
 
 ---
 
-## Calibration and drift
+## Long-press visual feedback
 
-- On boot, the firmware issues `CALIBRATE_ALL` to the TS06 to set baseline capacitance values.
-- If ambient conditions change (humidity, temperature), a background task recalibrates idle pads after 5 seconds of no touch activity.
-- The controller tracks per-pad offsets, so neighboring touches do not interfere with each other.
+When a long press is in progress, `drawLongPressProgress()` renders a filling progress bar on the OLED screen. This gives the user visual confirmation that they should keep holding. Releasing before 800 ms cancels the action.
 
-<Note>
-No calibration data is stored in EEPROM; the TS06 handles persistence internally.
-</Note>
+---
+
+## PIN screen controls
+
+On the PIN entry screen, the controls change:
+
+| Pad | Action |
+|-----|--------|
+| **Up / Down** | Change the current digit (0–9) |
+| **Right** | Add the current digit to the PIN (up to 16 digits) |
+| **Left** | Delete the last entered digit |
+| **Center** | Submit the PIN for verification |
+| **Long-press Center** | Type the device serial number |
 
 ---
 
 ## Error handling
 
-- SPI timeouts fall back to a safe state and display `TOUCH ERR` on the OLED.
-- If the controller does not respond after three retries, the firmware disables menu navigation and instructs the user to reconnect power.
-- Diagnostic information is available through the serial `TOUCHSTATUS` command.
+- If the TS06 is not detected at boot, `ts06_ok` is set to `false` and the status register read returns `0x00` — effectively disabling touch input.
+- The firmware does not show a touch error screen; instead, the serial log reports the issue for debugging.
+- Touch is silently disabled during lockout delays (`waitFromEeprom()`) and during long-running operations like credential erasure.
 
-The result is a responsive, silent input system that matches the compact form factor of ZeroKeyUSB.
+<Note>
+The TS06 operates independently of EEPROM or ATECC608A operations. Since all share the same I²C bus at 100 kHz, touch polling is interleaved with other I²C traffic in the cooperative main loop.
+</Note>

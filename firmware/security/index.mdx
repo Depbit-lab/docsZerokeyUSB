@@ -16,6 +16,41 @@ Your passwords **never leave the hardware** and **cannot be accessed remotely**,
 
 Security is split across two pieces of silicon so neither one alone can leak the vault:
 
+```mermaid
+graph LR
+    subgraph MCU["SAMD21E18A (MCU)"]
+        AES["AES-128 CBC\nsoftware encryption"]
+        SHA["SHA-256\nPIN hashing"]
+        USB["USB HID + CDC"]
+    end
+
+    subgraph SE["ATECC608A (Secure Element)"]
+        TRNG["Hardware TRNG\nkey + IV generation"]
+        CNT["Counter0\nmonotonic, irreversible"]
+        SER["Chip Serial\n9-byte unique salt"]
+    end
+
+    subgraph MEM["M24C64 EEPROM"]
+        KEY["AES key (16B)\n@ 0x0028"]
+        IV["IV (16B)\n@ 0x0010"]
+        HASH["PIN hash (32B)\n@ 0x0038"]
+        CRED["62 encrypted\ncredential slots"]
+    end
+
+    TRNG -->|"generates"| KEY
+    TRNG -->|"generates"| IV
+    SER -->|"salt"| SHA
+    SHA -->|"stores"| HASH
+    CNT -->|"gates"| AES
+    KEY -->|"loaded into RAM"| AES
+    IV -->|"loaded into RAM"| AES
+    AES -->|"reads/writes"| CRED
+
+    style MCU fill:#dbeafe,stroke:#2563eb
+    style SE fill:#fef3c7,stroke:#d97706
+    style MEM fill:#dcfce7,stroke:#16a34a
+```
+
 | Chip | Role |
 |------|------|
 | **SAMD21E18A (MCU)** | Runs the application firmware, performs software AES-128 CBC, drives the OLED, USB HID, touch, and I²C bus. |
@@ -73,7 +108,24 @@ All sensitive data is stored in the external **EEPROM M24C64-WMN6TP**, encrypted
 
 ## The Master PIN
 
-The PIN authorises an unlock cycle; it is **never used directly as an encryption key**. The verification flow is:
+The PIN authorises an unlock cycle; it is **never used directly as an encryption key**.
+
+```mermaid
+flowchart TD
+    A["User enters PIN\n4-16 digits"] --> B["Counter0++\n(ATECC608A hardware)"]
+    B --> C{"Counter0 ≥ threshold?"}
+    C -->|Yes| D["eraseAll()\nWipe all slots + HALT"]
+    C -->|No| E["SHA-256(PIN ∥ serial)"]
+    E --> F{"Hash matches\nEEPROM @ 0x0038?"}
+    F -->|"Yes (constant-time)"| G["✅ Unlock\nThreshold = Counter0 + 50\nClear fail counter"]
+    F -->|"No"| H["❌ Deny\nIncrement fail counter\nExponential delay"]
+    
+    style D fill:#fee2e2,stroke:#dc2626,color:#000
+    style G fill:#bbf7d0,stroke:#16a34a,color:#000
+    style H fill:#fef3c7,stroke:#d97706,color:#000
+```
+
+The verification flow:
 
 1. The user enters up to **16 digits** on the capacitive pads.
 2. The firmware increments **Counter0** in the ATECC608A. This counter is monotonic and survives power cycles — it cannot be rolled back by software or by desoldering the MCU.

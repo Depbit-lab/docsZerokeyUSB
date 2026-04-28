@@ -11,6 +11,20 @@ ZeroKeyUSB uses a Master PIN (1–16 digits) to authenticate the user. The verif
 
 The PIN is **never stored in plaintext**. At PIN setup time (`storeSignature()`):
 
+```mermaid
+flowchart LR
+    PIN["PIN digits<br/>pinArray[16]"] --> CONCAT["Concatenate"]
+    SERIAL["Chip serial<br/>9 bytes from ATECC"] --> CONCAT
+    CONCAT --> SHA["SHA-256"]
+    SHA --> HASH["32-byte hash"]
+    HASH --> EEP["EEPROM<br/>@ 0x0038"]
+    HASH --> SLOT["ATECC Slot 9<br/>(for future CheckMac)"]
+    
+    style SHA fill:#dbeafe,stroke:#2563eb,color:#000
+    style EEP fill:#dcfce7,stroke:#16a34a,color:#000
+    style SLOT fill:#fef3c7,stroke:#d97706,color:#000
+```
+
 1. The user's PIN digits are read from `pinArray[16]` (each byte holds a digit value 0–9).
 2. `derivePinKey()` computes: `SHA-256(pinArray[16] ∥ chip_serial[9])`.
    - `chip_serial` is the 9-byte unique serial read from the ATECC608A Config Zone.

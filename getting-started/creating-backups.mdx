@@ -1,96 +1,140 @@
 ---
 title: "Creating Backups"
-description: "Safely export, store, and restore encrypted credentials from your ZeroKeyUSB."
+description: "Safely export, store, and restore credentials from your ZeroKeyUSB."
 ---
 
-Keeping an offline backup ensures you can recover your passwords if the device is lost or damaged. ZeroKeyUSB makes the process deliberate so that no credentials are leaked accidentally.
+Keeping an offline backup ensures you can recover your passwords if the device is lost or damaged. ZeroKeyUSB makes the process deliberate — no credentials leave the device without explicit authorization.
 
 ---
 
 ## When to back up
 
-- After a large import or migration
-- When you add or update several credentials
-- Before performing firmware experiments or a factory reset
-- Prior to shipping the device or storing it long-term
-
-A fresh backup guarantees that your exported file reflects the current encrypted EEPROM state.
+- After importing or adding several credentials
+- Before performing a factory reset or firmware update
+- Before entering Danger Zone for any destructive action
+- Periodically as part of your security routine
 
 ---
 
-## Backup formats
+## Backup format
 
-| Format | Description | Use case |
-| --- | --- | --- |
-| CSV (`backup.csv`) | Human-readable, comma-separated rows | Quick manual edits or spreadsheet review (remember the file is plain text). |
-| Encrypted archive (`backup.zkx`) | AES-128 encrypted using your Master PIN | Created via the CLI utility for long-term cold storage. |
+Backups are transmitted as **plaintext CSV** over the USB serial (CDC) channel.
 
-CSV exports are generated directly by the firmware over the serial channel. Encrypted archives are produced by host-side tools after receiving the CSV, so you retain control over how and where the file is protected.
+Each line follows the format:
+```
+slotIndex,siteName,userName,password[,totpSecret]
+```
+
+The first line is the total number of slots (`62`).
+
+<Warning>
+Backups contain all credentials in **plain text**. Treat them with extreme care — encrypt immediately after saving and store offline.
+</Warning>
 
 ---
 
 ## Exporting from the device
 
-1. Unlock ZeroKeyUSB.
-2. Navigate to **Menu → Backup → Export**.
-3. Connect the device to your computer with a trusted USB cable.
-4. Start the **web manager** or the **`zerokeyusb-cli`** in listen mode:
+```mermaid
+sequenceDiagram
+    participant User
+    participant Device as ZeroKeyUSB
+    participant Host as Host Computer
 
-```bash
-zerokeyusb-cli listen --output backup.csv
+    User->>Device: Navigate to Menu → Backup → Export
+    Note over Device: Or send "EXPORT" via serial
+    Device->>Device: Show authorization prompt
+    User->>Device: Hold Center (800 ms)
+    
+    loop For each of 62 slots
+        Device->>Device: Decrypt slot (AES-128 CBC)
+        Device->>Host: "index,site,user,pass[,totp]"
+        Device->>Device: Show progress bar
+    end
+    
+    Device->>Device: Show "Export complete"
 ```
 
-5. Confirm the export on the device by holding the center touch sensor.
-6. The firmware streams each credential as a CSV line: `slot,site,username,password,totp`.
+### Steps
 
-The export completes when the device sends `EOF`. The host utility saves the file and verifies checksum totals to detect transmission errors.
+1. **Unlock** the device with your Master PIN.
+2. Navigate to **Menu → Backup → Export**, or send `EXPORT` over USB serial.
+3. **Hold Center** to authorize the export.
+4. Connect a serial terminal or the web manager to capture the output (115200 bps).
+5. The device decrypts all 62 slots and streams them as CSV lines.
+6. Save the output to a file.
 
 ---
 
-## Storing the backup
+## Storing the backup securely
 
-- Rename the file with the current date, e.g., `2024-07-zerokeyusb.csv`.
-- Encrypt it using a tool you trust (`gpg`, `age`, password-protected ZIP, etc.).
-- Keep at least two copies in separate secure locations (e.g., encrypted USB drive + printed and sealed copy).
-- Delete any temporary unencrypted versions from your downloads folder.
+After exporting:
 
-<Alert type="warning">
-Backups contain all credentials in plain text. Treat them with the same care as your primary password store.
-</Alert>
+1. **Encrypt immediately** using a tool you trust:
+   ```bash
+   gpg -c --cipher-algo AES256 backup.csv
+   # or
+   age -p backup.csv > backup.csv.age
+   ```
+2. **Delete the unencrypted file** from your downloads folder.
+3. Store the encrypted file in **at least two separate locations** (e.g., encrypted USB drive + secure cloud storage).
+4. Consider printing a copy and sealing it in a secure location for disaster recovery.
+5. Name the file with the date: `2026-04-zerokeyusb.csv.gpg`.
 
 ---
 
 ## Restoring a backup
 
-1. Unlock the device and ensure it shows the main menu.
-2. Run the CLI restore command:
+```mermaid
+sequenceDiagram
+    participant User
+    participant Device as ZeroKeyUSB
+    participant Host as Host Computer
 
-```bash
-zerokeyusb-cli restore backup.csv
+    User->>Device: Navigate to Menu → Backup → Import
+    Note over Device: Or send "IMPORT" via serial
+    Device->>Device: Show authorization prompt
+    User->>Device: Hold Center (800 ms)
+    Device->>Host: "REQUEST_SAVE"
+    
+    Host->>Device: Total number of records
+    
+    loop For each record
+        Host->>Device: "index,site,user,pass[,totp]"
+        Device->>Device: Encrypt + write to EEPROM
+        Device->>Device: Show progress
+    end
+    
+    Device->>Device: "Import complete"
 ```
 
-3. The tool parses the file and sends one slot at a time using the `IMPORT` serial command.
-4. On the device, hold the center pad to approve overwriting each occupied slot.
-5. Wait for the `Restore complete` confirmation both on the host and on ZeroKeyUSB.
+### Steps
 
-If you saved an encrypted `.zkx` archive, decrypt it locally first before running the restore command.
+1. Decrypt your backup file if encrypted.
+2. **Unlock** the device and navigate to **Menu → Backup → Import**, or send `IMPORT` over serial.
+3. **Hold Center** to authorize.
+4. When you see `REQUEST_SAVE`, send the total record count, then each CSV line.
+5. Wait for the device to confirm each record: `"Record N stored correctly."`.
 
 ---
 
 ## Verifying the restore
 
-After the process finishes:
+After restoring:
 
 - Browse a few credentials to confirm they match the backup.
-- Trigger the **TOTP** screen (if used) to ensure secrets were restored correctly.
-- Optionally perform a quick login test on a non-critical account.
-
-When everything looks correct, create a new backup so your archive reflects the restored state.
+- Test TOTP codes if applicable — time may need re-syncing.
+- Perform a quick login test on a non-critical account.
+- Create a fresh backup of the restored state.
 
 ---
 
-## Automating regular backups
+## Best practices
 
-To avoid forgetting, schedule a reminder or a cron job that runs `zerokeyusb-cli export` monthly. Store the resulting file in an encrypted location and prune older versions according to your security policy.
-
-With disciplined backups you can recover quickly from hardware loss without compromising the ZeroKeyUSB offline security model.
+| Practice | Why |
+|----------|-----|
+| Back up before any Danger Zone action | Factory reset is irreversible |
+| Encrypt backups immediately | CSV is plaintext — anyone who finds it has all your passwords |
+| Store in ≥ 2 locations | Protects against single point of failure |
+| Test restores periodically | Ensures your backup is usable when you need it |
+| Delete old backups when replaced | Reduces exposure window |

@@ -1,107 +1,229 @@
 ---
 title: "Firmware Architecture"
-description: "Understand how the ZeroKeyUSB firmware is organized, from low-level drivers to the secure credential manager."
+description: "Understand how the ZeroKeyUSB firmware is organized, from hardware drivers to the secure credential manager."
 ---
 
 ## Modular by design
 
-ZeroKeyUSB firmware is written in C++ for the **Microchip SAMD21** microcontroller.  
+ZeroKeyUSB firmware is written in C++ for the **Microchip SAMD21E18A** microcontroller (ARM Cortex-M0+, 48 MHz, 256 KB flash, 32 KB SRAM).  
 It follows a layered architecture that keeps hardware drivers, security primitives, and the user interface cleanly separated.
 
-| Layer                     | Responsibilities                                                |
-| ------------------------- | --------------------------------------------------------------- |
-| **Application logic**     | Credential manager, menu flow, host commands.                  |
-| **Services & security**   | Encryption routines, TOTP engine, Master PIN gatekeeper.       |
-| **Drivers & helpers**     | OLED display, touch controller, I²C EEPROM, USB HID interface. |
-| **SAMD21 HAL / CMSIS**    | Vendor hardware layer that exposes the MCU peripherals.        |
+```mermaid
+graph TB
+    subgraph Application["Application Layer"]
+        MENU["zerokey-menu.cpp<br/>Menu system + wizard"]
+        IO["zerokey-io.cpp<br/>Touch event routing"]
+        SETUP["zerokey-setup.cpp<br/>Boot + config flag"]
+    end
 
+    subgraph Security["Security & Services"]
+        SEC["zerokey-security.cpp<br/>AES-128 CBC encrypt/decrypt"]
+        TOTP["zerokey-totp.cpp<br/>TOTP code generation"]
+        ATECC["zerokey-atecc.cpp<br/>ATECC608A driver"]
+    end
+
+    subgraph Drivers["Hardware Drivers"]
+        DISP["zerokey-display.cpp<br/>SSD1306 OLED (I²C)"]
+        EEPROM["zerokey-eeprom.cpp<br/>M24C64 EEPROM (I²C)"]
+        USB["Keyboard.h + SerialUSB<br/>HID + CDC composite"]
+        UTILS["zerokey-utils.cpp<br/>Screen orient, typing"]
+    end
+
+    subgraph HAL["SAMD21 HAL / CMSIS"]
+        WIRE["Wire (I²C)"]
+        USBHAL["USB FS peripheral"]
+    end
+
+    MENU --> SEC
+    IO --> MENU
+    IO --> SEC
+    SETUP --> SEC
+    SETUP --> DISP
+    SEC --> ATECC
+    SEC --> EEPROM
+    TOTP --> EEPROM
+    TOTP --> ATECC
+    DISP --> WIRE
+    EEPROM --> WIRE
+    ATECC --> WIRE
+    USB --> USBHAL
+
+    style Application fill:#dbeafe,stroke:#2563eb
+    style Security fill:#fef3c7,stroke:#d97706
+    style Drivers fill:#dcfce7,stroke:#16a34a
+    style HAL fill:#f3e8ff,stroke:#7c3aed
+```
 
 Each module can evolve independently while keeping critical security routines auditable and easy to review.
 
 ---
 
+## Source file map
+
+| File | Lines | Role |
+|------|-------|------|
+| `zerokey-security.cpp/.h` | ~755 | AES-128 CBC encrypt/decrypt, PIN verification, erase, backup/restore |
+| `zerokey-atecc.cpp/.h` | ~443 | ATECC608A I²C driver: TRNG, Counter, ReadSerial, CheckMac, SHA-256 |
+| `zerokey-io.cpp/.h` | ~1561 | Touch event dispatch, TOTP date/time input, serial command handler |
+| `zerokey-menu.cpp/.h` | ~1051 | Menu tree, setup wizard (10 pages), confirm/info/activity pages |
+| `zerokey-display.cpp/.h` | ~750 | SSD1306 rendering: main screen, PIN screen, editor, progress, scrolling |
+| `zerokey-eeprom.cpp/.h` | ~257 | Page read/write, TOTP metadata, keyboard layout, epoch persistence |
+| `zerokey-totp.cpp/.h` | ~500 | HMAC-SHA1/SHA256/SHA512, Base32 decode, TOTP code generation |
+| `zerokey-setup.cpp/.h` | ~159 | Boot sequence, config flag (`0x42`), TS06 init, hardware probe |
+| `zerokey-utils.cpp/.h` | ~500 | Typing engine, screen orientation, error screen, serial number |
+| `zerokey-globals.h` | ~317 | Constants, icons (PROGMEM), global variable externs |
+| `zerokey-memorymap.h` | ~38 | EEPROM address calculations, credential layout constants |
+
+---
+
 ## Boot sequence
 
-1. **Power-on self-test** – validates clock configuration, memory integrity, and ensures the EEPROM responds on the I²C bus.  
-2. **Entropy gathering** – if the initialization vector (IV) is missing, a new one is generated using analog noise from a floating pin.  
-3. **PIN gatekeeper** – the device remains locked until the user enters the correct Master PIN. Only then are encrypted blocks decrypted in RAM.  
-4. **Runtime services** – the menu system, USB HID keyboard, and TOTP engine are initialized.
+```mermaid
+sequenceDiagram
+    participant PWR as USB Power
+    participant BL as Bootloader
+    participant FW as Firmware
+    participant HW as Hardware
 
-If any step fails, the firmware displays a descriptive error (e.g., `EEPROM ERROR`) and halts execution to avoid exposing partial data.
+    PWR->>BL: Power-on
+    BL->>BL: CRC32 + BLAKE2s MAC check
+    
+    alt Firmware valid
+        BL->>FW: Jump to application
+    else Invalid
+        BL->>BL: 15 s penalty delay
+        BL->>BL: Enter USB-CDC DFU mode
+    end
 
----
+    FW->>HW: Wire.begin() — I²C bus at 100 kHz
+    FW->>HW: Probe TS06 touch controller (5 retries)
+    FW->>HW: Configure TS06 sensitivity (reg 0x00–0x02 = 0x3F)
+    FW->>HW: Init SSD1306 OLED at 0x3C
+    FW->>HW: Read keyboard layout from EEPROM 0x003E
+    FW->>HW: Read last TOTP epoch from EEPROM 0x0040
+    FW->>FW: Read config flag from EEPROM 0x0000
 
-## Core services
+    alt Flag ≠ 0x42
+        FW-->>FW: Launch setup wizard
+    else Flag = 0x42
+        FW->>FW: Apply pending backoff delay
+        FW-->>FW: Show PIN screen
+    end
+```
 
-### 🔐 Credential vault
-
-- Stores up to **64 credentials**, each split into encrypted blocks (site, username, password, optional TOTP secret).  
-- Confirms EEPROM writes through I²C acknowledgment to ensure successful completion.  
-- Keeps decrypted data in RAM only as long as necessary to type it via USB HID output.
-
-### 🛡️ PIN gatekeeper
-
-- Uses the Master PIN directly as the **AES-128 key** (future versions may add a salted KDF).  
-- Validates the PIN by decrypting and comparing the stored signature block.  
-- Applies exponential lockout delays after failed attempts, with counters stored in EEPROM for persistence.
-
-### ⏱️ Scheduler
-
-- Coordinates display refresh, touch polling, and USB reports on a cooperative timing loop (~1 ms granularity).  
-- Recalculates TOTP codes every 30 seconds without blocking the UI.  
-- No interrupts or preemptive scheduling — timing is deterministic and fully controlled in firmware.
-
-### 🔄 Host command handler
-
-- Operates through the **CDC endpoint** of the composite USB interface (HID + Serial).  
-- Handles local commands for backup, restore, time synchronization, and factory reset.  
-- Transfers occur in **plaintext** and are meant strictly for **offline use** via the local web manager or terminal.
-
----
-
-## Hardware abstraction layer
-
-| Driver         | Responsibilities                                                                 | Interfaces |
-| -------------- | ------------------------------------------------------------------------------- | ---------- |
-| **Display**    | Initializes the 128×32 OLED, renders glyphs, progress bars, and smooth scrolling | I²C (400 kHz) |
-| **Touch sensor** | Calibrates TS06 thresholds, debounces taps, detects long presses               | I²C |
-| **EEPROM**     | Provides transactional reads/writes with I²C acknowledgment checks               | I²C |
-| **USB HID**    | Emulates a keyboard using a **US-QWERTY** layout and exposes a CDC serial endpoint | USB FS |
-
-All drivers expose consistent APIs (`display.render()`, `touch.poll()`, `eeprom.write_block()`) that keep the upper layers small and auditable.
+The configuration flag at `0x0000` determines whether the device shows the setup wizard (`flag ≠ 0x42`) or the PIN unlock screen (`flag = 0x42`). The wizard writes `0x42` after successful PIN creation.
 
 ---
 
-## State machines everywhere
+## Main loop
 
-Every interactive screen — lock screen, credential list, editor, TOTP viewer, and danger zone — is implemented as a **finite state machine (FSM)**.  
-This deterministic design simplifies debugging and formal security review:
+The firmware runs a **cooperative main loop** — no RTOS, no interrupts for application logic, no dynamic memory allocation:
 
-- Each state defines explicit transitions triggered by touch events.  
-- Sensitive states (e.g., Backup, Factory Reset) require long-press confirmation within the same FSM.  
-- Inactivity timeouts automatically return to the lock screen, ensuring decrypted data is never left visible.
+```mermaid
+graph LR
+    A["Poll TS06<br/>touch status"] --> B["Debounce<br/>80 ms threshold"]
+    B --> C["Dispatch event<br/>to current screen"]
+    C --> D["Update display<br/>full frame refresh"]
+    D --> E["Check SerialUSB<br/>for host commands"]
+    E --> F["Update TOTP<br/>millis-based epoch"]
+    F --> A
+    style A fill:#fef3c7,stroke:#d97706,color:#000
+    style D fill:#dbeafe,stroke:#2563eb,color:#000
+```
+
+Each iteration is deterministic. Timing-sensitive operations (TOTP countdown, lockout delays) use `millis()` instead of blocking delays.
+
+---
+
+## Screen state machine
+
+Every interactive view is a state identified by a `programPosition` constant. Touch events are dispatched based on this value:
+
+```mermaid
+stateDiagram-v2
+    [*] --> SPLASHSCREEN
+    SPLASHSCREEN --> SETUP : First boot
+    SPLASHSCREEN --> PIN_SCREEN : Configured
+    SETUP --> PIN_SCREEN : Wizard complete
+    PIN_SCREEN --> MAIN_INDEX : PIN correct
+    PIN_SCREEN --> PIN_SCREEN : PIN wrong + delay
+    
+    state "Main Views" as main {
+        MAIN_INDEX --> MAIN_SITE
+        MAIN_SITE --> MAIN_USER
+        MAIN_USER --> MAIN_PASS
+        MAIN_PASS --> MAIN_2FA
+        MAIN_2FA --> MAIN_INDEX
+    }
+    
+    MAIN_SITE --> EDIT : Long-press Center
+    MAIN_USER --> EDIT : Long-press Center
+    MAIN_PASS --> EDIT : Long-press Center
+    EDIT --> MAIN_INDEX : Long-press Center (save)
+    
+    main --> MENU : Scroll past last slot
+    MENU --> main : Right or Back
+    
+    MAIN_2FA --> TOTP_SHOW_CODE : Has secret + time synced
+    MAIN_2FA --> TOTP_DATE_ENTRY : Has secret, no time
+```
+
+---
+
+## I²C bus topology
+
+All peripherals share a single I²C bus:
+
+```mermaid
+graph LR
+    MCU["SAMD21<br/>PA08/PA09<br/>I²C Master"]
+    MCU -->|"0x3C"| OLED["SSD1306<br/>OLED 128×32"]
+    MCU -->|"0x50"| EEP["M24C64<br/>EEPROM 8 KB"]
+    MCU -->|"0x60"| ATECC["ATECC608A<br/>Secure Element"]
+    MCU -->|"0x69"| TS06["TS06<br/>Touch Controller"]
+    
+    style MCU fill:#dbeafe,stroke:#2563eb,color:#000
+    style ATECC fill:#fef3c7,stroke:#d97706,color:#000
+    style EEP fill:#dcfce7,stroke:#16a34a,color:#000
+```
+
+Bus speed: **100 kHz** (set at boot, matches bootloader).  
+The TS06 address is `0xD2 >> 1 = 0x69`.
+
+---
+
+## USB composite device
+
+ZeroKeyUSB enumerates as a **composite USB Full-Speed device** with two interfaces:
+
+| Interface | Class | Purpose |
+|-----------|-------|---------|
+| **HID Keyboard** | 0x03 | Types credentials to the host — appears as a standard keyboard |
+| **CDC Serial** | 0x0A | 115200 bps ASCII protocol for backup/restore, time sync, and diagnostics |
+
+Both interfaces are active simultaneously after boot. The CDC channel requires PIN unlock before accepting any data-modifying commands.
 
 ---
 
 ## Memory footprint
 
-| Region     | Size   | Description                                                 |
-| ---------- | ------ | ----------------------------------------------------------- |
-| **Flash**  | ~64 KB | Firmware code, fonts, icons, static strings.                |
-| **SRAM**   | ~16 KB | UI buffers, decrypted credential cache, TOTP workspace.    |
-| **EEPROM** | 8 KB   | Encrypted user data, IV, PIN signature, metadata, counters. |
+| Region | Size | Usage |
+|--------|------|-------|
+| **Flash** | 256 KB total, ~64 KB used | Firmware code, fonts, PROGMEM icons, keyboard maps, constant data |
+| **SRAM** | 32 KB total, ~16 KB used | UI buffers, `currentSite/User/Pass[16]`, `pinArray[16]`, TOTP workspace |
+| **EEPROM** | 8 KB (M24C64) | Encrypted credentials (62 slots × 128 B), IV, PIN hash, config, TOTP metadata |
 
-The firmware is intentionally lightweight, leaving headroom for small audited features without any form of OTA or remote update.
+No dynamic memory allocation (`malloc`/`new`) is used anywhere. All buffers are stack-allocated or static.
 
 ---
 
 ## Build & verification
 
-- Compiled with **ARM GCC** under reproducible build flags for deterministic binaries.  
-- Builds are manually tested and verified on hardware before release.  
-- Firmware integrity is verified at the factory before flashing — there is **no remote update or binary signing mechanism** at runtime.
-
----
+- Compiled with **ARM GCC** using the Arduino SAMD core.
+- Build process managed by `Makefile` — supports selective compilation and J-Link flashing via `Dashboard.bat`.
+- Firmware binary is signed with a **BLAKE2s MAC** and appended with a 28-byte security footer.
+- The bootloader verifies this signature at every boot using CRC32 + BLAKE2s before jumping to application code.
+- Unsigned or tampered firmware triggers a **15-second penalty delay** and falls into USB-CDC DFU mode.
 
 <Note>
 ZeroKeyUSB runs on a minimal firmware stack: no RTOS, no dynamic memory allocation, and no hidden debug backdoors.  

@@ -1,94 +1,154 @@
 ---
 title: "EEPROM Management"
-description: "Page layout, wear leveling, and integrity checks for the M24C64-W credential storage."
+description: "Memory map, page layout, and read/write operations for the M24C64-WMN6TP credential storage."
 ---
 
-ZeroKeyUSB stores every secret inside an external **ST M24C64-W** EEPROM. The firmware carefully manages reads and writes to maximize lifespan while keeping data encrypted at rest.
+ZeroKeyUSB stores every secret inside an external **ST M24C64-WMN6TP** EEPROM (64 Kbit = 8 KB). The firmware manages reads and writes carefully, respecting page boundaries and keeping all credential data encrypted at rest.
 
 ---
 
 ## Memory map
 
-| Address range | Purpose |
-| --- | --- |
-| `0x0000 – 0x0001` | Firmware version + schema revision |
-| `0x0002` | Failed PIN attempt counter |
-| `0x0003 – 0x000A` | Signature block (AES-128 encrypted) |
-| `0x0010 – 0x001F` | Initialization Vector (IV) |
-| `0x0020 – 0x00FF` | Reserved for future metadata |
-| `0x0100 – 0x7FFF` | Credential slots (64 × 4 × 32 bytes) |
+The EEPROM is organized into a **configuration zone** (first ~220 bytes) and a **credential zone** (remainder):
 
-Each credential consumes **three mandatory pages** (site, username, password) and an optional fourth page for the TOTP secret.
+```mermaid
+block-beta
+    columns 1
+    block:config["Configuration Zone (0x0000–0x00DF)"]
+        A["0x0000: Config flag (1B)"]
+        B["0x0001: Screen mode (1B)"]
+        C["0x0002: Failed attempts (1B)"]
+        D["0x0010–0x001F: AES IV (16B)"]
+        E["0x0020–0x0023: PIN threshold (4B)"]
+        F["0x0024: Provision flag (1B)"]
+        G["0x0028–0x0037: AES master key (16B)"]
+        H["0x0038–0x0057: PIN hash (32B)"]
+        I["0x003E: Keyboard layout (1B)"]
+        J["0x0040–0x0047: Last TOTP epoch (8B)"]
+        K["0x0060–0x00DB: TOTP meta (124B)"]
+    end
+    block:creds["Credential Zone (0x00E0–0x1FFF)"]
+        L["62 credential slots × 128 bytes each"]
+    end
+
+    style config fill:#dbeafe,stroke:#2563eb
+    style creds fill:#dcfce7,stroke:#16a34a
+```
+
+| Address | Size | Content | Source in code |
+|---------|------|---------|---------------|
+| `0x0000` | 1 B | Config wizard flag (`0x42` = done) | `zerokey-setup.cpp` |
+| `0x0001` | 1 B | Screen orientation (0 = normal, 1 = inverted) | `EEPROM_SCREEN_MODE_ADDR` |
+| `0x0002` | 1 B | Soft failed-attempts counter (UX backoff) | `FAILED_ATTEMPTS_ADDR` |
+| `0x0010–0x001F` | 16 B | AES-CBC Initialization Vector | `EEPROM_IV_ADDR` |
+| `0x0020–0x0023` | 4 B | PIN attempt threshold (LE uint32) | `EEPROM_THRESHOLD_ADDR` |
+| `0x0024` | 1 B | Provisioning flag (`0xA5` = provisioned) | `EEPROM_PROVISION_FLAG` |
+| `0x0028–0x0037` | 16 B | AES-128 master key (TRNG-generated) | `EEPROM_AES_MASTER` |
+| `0x0038–0x0057` | 32 B | PIN hash: SHA-256(PIN ∥ serial) | `EEPROM_PIN_HASH` |
+| `0x003E` | 1 B | Keyboard layout selector (0–8) | `EEPROM_LAYOUT_ADDR` |
+| `0x0040–0x0047` | 8 B | Last TOTP epoch (big-endian) | `EEPROM_LAST_TOTP_EPOCH_ADDR` |
+| `0x0060–0x00DB` | 124 B | TOTP metadata: 2 B × 62 slots (algorithm + secret_len) | `CONFIG_TOTP_META_START` |
+| `0x00E0–0x1FFF` | 7 936 B | 62 credential slots (128 B each = 4 pages × 32 B) | `EEPROM_CREDENTIAL_BASE` |
 
 ---
 
-## Slot structure
+## Credential slot structure
+
+Each of the **62 credential slots** occupies **4 consecutive 32-byte EEPROM pages** (128 bytes total):
+
+```mermaid
+graph LR
+    subgraph Slot["Credential Slot N (128 bytes)"]
+        P0["Page 0<br/>Site name<br/>32 B ciphertext"]
+        P1["Page 1<br/>Username<br/>32 B ciphertext"]
+        P2["Page 2<br/>Password<br/>32 B ciphertext"]
+        P3["Page 3<br/>TOTP secret<br/>32 B ciphertext"]
+    end
+    P0 --- P1 --- P2 --- P3
+    style P0 fill:#dbeafe,stroke:#2563eb,color:#000
+    style P1 fill:#dbeafe,stroke:#2563eb,color:#000
+    style P2 fill:#dbeafe,stroke:#2563eb,color:#000
+    style P3 fill:#fef3c7,stroke:#d97706,color:#000
+```
+
+Each 32-byte page contains:
+- **16 bytes of plaintext** (padded with `0xFF`) encrypted as **two AES-128 CBC blocks**
+- The encryption uses the device-wide AES master key and IV
+
+There is no separate `status` byte or CRC per page. Empty slots are written as encrypted `0xFF` blanks during `silentEraseAll()`.
+
+---
+
+## Page address calculation
 
 ```
-struct Slot {
-  uint8_t status;      // 0x00 empty, 0xAA filled
-  uint8_t reserved[3]; // future flags
-  uint8_t site[32];
-  uint8_t user[32];
-  uint8_t password[32];
-  uint8_t totp[32];    // optional Base32 secret
-};
+credentialPageAddress(slotIndex, pageIndex) =
+    (FIRST_CREDENTIAL_PAGE + slotIndex × 4 + pageIndex) × 32
 ```
 
-- The `status` byte ensures the firmware knows whether the slot contains valid encrypted data.
-- All fields are stored **AES-128 CBC encrypted** before being written.
-- Empty pages are filled with random data to avoid leaking usage patterns.
+Where:
+- `FIRST_CREDENTIAL_PAGE` is computed from `CONFIG_TOTP_META_END` rounded up to the next 32-byte boundary.
+- `slotIndex` ranges from 0 to 61.
+- `pageIndex` ranges from 0 (site) to 3 (TOTP).
 
 ---
 
 ## Write sequence
 
-1. Encrypt the field using the current Master PIN as the key and the stored IV.
-2. Write 32-byte chunks via I²C with acknowledge checking.
-3. After each write, read back the page and compare with the encrypted buffer.
-4. Update the slot status only after all pages pass verification.
+The `writeEepromPage()` function writes 32 bytes at a page-aligned address:
 
-If any step fails, the slot reverts to its previous state and the error is reported over the serial console.
+1. Check EEPROM presence via `Wire.beginTransmission()` + ACK test.
+2. Send 2-byte address (MSB first) followed by 32 data bytes.
+3. Wait 10 ms for the EEPROM internal write cycle.
+4. Return `true` if `Wire.endTransmission()` reported no error.
 
----
-
-## Wear management
-
-- The M24C64-W supports **1 million write cycles per page**.
-- Firmware tracks the number of rewrites in RAM and spreads repeated edits across backup slots when possible.
-- Bulk imports rewrite slots sequentially to avoid thrashing the same page repeatedly.
-- Factory reset issues an `ERASE` command that overwrites every page with pseudorandom data, refreshing the wear level evenly.
-
-Because credentials are usually static, expected lifespan exceeds decades even with daily updates.
+For security-related writes that cross page boundaries (e.g., 16-byte IV, 32-byte PIN hash), `eepromWriteRaw()` in `zerokey-security.cpp` splits the data at 32-byte page boundaries to avoid the M24C64's address wrap-around behavior.
 
 ---
 
-## Integrity checks
+## Read sequence
 
-- A **CRC-16** is appended to each encrypted page before writing.
-- On read, the firmware decrypts, verifies the CRC, and only then exposes data to higher layers.
-- If CRC fails, the slot is marked corrupt, hidden from the UI, and a warning appears in the serial diagnostics.
+`readEepromPage()` reads exactly 32 bytes:
 
-Users can still attempt to restore a corrupted slot from backup; the firmware refuses to auto-type credentials with failed CRCs.
+1. Send 2-byte address via I²C write.
+2. Issue `Wire.requestFrom(eepromAddress, 32)`.
+3. Read all available bytes into the output buffer.
+4. Zero-fill any bytes not received (partial read = error).
 
 ---
 
-## Safe read caching
+## TOTP metadata
 
-To keep the UI responsive, decrypted data for the current slot is cached in RAM for the duration of the session. Leaving the menu or locking the device clears the buffer immediately.
+Each credential slot has a 2-byte TOTP metadata entry in the config zone:
+
+| Byte | Content |
+|------|---------|
+| 0 | Algorithm code: `0` = none, `1` = SHA-1, `2` = SHA-256, `3` = SHA-512 |
+| 1 | Secret length in raw bytes (before Base32 encoding) |
+
+Metadata is read/written independently of credential pages to allow quick TOTP detection without decrypting the entire slot.
+
+---
+
+## Wear characteristics
+
+- The M24C64-WMN6TP supports **>1 million write cycles per page** (datasheet guarantee).
+- Credential pages are only rewritten when the user edits a field or imports data.
+- Config zone pages (IV, PIN hash, threshold) are written during provisioning and PIN changes — infrequent events.
+- The TOTP epoch at `0x0040` is updated each time the user syncs time or generates a code — this is the most-written location.
+- Because credentials are typically static, expected EEPROM lifespan exceeds decades of normal use.
+
+---
+
+## Troubleshooting
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| `EEPROM not found` | I²C connection broken | Check solder joints; verify pull-ups on SDA/SCL |
+| `EEPROM write 0xNNN` | Write failed at address | Re-try; if persistent, EEPROM may be damaged |
+| Garbled credentials | IV or AES key changed without re-encryption | Factory reset + re-provision; restore from backup |
+| Slot shows blank after import | TOTP secret parsing failed | Check Base32 encoding; verify algorithm support |
 
 <Note>
-No decrypted credential ever touches the serial channel or persistent memory without explicit user approval.
+No decrypted credential ever touches persistent memory without explicit user action. Plaintext exists only in SRAM during the active session.
 </Note>
-
----
-
-## Troubleshooting tips
-
-| Symptom | Suggestion |
-| --- | --- |
-| Slot disappears after import | Check CSV for invalid Base32 secrets; the firmware rejects them and keeps the slot empty. |
-| Serial log shows `EEPROM NACK` | Inspect I²C solder joints or ensure the pull-ups are present. |
-| CRC failure reported | Run a backup/restore cycle to rewrite the affected slot with fresh data. |
-
-Proper EEPROM management is essential to maintaining ZeroKeyUSB’s security guarantees while keeping data accessible when needed.
