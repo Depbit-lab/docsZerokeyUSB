@@ -64,7 +64,7 @@ The IV is regenerated automatically when:
 - The primary confidentiality guarantee comes from the 128-bit randomly generated AES master key, not from IV uniqueness across records.
 
 <Note>
-The IV never leaves the device. Ciphertext extracted from one ZeroKeyUSB cannot be decrypted with another unit even if the PIN and device serial are known, because the AES master key is device-unique.
+The IV never leaves the device. Ciphertext extracted from one ZeroKeyUSB cannot be decrypted with another unit even if the PIN and device serial are known, because the AES master key is device-unique and lives inside the ATECC608A — there is no way to copy it out and use it elsewhere.
 </Note>
 
 ---

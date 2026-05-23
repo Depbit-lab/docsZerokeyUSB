@@ -1,0 +1,31 @@
+---
+title: "Protocolo de flasheo (WebTool)"
+description: "La WebTool ahora actúa como un cargador simple que transfiere el binario pre-firmado al dispositivo y gestiona el reinicio."
+---
+
+## WebTool: un cargador seguro
+
+La **WebTool** (el flasher basado en navegador) ya no calcula características de seguridad; solo actúa como una interfaz de transferencia.
+
+### 📥 Ficheros de entrada
+
+La WebTool solo debe recibir **ficheros binarios (`*.bin`) que ya hayan sido pre-firmados** por la herramienta de firma offline.
+
+* El fichero contiene el código de aplicación **MÁS** el footer de seguridad de 28 bytes.
+
+### 🔄 Protocolo de transferencia
+
+El proceso de flasheo sigue el protocolo USB CDC tradicional, tratando el fichero firmado como un único *payload* completo:
+
+1.  **Inicio:** La WebTool envía `HELLO` y luego `ERASE APP` para limpiar el espacio de la aplicación.
+2.  **Escritura:** La WebTool envía el **fichero firmado** entero en *chunks* usando el comando `WRITE addr len crc32` y el *payload* binario.
+3.  **Finalización:** Se envía el comando `DONE`.
+4.  **Activación:** El bootloader recibe los datos, los escribe en Flash (incluyendo el footer en su ubicación final) y se reinicia.
+
+### ⏱️ Gestión de timeouts
+
+Para garantizar que el proceso de flasheo no falle prematuramente si se carga firmware no autorizado, la WebTool espera durante un periodo extendido:
+
+* **Retraso incrementado:** El tiempo de espera final tras enviar `DONE` se ha extendido a **20 segundos**.
+* **Propósito:** Este tiempo cubre el retraso de 15 segundos impuesto por el bootloader si la comprobación de autenticidad falla, garantizando que la conexión USB no se corta antes de que el dispositivo pueda reiniciarse o entrar en modo de espera.
+---

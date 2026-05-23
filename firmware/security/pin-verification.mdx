@@ -17,7 +17,7 @@ flowchart LR
     SERIAL["Chip serial<br/>9 bytes from ATECC"] --> CONCAT
     CONCAT --> SHA["SHA-256"]
     SHA --> HASH["32-byte hash"]
-    HASH --> EEP["EEPROM<br/>@ 0x0038"]
+    HASH --> EEP["EEPROM<br/>@ 0x0048"]
     HASH --> SLOT["ATECC Slot 9<br/>(for future CheckMac)"]
     
     style SHA fill:#dbeafe,stroke:#2563eb,color:#000
@@ -28,7 +28,7 @@ flowchart LR
 1. The user's PIN digits are read from `pinArray[16]` (each byte holds a digit value 0–9).
 2. `derivePinKey()` computes: `SHA-256(pinArray[16] ∥ chip_serial[9])`.
    - `chip_serial` is the 9-byte unique serial read from the ATECC608A Config Zone.
-3. The resulting 32-byte hash is written to EEPROM at `0x0038–0x0057`.
+3. The resulting 32-byte hash is written to EEPROM at `0x0048–0x0067`.
 4. The same 32-byte hash is also written to **ATECC slot 9** (for potential future CheckMac use).
 
 The chip serial acts as a hardware salt: the same numeric PIN on a different device produces a completely different 32-byte hash.
@@ -46,7 +46,7 @@ Each unlock attempt executes the following steps in `verifySignature()`:
 4. derivePinKey(pinArray, derived):
        serial = ATECC608A.readSerial()
        derived = SHA-256(pinArray[16] || serial[9])
-5. Read stored hash from EEPROM [0x0038] → stored[32]
+5. Read stored hash from EEPROM [0x0048] → stored[32]
 6. diff = 0; for i in 0..31: diff |= stored[i] ^ derived[i]  // constant-time
 7. If diff == 0:
        writeThreshold(new_counter + 50)   // reset budget
@@ -119,15 +119,15 @@ Initiated via **Menu → Change PIN** → `storeSignature()`:
 1. 3-second on-screen countdown (allows safe abort).
 2. `derivePinKey(pinArray, derived)` computes the new hash.
 3. New 32-byte hash written to ATECC slot 9.
-4. New 32-byte hash written to EEPROM `0x0038`.
+4. New 32-byte hash written to EEPROM `0x0048`.
 5. Current Counter0 is read; threshold is set to `Counter0 + 50`.
-6. AES master key is checked — if already present, it is not replaced. The **AES key is independent of the PIN**.
+6. ATECC ping confirms the chip is still alive. The AES key in slot 8 is **not touched** by PIN setup — it is provisioned once at first boot and is irrevocable.
 7. IV is loaded or generated.
 8. Setup config flag is written (`0x42`).
 9. All credential slots are silently re-initialised with encrypted blanks.
 
 <Note>
-Changing the PIN does **not** change the AES master key or re-encrypt existing credentials. Credentials encrypted under the old key remain readable as long as the AES master at `0x0028` has not changed.
+Changing the PIN does **not** change the AES master key or re-encrypt existing credentials. The AES key lives inside ATECC slot 8 and is generated once per device; it cannot be rotated. Existing ciphertext is decryptable with the same chip as long as it is not destroyed.
 </Note>
 
 ---

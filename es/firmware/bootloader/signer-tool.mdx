@@ -1,0 +1,30 @@
+---
+title: "Herramienta de firma offline"
+description: "Detalles sobre cómo se firma el firmware de forma segura antes de su distribución para garantizar autenticidad."
+---
+
+## Arquitectura de firma segura
+
+Para proteger la **clave secreta BLAKE2s** (`ZK_SECRET_KEY`) y mantener la WebTool pública, ZeroKeyUSB usa un proceso de **firma offline**.
+
+### 🔑 El secreto: clave de firma
+
+* **Residencia:** La clave secreta de 32 bytes existe solo dentro de la **herramienta de firma offline privada** y en el propio bootloader del dispositivo.
+* **Función:** La clave se usa para calcular el **MAC BLAKE2s** del firmware.
+* **Seguridad:** Como la WebTool es pública, este enfoque garantiza que **ningún usuario o atacante puede extraer la clave de firma** para crear su propio firmware oficial.
+
+### ✍️ Proceso de firma (offline)
+
+1.  **Entrada:** El binario del firmware (`firmware.bin`) listo para release.
+2.  **Cálculo:** La herramienta calcula el **CRC32** y el **MAC BLAKE2s** (16 bytes) del fichero.
+3.  **Creación del footer:** Ensambla la estructura del **footer de seguridad** con el Magic Number, la longitud del código, el CRC32 y el MAC.
+4.  **Concatenación:** El footer se **concatena** al final del binario del firmware.
+5.  **Salida:** Se produce un único **fichero binario pre-firmado** (`firmware_signed_footer.bin`), listo para ser subido por la WebTool pública.
+
+### 📦 Reproducibilidad y transparencia
+
+Aunque la clave de firma es secreta, el firmware sigue siendo **open source y auditable**. El proceso garantiza que:
+
+* Solo el equipo de desarrollo puede crear un binario que el bootloader acepta como oficial (saltándose el retraso de 15 segundos).
+* Se mantiene el principio de que **no hay mecanismos de firma o actualización remota**.
+---

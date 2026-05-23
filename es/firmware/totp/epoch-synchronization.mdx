@@ -1,0 +1,53 @@
+---
+title: "Sincronización del epoch"
+description: "Mantén el reloj interno de ZeroKeyUSB alineado para que los códigos TOTP sigan siendo válidos."
+---
+
+ZeroKeyUSB no contiene un reloj de tiempo real. En su lugar, rastrea el tiempo usando el contador de milisegundos del SAMD21 más un epoch Unix guardado. Para mantener la precisión, el dispositivo necesita ocasionalmente que el host le envíe la hora actual.
+
+---
+
+## Cuándo se requiere sincronización
+
+- Primer arranque o tras un reset de fábrica
+- Cuando el OLED muestra `REQTIME`
+- Si los servicios de login reportan "código inválido" a pesar de introducirlo inmediatamente
+- Tras periodos largos sin alimentación (varias semanas)
+
+El firmware dispara una petición de sincronización una vez que la deriva supera ±90 segundos.
+
+---
+
+## Flujo de sincronización
+
+1. Desbloquea ZeroKeyUSB.
+2. Conéctate a la interfaz serie vía el web manager o la CLI.
+3. El dispositivo envía `REQTIME` para señalar que necesita el epoch actual.
+4. El host responde con `SETTIME <epoch>`, por ejemplo `SETTIME 1706227200`.
+5. ZeroKeyUSB guarda el valor en EEPROM (64 bits little-endian) y resetea sus contadores internos.
+
+El intercambio entero es local; no se requiere conexión de red.
+
+---
+
+## Comprobar la deriva manualmente
+
+Ejecuta el comando de status de la CLI:
+
+```bash
+zerokeyusb-cli status
+```
+
+Busca una línea como `Clock drift: +18s`. Si el valor se acerca a ±60s, realiza una sincronización nueva.
+
+---
+
+## Resolución de problemas
+
+| Síntoma | Solución |
+| --- | --- |
+| `REQTIME` persiste tras enviar `SETTIME` | Asegúrate de que el epoch está en segundos (no en milisegundos). |
+| Los códigos están siempre desfasados 30 s | El reloj del host probablemente mal configurado; verifica la sincronización horaria del SO. |
+| La CLI no puede abrir el puerto | Cierra otros programas serie (p. ej. Arduino IDE) que puedan estar conectados. |
+
+La alineación correcta de tiempo garantiza que tus códigos TOTP coincidan con las expectativas del servidor.

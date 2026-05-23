@@ -14,20 +14,20 @@ The EEPROM is organized into a **configuration zone** (first ~220 bytes) and a *
 ```mermaid
 block-beta
     columns 1
-    block:config["Configuration Zone (0x0000–0x00DF)"]
+    block:config["Configuration Zone (0x0000–0x00FF)"]
         A["0x0000: Config flag (1B)"]
         B["0x0001: Screen mode (1B)"]
         C["0x0002: Failed attempts (1B)"]
         D["0x0010–0x001F: AES IV (16B)"]
         E["0x0020–0x0023: PIN threshold (4B)"]
         F["0x0024: Provision flag (1B)"]
-        G["0x0028–0x0037: AES master key (16B)"]
-        H["0x0038–0x0057: PIN hash (32B)"]
+        G["0x0028–0x0037: legacy / reserved (16B)"]
         I["0x003E: Keyboard layout (1B)"]
         J["0x0040–0x0047: Last TOTP epoch (8B)"]
-        K["0x0060–0x00DB: TOTP meta (124B)"]
+        H["0x0048–0x0067: PIN hash (32B)"]
+        K["0x0068–0x00E3: TOTP meta (124B)"]
     end
-    block:creds["Credential Zone (0x00E0–0x1FFF)"]
+    block:creds["Credential Zone (0x0100–0x1FFF)"]
         L["62 credential slots × 128 bytes each"]
     end
 
@@ -43,12 +43,12 @@ block-beta
 | `0x0010–0x001F` | 16 B | AES-CBC Initialization Vector | `EEPROM_IV_ADDR` |
 | `0x0020–0x0023` | 4 B | PIN attempt threshold (LE uint32) | `EEPROM_THRESHOLD_ADDR` |
 | `0x0024` | 1 B | Provisioning flag (`0xA5` = provisioned) | `EEPROM_PROVISION_FLAG` |
-| `0x0028–0x0037` | 16 B | AES-128 master key (TRNG-generated) | `EEPROM_AES_MASTER` |
-| `0x0038–0x0057` | 32 B | PIN hash: SHA-256(PIN ∥ serial) | `EEPROM_PIN_HASH` |
+| `0x0028–0x0037` | 16 B | *Reserved.* Held the AES master key in older firmware; the key now lives in ATECC slot 8 and never touches EEPROM. | — |
 | `0x003E` | 1 B | Keyboard layout selector (0–8) | `EEPROM_LAYOUT_ADDR` |
 | `0x0040–0x0047` | 8 B | Last TOTP epoch (big-endian) | `EEPROM_LAST_TOTP_EPOCH_ADDR` |
-| `0x0060–0x00DB` | 124 B | TOTP metadata: 2 B × 62 slots (algorithm + secret_len) | `CONFIG_TOTP_META_START` |
-| `0x00E0–0x1FFF` | 7 936 B | 62 credential slots (128 B each = 4 pages × 32 B) | `EEPROM_CREDENTIAL_BASE` |
+| `0x0048–0x0067` | 32 B | PIN hash: SHA-256(PIN ∥ serial) | `EEPROM_PIN_HASH` |
+| `0x0068–0x00E3` | 124 B | TOTP metadata: 2 B × 62 slots (algorithm + secret_len) | `CONFIG_TOTP_META_START` |
+| `0x0100–0x1FFF` | 7 936 B | 62 credential slots (128 B each = 4 pages × 32 B) | `EEPROM_CREDENTIAL_BASE` |
 
 ---
 
@@ -73,7 +73,7 @@ graph LR
 
 Each 32-byte page contains:
 - **16 bytes of plaintext** (padded with `0xFF`) encrypted as **two AES-128 CBC blocks**
-- The encryption uses the device-wide AES master key and IV
+- The encryption uses the device-wide IV plus the AES master key that lives inside ATECC slot 8 — the cipher rounds run on the chip, never on the MCU.
 
 There is no separate `status` byte or CRC per page. Empty slots are written as encrypted `0xFF` blanks during `silentEraseAll()`.
 

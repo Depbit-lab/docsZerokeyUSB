@@ -1,0 +1,173 @@
+---
+title: "Sistema de menú"
+description: "Explora la estructura del menú de ZeroKeyUSB, el asistente de setup y cómo usar cada función de forma segura."
+---
+
+## Control simple, funciones potentes
+
+ZeroKeyUSB no tiene botones, ni apps, ni menús ocultos — solo **cinco puntos táctiles dorados** que lo controlan todo.  
+El menú es accesible **tras introducir tu PIN maestro** haciendo scroll más allá del último slot de credenciales.
+
+---
+
+## Estructura del menú
+
+```mermaid
+graph TD
+    ROOT["Menú principal"]
+    ROOT --> BACKUP["Backup"]
+    ROOT --> SETTINGS["Settings"]
+    ROOT --> DANGER["Danger Zone"]
+    ROOT --> INFO["Info"]
+    
+    BACKUP --> IMP["Import"]
+    BACKUP --> EXP["Export"]
+    
+    SETTINGS --> ROT["Rotate Screen"]
+    SETTINGS --> KB["Keyboard: XX-XX"]
+    SETTINGS --> ABOUT["About"]
+    
+    DANGER --> RPIN["Reset PIN"]
+    DANGER --> DEL["Delete Credentials"]
+    DANGER --> FACTORY["Factory Reset"]
+    DANGER --> BOOT["Bootloader Mode"]
+    
+    INFO --> SW["SW: x.x.x"]
+    INFO --> SN["SN: XXXXXXXX"]
+    
+    style ROOT fill:#dbeafe,stroke:#2563eb,color:#000
+    style DANGER fill:#fee2e2,stroke:#dc2626,color:#000
+```
+
+---
+
+## Navegación del menú
+
+| Gesto | Acción |
+|---------|--------|
+| **Arriba ↑** | Mueve la selección arriba (envuelve al final) |
+| **Abajo ↓** | Mueve la selección abajo (envuelve al principio) |
+| **Centro ●** | Selecciona / Ejecuta el ítem resaltado |
+| **Izquierda ←** | Vuelve al menú padre o sale a credenciales |
+| **Derecha →** | Sale del menú, salta al slot 0 de credenciales |
+
+Cuando un menú tiene más ítems de los que caben en las 4 filas, aparece una **barra de scroll con thumb** en el borde derecho. La selección permanece visible al hacer scroll.
+
+---
+
+### 🔁 Backup
+
+| Ítem | Acción |
+|------|--------|
+| **Import** | Recibe credenciales desde el host vía USB serie (CDC). El dispositivo muestra "Waiting for data from the web app". |
+| **Export** | Envía los 62 slots de credenciales como CSV en texto plano por USB serie. Requiere autorización con pulsación larga Centro. |
+
+El flujo de export/import muestra un prompt de autorización antes de transferir cualquier dato:
+
+```mermaid
+sequenceDiagram
+    participant Host
+    participant Device as Dispositivo
+
+    Host->>Device: "EXPORT" o "IMPORT"
+    Device-->>Host: "AWAIT_AUTH EXPORT"
+    Device->>Device: Muestra "Hold center to authorize"
+    
+    alt El usuario mantiene Centro
+        Device->>Host: Stream de datos CSV (export)<br/>o recepción de datos CSV (import)
+        Device-->>Device: "Export/Import complete"
+    else El usuario suelta
+        Device-->>Device: Cancela, vuelve al menú
+    end
+```
+
+<Warning>
+Export envía **credenciales en texto plano** por USB serie. Solo realiza esto en un ordenador de confianza.
+</Warning>
+
+---
+
+### ⚙️ Settings
+
+| Ítem | Acción |
+|------|--------|
+| **Rotate Screen** | Voltea la pantalla 180° para uso a izquierda/derecha. También invierte los controles táctiles. Guardado en EEPROM. |
+| **Keyboard: XX-XX** | Cicla por los 9 layouts de teclado (EN-US → DA-DK → DE-DE → ES-ES → FR-FR → HU-HU → IT-IT → PT-PT → SV-SE → EN-US). Guardado en EEPROM. |
+| **About** | Muestra info del dispositivo: versión SW, número de serie y `zerokeyusb.com`. |
+
+---
+
+### ⏱️ TOTP
+
+El TOTP se accede desde la vista de credenciales, no desde el menú principal. Al ver una credencial, haz scroll **Abajo más allá de Password** hasta el campo **2FA**:
+
+- Si no existe secreto TOTP para ese slot → muestra "No TOTP secret" durante 2 segundos.
+- Si la hora no está sincronizada → muestra "Time not set — Request host time" y envía `REQTIME` por serie.
+- Si está listo → muestra un **código de 6 dígitos** con cuenta atrás de 30 segundos. Se refresca automáticamente cada periodo. Toca cualquier pad para volver.
+
+---
+
+### ⚠️ Danger Zone
+
+Toda acción en esta sección muestra una **página de confirmación** que requiere pulsar Centro para proceder o Izquierda para cancelar:
+
+| Ítem | Efecto | ¿Reversible? |
+|------|--------|-------------|
+| **Reset PIN** | Entra en la pantalla de cambio de PIN (`EDITPIN`). Nuevo PIN + re-aprovisionamiento. | Parcial — las credenciales antiguas permanecen si la clave AES es la misma |
+| **Delete Credentials** | Llama a `eraseAll()`: cuenta atrás de 3 segundos, luego escribe blancos cifrados en los 62 slots + limpia metadatos TOTP. | ❌ No |
+| **Factory Reset** | Resetea el flag de config a `0x00` + borra todas las credenciales. El próximo arranque inicia el asistente de setup. | ❌ No |
+| **Bootloader Mode** | Pone la palabra mágica de doble reset (`0xF01669EF` en `0x20007FFC`) y luego ejecuta `NVIC_SystemReset()`. El dispositivo se reinicia en el bootloader USB DFU para flashear firmware. | ✅ Sí (reflasheo) |
+
+---
+
+### ℹ️ Info
+
+Submenú de solo lectura mostrando:
+- **SW: x.x.x** — versión del firmware desde `zerokeyInfo::getSoftwareVersion()`
+- **SN: XXXXXXXX** — serial hardware desde los registros de ID único del SAMD21
+
+---
+
+## Asistente de setup
+
+El asistente de setup corre en el primer arranque (o tras reset de fábrica). Consta de **10 páginas internas** repartidas en **9 pasos visibles**:
+
+```mermaid
+graph LR
+    W1["1. Bienvenida"] --> W2["2. Navegación"]
+    W2 --> W3["3. Rotar pantalla"]
+    W3 --> W4["4. Layout de teclado"]
+    W4 --> W5["5. Crear PIN"]
+    W5 --> W6["6. Confirmar PIN"]
+    W6 --> W7["7. Info desbloqueo"]
+    W7 --> W8["8. Info cuentas"]
+    W8 --> W9["9. Generar IV"]
+    W9 --> W10["10. ¡Listo!"]
+    
+    style W5 fill:#fef3c7,stroke:#d97706,color:#000
+    style W6 fill:#fef3c7,stroke:#d97706,color:#000
+    style W9 fill:#fee2e2,stroke:#dc2626,color:#000
+```
+
+Las páginas con más de 4 líneas de texto son **scrollables verticalmente** usando Arriba/Abajo. Aparece un thumb de scroll en el borde derecho.
+
+Cada página del asistente soporta:
+- **Derecha** → avanza a la siguiente página
+- **Izquierda** → vuelve a la página anterior
+- **Centro** → acción (alternar orientación, cambiar layout, iniciar entrada de PIN)
+- **Arriba/Abajo** → scroll del contenido
+
+---
+
+## Filosofía de diseño
+
+El sistema de menú es intencionadamente minimalista:
+- Sin submenús profundos — cada opción está a **dos toques** del menú principal.
+- Todas las acciones destructivas requieren confirmación explícita en una página dedicada.
+- El layout y los gestos se mantienen consistentes entre versiones del firmware.
+- Los ítems del menú actualizan dinámicamente sus etiquetas (p. ej., layout de teclado muestra la selección actual).
+
+<Note>
+ZeroKeyUSB no requiere drivers ni instalación de software.  
+Se reconoce como un teclado USB estándar en cualquier sistema operativo.
+</Note>

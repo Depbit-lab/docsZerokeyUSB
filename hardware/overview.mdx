@@ -70,15 +70,16 @@ The ARM Cortex-M0+ processor balances performance, size, and power efficiency:
 
 ### 🔐 ATECC608A secure element
 
-The ATECC608A provides three capabilities that software alone cannot guarantee:
+The ATECC608A provides four capabilities that software alone cannot guarantee:
 
 | Capability | Why it matters |
 |-----------|---------------|
-| **Hardware TRNG** | Generates the AES master key (16 B) and IV (16 B) with true hardware entropy — not pseudo-random. |
+| **Hardware TRNG** | Generates the AES master key (16 B, inside the chip) and IV (16 B) with true hardware entropy — not pseudo-random. |
+| **AES-128 engine** | Every credential block is encrypted and decrypted by the chip's hardware AES. The key lives in slot 8 with `IsSecret=1` and never crosses the I²C bus. |
 | **Monotonic Counter0** | Irreversible hardware counter for PIN attempts. Cannot be reset by software, power cycling, or chip erasing. After 50 consecutive wrong PINs, credentials are wiped. |
 | **Chip serial (9 B)** | Factory-programmed unique identifier used as salt in PIN hashing: `SHA-256(PIN ∥ serial)`. Same PIN on a different device produces a completely different hash. |
 
-> The MAHDA-T SKU has **hardware AES disabled at factory**, so encryption runs in software on the MCU. The ATECC is still critical for entropy, identity, and rate-limiting.
+> The MAHDA-T SKU ships with the hardware AES command disabled. The first-boot provisioning routine enables it, configures slot 8 as an AES key holder, generates the key with the on-chip TRNG, and irreversibly locks both Config and Data zones.
 
 ### 💾 M24C64-WMN6TP EEPROM
 

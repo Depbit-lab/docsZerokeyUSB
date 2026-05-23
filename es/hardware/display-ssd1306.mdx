@@ -1,0 +1,70 @@
+---
+title: "Pantalla: OLED SSD1306"
+description: "Conexión, presupuesto de energía y uso desde firmware del display monocromo 128×32."
+---
+
+ZeroKeyUSB usa un **módulo OLED de 0,91" basado en SSD1306** para mostrar menús, credenciales e iconos de estado. La pantalla es brillante, de bajo consumo y legible desde múltiples ángulos — ideal para echar un vistazo rápido durante un login.
+
+---
+
+## Características eléctricas
+
+| Parámetro | Valor |
+| --- | --- |
+| Resolución | 128 × 32 píxeles |
+| Interfaz | I²C (dirección `0x3C`) |
+| Voltaje de alimentación | 3,3 V |
+| Corriente típica | 10–12 mA a brillo máximo |
+| Controlador | Solomon Systech SSD1306 |
+
+El módulo se conecta directamente al bus I²C SERCOM3 del SAMD21, compartido con la EEPROM externa. Las resistencias pull-up (4,7 kΩ) están en el PCB, así que las resistencias del módulo breakout deberían desactivarse al ensamblar.
+
+---
+
+## Asignación de pines
+
+| Pin OLED | Señal | Notas |
+| --- | --- | --- |
+| VCC | 3V3 | Alimentado desde el regulador del MCU |
+| GND | GND | Tierra común |
+| SCL | PA23 | Reloj I²C compartido |
+| SDA | PA22 | Datos I²C compartidos |
+| RES | PA14 | Controlado por firmware durante init |
+| DC | A nivel bajo | Comando/datos gestionado automáticamente en modo I²C |
+| CS | A nivel bajo | No se usa en modo I²C |
+
+El firmware togglea la línea **RES** al arrancar para garantizar una secuencia de boot limpia incluso si la alimentación es inestable.
+
+---
+
+## Estrategia de frame buffer
+
+- El SSD1306 espera datos en **páginas de 8 píxeles verticales**.
+- El firmware mantiene un buffer de 512 bytes en SRAM (`128 × 32 / 8`).
+- Las actualizaciones usan **escrituras parciales** para minimizar el tráfico I²C cuando solo cambian unos pocos caracteres.
+- Un diff simple de double-buffer rastrea las regiones sucias para que el refresco quede por debajo de 5 ms.
+
+Las animaciones como el scroll suave para contraseñas largas se basan en interrupciones de timer que desplazan el buffer entre refrescos.
+
+---
+
+## Control de brillo
+
+- Valor de contraste por defecto: `0x7F` (50%).
+- Una opción del menú permite atenuar hasta `0x20` para entornos oscuros.
+- Tras 60 segundos de inactividad el firmware envía `DISPLAY OFF` manteniendo los datos en RAM.
+- Cualquier entrada táctil o actividad USB enciende la pantalla al instante.
+
+Este enfoque equilibra legibilidad y vida útil del OLED.
+
+---
+
+## Resolución de problemas
+
+| Síntoma | Causa posible | Solución |
+| --- | --- | --- |
+| Sin imagen, backlight apagada | Pin RES a nivel bajo | Comprueba la soldadura o asegúrate de que el logo de arranque ha terminado. |
+| La pantalla parpadea o muestra ruido | Conflicto I²C con la EEPROM | Inspecciona resistencias pull-up y longitud de cable. |
+| Ghosting / quemado | Contenido estático a máximo brillo | Reduce el contraste o activa el auto-dim en ajustes. |
+
+Si el OLED necesita reemplazo, cualquier módulo SSD1306 I²C con el mismo orden de pines se puede sustituir sin cambios en el firmware.

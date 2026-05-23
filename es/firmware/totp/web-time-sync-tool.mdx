@@ -1,0 +1,63 @@
+---
+title: "Herramienta web de sincronización horaria"
+description: "Usa el helper basado en navegador para enviar tiempo Unix preciso a ZeroKeyUSB."
+---
+
+El repositorio del firmware de ZeroKeyUSB incluye una aplicación web ligera que corre localmente en tu navegador. Se conecta al dispositivo por WebUSB y envía el epoch actual para que los códigos TOTP se mantengan sincronizados.
+
+---
+
+## Requisitos
+
+- Navegador basado en Chromium (Chrome, Edge, Brave) con WebUSB habilitado
+- ZeroKeyUSB desbloqueado y conectado vía USB-C
+- Copia local del directorio **`tools/web-time-sync`** servida vía `npm run dev`
+
+No es necesario acceso a Internet una vez cargada la página.
+
+---
+
+## Lanzar la herramienta
+
+```bash
+cd tools/web-time-sync
+npm install
+npm run dev
+```
+
+Abre la URL local impresa (típicamente `http://localhost:5173`) en tu navegador. Deberías ver el logo de ZeroKeyUSB y un botón "Connect".
+
+---
+
+## Enviar la hora
+
+1. Haz clic en **Connect** y selecciona tu ZeroKeyUSB en la lista de dispositivos (`ZeroKeyUSB CDC`).
+2. La página muestra el epoch Unix actual y una cuenta atrás hasta el siguiente límite de 30 segundos.
+3. Pulsa **Sync now** cuando el dispositivo pida la hora (muestra `REQTIME`).
+4. La herramienta envía `SETTIME <epoch>` automáticamente y confirma el éxito con una notificación toast.
+
+Si el dispositivo ya estaba sincronizado, responde con `OK` y no se hacen cambios.
+
+---
+
+## Características de seguridad
+
+- La herramienta solo se comunica con dispositivos USB cuyos IDs de vendor/producto coincidan con ZeroKeyUSB.
+- Todos los comandos son visibles en la consola en pantalla para auditabilidad.
+- Ningún dato sale de la pestaña del navegador; la telemetría y analíticas están deshabilitadas.
+
+<Alert>
+Cierra la pestaña cuando termines. Dejar conexiones WebUSB abiertas puede impedir que otras aplicaciones accedan al puerto serie.
+</Alert>
+
+---
+
+## Resolución de problemas
+
+| Problema | Resolución |
+| --- | --- |
+| El navegador no puede acceder a USB | Asegúrate de usar un navegador Chromium y haber concedido permisos al dispositivo. |
+| `Failed to send epoch` | El dispositivo puede estar bloqueado; desbloquéalo e inténtalo de nuevo. |
+| La herramienta se cierra inesperadamente | Comprueba la terminal que ejecuta `npm run dev` por errores y reinicia el dev server. |
+
+La herramienta web de sincronización ofrece una forma amigable para el usuario de mantener tu autenticador hardware alineado sin instalar software pesado.

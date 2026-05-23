@@ -1,0 +1,72 @@
+---
+title: "Módulo TOTP"
+description: "Genera códigos 2FA offline junto a tus contraseñas almacenadas."
+---
+
+TOTP significa **Time-based One-Time Password** (contraseña de un solo uso basada en tiempo) — el mismo estándar que usa Google Authenticator o Authy. ZeroKeyUSB calcula cada código de 6 dígitos **offline**, usando el secreto cifrado guardado en EEPROM y un valor de tiempo Unix mantenido localmente.
+
+---
+
+## Cómo funciona
+
+- Los secretos se importan como **cadenas Base32** y se cifran con AES-128 antes de escribirse en EEPROM.
+- El firmware mantiene un contador de epoch Unix de 8 bytes en texto plano (por simplicidad) y lo incrementa usando el temporizador de milisegundos del SAMD21.
+- Cada 30 segundos el dispositivo computa `Truncate(HMAC-SHA1(secreto, epoch / 30))` y muestra el resultado en el OLED.
+
+Como el algoritmo sigue el RFC 6238, los códigos coinciden con cualquier app autenticadora estándar manteniéndose aislados de Internet.
+
+---
+
+## Añadir un secreto TOTP
+
+1. Desbloquea el dispositivo y abre la credencial que quieras proteger.
+2. Usa el **web manager local** o la CLI para pegar la URI `otpauth://` proporcionada por el servicio.
+3. La herramienta extrae el parámetro `secret=` y lo envía una vez por el canal serie seguro.
+4. ZeroKeyUSB cifra el secreto, lo almacena en la página TOTP y marca el slot como 2FA-habilitado.
+
+Los secretos nunca se muestran en texto plano una vez almacenados.
+
+---
+
+## Ver códigos
+
+- Las credenciales con secreto TOTP muestran un prompt `2FA → Toca para ver` debajo de la contraseña.
+- Tocando el pad central se revela el código de 6 dígitos actual y un anillo de cuenta atrás que se refresca cada segundo.
+- La pantalla se auto-oculta tras 15 segundos de inactividad para mantener los códigos privados.
+
+Si el dispositivo necesita el epoch actual, muestra `REQTIME` y espera a que el host envíe la hora una vez.
+
+---
+
+## Mantenlo preciso
+
+<CardGroup cols={2}>
+  <Card title="Sincronización del epoch" icon="clock" href="/es/firmware/totp/epoch-synchronization">
+    Entiende cómo ZeroKeyUSB rastrea el tiempo Unix y cómo re-sincronizar cuando hay deriva.
+  </Card>
+  <Card title="Herramienta web de sincronización" icon="globe" href="/es/firmware/totp/web-time-sync-tool">
+    Guía paso a paso para usar la utilidad basada en navegador para mantener el reloj TOTP alineado.
+  </Card>
+</CardGroup>
+
+---
+
+## Algoritmos soportados
+
+| Algoritmo | Estado | Uso típico |
+| --- | --- | --- |
+| **SHA-1** | ✅ Implementado | La mayoría de servicios de consumo (Google, Microsoft, GitHub) |
+| **SHA-256** | ⏳ Planificado | Despliegues de alta seguridad |
+| **SHA-512** | ⏳ Planificado | Suites autenticadoras empresariales |
+
+Futuras versiones del firmware pueden ampliar las opciones de hash sin cambiar hardware.
+
+---
+
+## Buenas prácticas
+
+- Re-sincroniza la hora tras periodos largos de almacenamiento o viajes a través de zonas horarias.
+- Mantén un backup offline de tus credenciales antes de realizar un reset de fábrica.
+- Trata los secretos TOTP impresos o exportados como material altamente sensible.
+
+Con TOTP gestionado directamente por la llave hardware, tu contraseña y segundo factor se mantienen juntos pero siguen offline.

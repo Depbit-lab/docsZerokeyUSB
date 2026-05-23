@@ -1,0 +1,66 @@
+---
+title: "Interfaz USB"
+description: "Cómo ZeroKeyUSB arranca, se enumera y asegura las comunicaciones por USB-C."
+---
+
+ZeroKeyUSB se conecta a través de un **receptáculo USB-C** pero se comporta como un dispositivo USB 2.0 full-speed clásico. La placa mantiene el cableado simple para que cualquier host USB-A o USB-C pueda alimentarse y comunicarse con la llave.
+
+---
+
+## Cableado del conector
+
+| Pin | Función | Notas |
+| --- | --- | --- |
+| A1/B12 | GND | Unidos para cables simétricos |
+| A4/B9 | VBUS | Entrada 5 V (hasta 500 mA) |
+| A5 | CC1 | Pull-down 5,1 kΩ (Rd) anuncia modo dispositivo |
+| B5 | CC2 | Pull-down 5,1 kΩ (Rd) para cables reversibles |
+| A6/B6 | D+ | Conectado a los pines USB del SAMD21 |
+| A7/B7 | D− | Conectado a los pines USB del SAMD21 |
+
+No se usan pares de alta velocidad ni pines USB 3.x. La pantalla está conectada a tierra a través de una resistencia de 1 MΩ y un condensador de 10 nF para supresión de ESD.
+
+---
+
+## Ruta de alimentación
+
+- VBUS alimenta un **regulador LDO de 3,3 V** (TPS73533) que alimenta el SAMD21, el OLED, el controlador táctil y la EEPROM.
+- La corriente total se mantiene por debajo de **120 mA** durante las animaciones del OLED, dentro de los límites USB 2.0.
+- La protección contra corriente inversa evita alimentar el host cuando el dispositivo está apagado.
+- Un fusible PTC resetable (250 mA) añade protección contra cortocircuitos.
+
+Como ZeroKeyUSB no tiene batería, desenchufar el cable corta inmediatamente la alimentación y limpia la RAM volátil.
+
+---
+
+## Descriptores USB
+
+| Interfaz | Clase | Propósito |
+| --- | --- | --- |
+| Interfaz 0 | Teclado HID (0x03) | Teclea automáticamente usuarios y contraseñas |
+| Interfaz 1 | CDC ACM (0x02) | Consola serie para backups, diagnósticos y sincronización horaria |
+
+Cada interfaz tiene su propio par de endpoints, permitiendo comunicación simultánea de teclado y serie sin re-enumeración.
+
+---
+
+## Consideraciones de seguridad
+
+- El firmware **ignora peticiones de control específicas de fabricante** y solo responde a descriptores USB estándar.
+- Los informes HID se generan solamente a partir de acciones confirmadas por el usuario; no hay tecleo disparado por host.
+- Los comandos CDC requieren que el dispositivo esté desbloqueado y, para acciones destructivas, una confirmación de pulsación larga.
+- El suspend USB dispara un bloqueo inmediato tras 30 segundos de inactividad.
+
+Estas salvaguardas garantizan que enchufar la llave en un host desconocido no exponga los secretos almacenados.
+
+---
+
+## Resolución de problemas de enumeración
+
+| Síntoma | Causa | Solución |
+| --- | --- | --- |
+| El dispositivo se alimenta pero no se detecta | Resistencias CC ausentes o incorrectas | Verifica los pull-downs de 5,1 kΩ en CC1/CC2. |
+| Se enumera como "Dispositivo desconocido" | Firmware no en ejecución o modo bootloader | Reflashear vía UF2 o comprobar reset por doble pulsación. |
+| Puerto serie no aparece | Driver CDC bloqueado | En Windows instala el `.inf` provisto en el repo del firmware. |
+
+Si las líneas de datos USB están dañadas, el dispositivo aún puede encenderse, pero no se tecleará ninguna credencial. Inspecciona el conector por residuos o estrés mecánico.

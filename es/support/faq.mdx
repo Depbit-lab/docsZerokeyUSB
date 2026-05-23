@@ -1,0 +1,181 @@
+---
+title: "FAQ"
+description: "Respuestas a las preguntas más comunes sobre ZeroKeyUSB — seguridad, compatibilidad y uso diario."
+---
+
+## General
+
+### 🧩 ¿Qué es ZeroKeyUSB?
+ZeroKeyUSB es un **gestor de contraseñas hardware** que guarda tus credenciales completamente **offline**.  
+Se comporta como un teclado USB normal: cuando seleccionas una cuenta guardada, simplemente **teclea tus datos de login** automáticamente — sin software ni conexión a Internet.
+
+---
+
+### 🔌 ¿Necesita una app o suscripción?
+No.  
+ZeroKeyUSB no depende de software, extensiones ni suscripciones.  
+Funciona al instante cuando lo enchufas a cualquier ordenador, móvil o tablet que acepte un teclado USB.
+
+---
+
+### 💻 ¿Con qué dispositivos es compatible?
+ZeroKeyUSB funciona universalmente con:
+- Windows  
+- macOS  
+- Linux  
+- Android (vía USB-C o adaptador)  
+- iPadOS (modelos USB-C)
+
+Como emula un teclado estándar, funciona allá donde puedas teclear.
+
+---
+
+### 🔋 ¿Tiene batería?
+No.  
+ZeroKeyUSB consume una mínima cantidad de energía (alrededor de 20 mA) directamente del puerto USB.  
+Esto lo hace **libre de mantenimiento** y garantiza que tus credenciales estén siempre disponibles — incluso años después.
+
+---
+
+### 🧑‍💻 ¿Cuántas credenciales puede guardar?
+Hasta **62 credenciales cifradas**, cada una conteniendo:
+- Nombre de sitio web o servicio (hasta 16 caracteres)
+- Usuario o email (hasta 16 caracteres)
+- Contraseña (hasta 16 caracteres)
+- (Opcional) Secreto 2FA TOTP
+
+---
+
+## Seguridad
+
+### 🔐 ¿Cómo se protegen mis contraseñas?
+Tus credenciales están protegidas por **tres capas**:
+
+1. **Cifrado AES-128 CBC** — cada credencial se cifra con una clave de 128 bits generada por el generador de números aleatorios hardware del ATECC608A. Esta clave es única para tu dispositivo.
+2. **Verificación de PIN** — tu PIN maestro se hashea con SHA-256 usando el número de serie único del chip como salt. El hash se compara a tiempo constante para evitar ataques de timing.
+3. **Rate-limiting hardware** — un contador monotónico en el elemento seguro ATECC608A rastrea cada intento de PIN. Tras **50 intentos consecutivos incorrectos**, todos los datos se borran permanentemente.
+
+Incluso si alguien extrajera físicamente el chip de memoria, la clave AES requerida para descifrar los datos fue generada por el TRNG hardware y no se deriva de tu PIN.
+
+---
+
+### 🧠 ¿Qué pasa si olvido mi PIN?
+Por razones de seguridad, **no hay recuperación de PIN**.  
+La única opción es un **Reset de fábrica**, que borra todos los datos cifrados y te permite crear un nuevo PIN.  
+Esto garantiza que nadie — ni siquiera el fabricante — pueda acceder a tu información.
+
+> 💡 Consejo: Elige un PIN memorable y mantén un backup cifrado de tus credenciales.
+
+---
+
+### 🕐 ¿Se conecta a Internet?
+Jamás.  
+ZeroKeyUSB es un **sistema totalmente offline**.  
+No tiene módulos Wi-Fi, Bluetooth ni NFC, y nunca intercambia datos con servidores externos.  
+Tú eres el único que puede acceder a la información almacenada.
+
+---
+
+### 💾 ¿Puede alguien clonar mi dispositivo?
+No.  
+Cada ZeroKeyUSB contiene un **elemento seguro ATECC608A** con un número de serie único de 9 bytes programado de fábrica. Este serial se usa como salt en el hash del PIN, lo que significa que el mismo PIN en dos dispositivos diferentes produce claves criptográficas completamente diferentes.  
+La clave maestra AES de 128 bits también es única por dispositivo (generada por el TRNG en chip al aprovisionar).
+
+---
+
+### 🚫 ¿Qué pasa tras demasiados intentos de PIN incorrectos?
+
+Dos niveles de protección:
+
+**Backoff soft (capa UX):**
+
+| Intentos fallidos | Tiempo de espera |
+|-----------------|-------------|
+| 1 | 5 segundos |
+| 2 | 10 segundos |
+| 3 | 20 segundos |
+| 4 | 40 segundos |
+| … | Dobla hasta 43 minutos |
+
+**Límite hard (contador hardware):**
+Tras **50 intentos consecutivos incorrectos**, el contador hardware del ATECC608A cruza el umbral y el dispositivo **borra permanentemente todos los slots de credenciales**. Este contador no se puede resetear por ciclo de alimentación, reflasheo ni truco software — es un contador físico hardware dentro del elemento seguro.
+
+---
+
+### 🧰 ¿Se puede actualizar el firmware?
+Sí, pero solo con **acceso físico**.  
+Desde el menú (**Danger Zone → Bootloader Mode**), el dispositivo reinicia en un bootloader DFU USB.  
+El nuevo firmware debe estar **criptográficamente firmado** — el bootloader comprueba tanto un CRC32 como un MAC BLAKE2s antes de aceptar cualquier imagen. El firmware sin firmar dispara un delay de penalización de 15 segundos.
+
+No hay mecanismo de actualización remota ni over-the-air.
+
+---
+
+### 🔍 ¿Es realmente open source?
+Sí — para **transparencia y auditabilidad**.  
+Publicar el código permite a cualquiera verificar que:
+- No hay puertas traseras ni mecanismos de recolección de datos.
+- El cifrado sigue estándares establecidos (AES-128, SHA-256, HMAC-SHA1).
+- Todas las funciones operan exactamente como se describen.
+
+El dispositivo corre una **versión firmada** del mismo código, verificada por el bootloader en cada arranque.
+
+---
+
+## Uso
+
+### 🌍 El teclado teclea símbolos incorrectos — ¿qué puedo hacer?
+Ve a **Menú → Settings → Keyboard** y cicla por los 9 layouts soportados:  
+`EN-US`, `DA-DK`, `DE-DE`, `ES-ES`, `FR-FR`, `HU-HU`, `IT-IT`, `PT-PT`, `SV-SE`.  
+
+También puedes ajustarlo durante el asistente de configuración inicial.
+
+---
+
+### 🧾 ¿Puedo hacer backup de mis datos?
+Sí.  
+Usa **Menú → Backup → Export** para enviar todas las credenciales por USB serie en formato CSV en texto plano.  
+Más tarde puedes **importar** el mismo backup.
+
+> ⚠️ **Los ficheros de backup son texto plano.** Cífralos con GPG, age o un ZIP protegido con contraseña, y guárdalos offline.
+
+---
+
+### ⏱️ ¿Cómo funciona la característica 2FA (TOTP)?
+ZeroKeyUSB puede generar **contraseñas de un solo uso basadas en tiempo (TOTP)** offline.  
+Soporta los algoritmos **SHA-1**, **SHA-256** y **SHA-512**.  
+Una vez que importas un secreto TOTP y sincronizas el tiempo, el dispositivo muestra un código de 6 dígitos con cuenta atrás de 30 segundos — sin necesidad de tu móvil ni Internet.
+
+---
+
+### 🧼 ¿Es resistente al agua?
+Sí.  
+Cada unidad ZeroKeyUSB está **totalmente encapsulada en resina**, haciéndola resistente al agua, polvo y uso diario.  
+No está diseñada para sumergirse, pero sobrevivirá derrames accidentales o exposición a la lluvia.
+
+---
+
+### 🧱 ¿Y si se rompe la pantalla?
+Tus datos siguen seguros — siguen cifrados dentro de la EEPROM.  
+Sin embargo, tendrás que contactar con soporte para una sustitución, ya que el dispositivo no se puede desmontar sin romper el sello de resina.  
+Aún puedes exportar tus credenciales por la interfaz serie USB (el canal CDC funciona sin la pantalla).
+
+---
+
+### 🛡️ ¿Cuánto durará?
+ZeroKeyUSB no tiene partes móviles ni baterías.  
+La EEPROM está valorada en **>1 millón de ciclos de escritura por página**, y todos los demás componentes son state-solid.  
+Con uso normal, debería durar **bastante más de una década**.
+
+---
+
+### 💬 ¿Cómo puedo contactar con soporte?
+Para cualquier pregunta, contacta directamente en  
+📧 **support@zerokeyusb.com**  
+o visita **[zerokeyusb.com/support](https://zerokeyusb.com/support)**
+
+---
+
+<Note>
+ZeroKeyUSB está diseñado para darte tranquilidad — tú eres dueño de tus contraseñas, y tus datos nunca salen de tus manos.
+</Note>

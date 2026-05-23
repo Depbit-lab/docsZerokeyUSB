@@ -1,0 +1,81 @@
+---
+title: "Open source y transparencia"
+description: "Cómo publicamos el firmware, esquemas y proceso de build para que puedas verificar — no confiar ciegamente — en ZeroKeyUSB."
+---
+
+## Filosofía
+
+ZeroKeyUSB es intencionadamente **offline y cerrado a modificación**, pero **abierto a inspección**.
+Publicar el firmware completo y la documentación de hardware permite a cualquiera auditar el modelo de seguridad mientras mantiene los dispositivos de producción sellados y resistentes a manipulación.
+
+---
+
+## Visión general del repositorio
+
+Todos los materiales públicos viven en el repositorio [Depbit-lab/zerokeyusb](https://github.com/Depbit-lab/zerokeyusb).
+Encontrarás:
+
+- `firmware/` → Código fuente C++ para la aplicación del SAMD21, incluyendo helpers de crypto y drivers de dispositivos.
+- `hardware/` → Esquemas, layout del PCB y ficheros BOM para cada revisión de hardware.
+- `tests/` → Tests unitarios que validan rutinas AES, transacciones EEPROM y cálculos TOTP.
+- `docs/` → Guías Markdown que reflejan esta base de conocimiento.
+
+Cada release etiquetado incluye el binario de firmware firmado (`zerokeyusb-vX.Y.Z.bin`) y checksums SHA-256 para verificación independiente.
+
+---
+
+## Builds reproducibles
+
+Publicamos la configuración exacta del toolchain usada en fábrica:
+
+```bash
+docker pull ghcr.io/depbit-lab/zerokeyusb-toolchain:latest
+docker run --rm -v "$PWD":/project ghcr.io/depbit-lab/zerokeyusb-toolchain make release
+```
+
+- El contenedor incluye ARM GCC, openocd y todas las dependencias fijadas.
+- Ejecutar `make release` produce una imagen de firmware idéntica a la oficial (checksum coincidente).
+- Los artefactos del build incluyen un manifiesto con commit de git, timestamp de build y flags del compilador.
+
+---
+
+## Contribuciones security-first
+
+Damos la bienvenida a issues y pull requests que mejoren documentación, testing o herramientas.
+Para mantener el firmware de producción auditable:
+
+1. El desarrollo ocurre en ramas feature.
+2. Cada cambio requiere dos reviews de mantenedores enfocados en impacto de seguridad.
+3. CI ejecuta tests unitarios y análisis estático (cppcheck, clang-tidy) en cada commit.
+4. Los release candidates pasan por pruebas hardware manuales antes de crear un nuevo tag.
+
+Nunca se flashea firmware sin firmar a los dispositivos de los clientes.
+
+---
+
+## Verificar tu dispositivo
+
+Puedes confirmar que tu ZeroKeyUSB corre el firmware firmado oficialmente:
+
+1. Comprueba la versión del firmware en **Menú → Settings → About**.
+2. Descarga el binario del release correspondiente desde GitHub y calcula su hash SHA-256.
+3. Compáralo contra el checksum impreso en las release notes.
+4. (Opcional) Si tienes herramientas de fábrica, puedes leer la memoria flash y verificar el bloque de firma — el repositorio documenta el proceso.
+
+Esta transparencia te da confianza de que lo que auditas es exactamente lo que se entrega.
+
+---
+
+## Canales de comunidad
+
+- **Issues** → Reporta bugs, propón funciones o pide aclaraciones.
+- **Discussions** → Comparte trucos, scripts de automatización o habla sobre backups auto-hospedados.
+- **Buzón de seguridad** → Envía email a `security@zerokeyusb.com` para divulgación coordinada de vulnerabilidades.
+
+Creemos que la confianza se gana. La documentación abierta y los builds reproducibles son nuestra forma de demostrarlo.
+
+---
+
+<Note>
+Open source no significa firmware modificable en unidades de venta. El código publicado es para transparencia, auditorías y propósitos educativos.
+</Note>

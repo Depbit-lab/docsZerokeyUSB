@@ -1,0 +1,129 @@
+---
+title: "Mapa de memoria EEPROM"
+description: "Cómo ZeroKeyUSB almacena credenciales cifradas y por qué su arquitectura de memoria está diseñada para la máxima seguridad."
+---
+
+## Memoria segura, no solo almacenamiento
+
+ZeroKeyUSB usa una **EEPROM industrial ST M24C64-WMN6TP**, un chip de memoria no volátil de 64 kilobits (8 KB en total).  
+Se seleccionó no por capacidad, sino por **fiabilidad e integridad de datos a largo plazo** — crítica para un dispositivo que se espera proteja tus credenciales durante años.
+
+Toda la información dentro de este chip se **cifra en el MCU antes de escribirse**.  
+Incluso si la memoria se extrajera físicamente, solo revelaría **bloques de ciphertext** — nunca datos legibles.
+
+---
+
+## Características clave
+
+| Especificación | Descripción |
+|----------------|--------------|
+| **Modelo del chip** | ST M24C64-WMN6TP |
+| **Capacidad** | 64 Kbit (8 192 bytes) |
+| **Interfaz** | I²C, direccionamiento de 2 bytes |
+| **Endurance** | > 1 000 000 ciclos de escritura |
+| **Retención de datos** | > 40 años |
+| **Voltaje de operación** | 1,8 V – 5,5 V |
+| **Tamaño de página** | 32 bytes |
+
+Toda la comunicación entre chips usa I²C para acceso a memoria y USB HID para la interacción con el host.  
+El bus I²C en sí no está cifrado — en su lugar, **los datos se cifran en firmware antes de la transmisión**, garantizando confidencialidad incluso si el bus fuera interceptado.
+
+---
+
+## Visión general de la estructura interna
+
+La EEPROM de ZeroKeyUSB está dividida en regiones aisladas.  
+Cada una sirve una función de seguridad dedicada y se accede exclusivamente a través de rutinas del firmware.
+
+| Rango de direcciones | Tamaño | Propósito |
+|----------------|------|----------|
+| `0x0000–0x0001` | 2 B | Flags de configuración / marcador de setup |
+| `0x0002` | 1 B | **Contador de intentos fallidos** (persistente entre apagados) |
+| `0x0005–0x000C` | 8 B | Firma de verificación del PIN |
+| `0x0010–0x001F` | 16 B | Vector de inicialización AES (IV) |
+| `0x0020–0x03DF` | ≈ 960 B | Metadatos del sistema y TOTP (incluyendo 2 bytes por estado de slot) |
+| `0x03E0–0x03EF` | 8 B | Último epoch TOTP (tiempo Unix, 64 bits) |
+| `0x0400–0x1FFF` | ≈ 7 KB | Almacenamiento de credenciales cifradas (datos de usuario) |
+
+Cada credencial ocupa **tres páginas de 32 bytes cifradas** (96 B en total):
+1. Nombre del sitio / servicio  
+2. Usuario o email  
+3. Contraseña  
+
+Se usa una cuarta página opcional para el **secreto TOTP** cuando se habilita 2FA.
+
+---
+
+## Segmentación de datos
+
+Almacenar cada campo en una página cifrada separada ofrece ventajas clave:
+
+- 🔐 **Cifrado independiente:** Cada campo (sitio, usuario, contraseña, TOTP) se cifra por separado.  
+- 🧩 **Sin correlación de patrones:** Incluso credenciales idénticas producen ciphertext distinto.  
+- 💥 **Aislamiento de corrupción:** Si una página falla, las demás permanecen intactas.  
+- ⚡ **Escrituras eficientes:** Editar un campo solo reescribe esa página, alargando la vida de la EEPROM.
+
+---
+
+## Metadatos de seguridad
+
+### 🔑 Vector de inicialización (IV)
+Un valor único de 16 bytes generado por el TRNG del ATECC608A en la primera configuración.  
+Garantiza que incluso datos idénticos cifrados dos veces produzcan ciphertext distinto.
+
+### 🧩 Bloque de firma del PIN
+Una huella criptográfica de 8 bytes almacenada en la dirección `0x0005`.  
+Permite que ZeroKeyUSB verifique el PIN maestro correcto sin almacenar el PIN en sí.
+
+### 🕒 Contador de intentos fallidos
+Almacenado en `0x0002`, este byte rastrea las entradas consecutivas de PIN incorrectas.  
+Si un usuario introduce un PIN incorrecto varias veces, el firmware aplica retrasos exponenciales antes del siguiente intento.  
+Como el contador se almacena en EEPROM, los timers de lockout persisten incluso tras un ciclo de alimentación o al desconectar el dispositivo.
+
+### ⏱️ Último epoch TOTP
+Un timestamp Unix de 64 bits representando la última hora sincronizada.  
+Permite generar TOTP offline sin re-sincronizar en cada uso.
+
+---
+
+## Ejemplo de layout de credencial
+
+| Página | Contenido | ¿Cifrado? | Tamaño |
+|------|----------|------------|------|
+| 0 | Sitio / dominio | ✅ | 32 B |
+| 1 | Usuario | ✅ | 32 B |
+| 2 | Contraseña | ✅ | 32 B |
+| 3 | Secreto TOTP (opcional) | ✅ | 32 B |
+| — | — | — | — |
+| **Total por slot** | — | — | **96–128 B** |
+
+Caben hasta **64 credenciales** de forma segura en la memoria de 8 KB, según el uso de TOTP.
+
+---
+
+## Integridad de datos y manejo de errores
+
+Cada escritura de EEPROM se confirma a nivel I²C para asegurar el éxito.  
+Si una escritura falla o expira, el firmware reintenta automáticamente.  
+Los errores persistentes disparan un mensaje en pantalla (`EEPROM Error`) y abortan la operación de forma segura.
+
+ZeroKeyUSB nunca almacena texto plano ni registros parciales — las credenciales están o bien **totalmente cifradas** o **no se escriben en absoluto**.
+
+---
+
+## Por qué importa
+
+Los gestores de contraseñas típicos dependen del almacenamiento del SO y cifrado por software.  
+ZeroKeyUSB lo guarda todo en hardware, con:
+
+- Una EEPROM dedicada con **40+ años de retención**.  
+- Cifrado y generación de IV gestionados por el **microcontrolador SAMD21** + ATECC608A.  
+- Sin interfaces wireless ni conectividad a Internet que explotar.
+
+Incluso con acceso físico al chip de memoria, los contenidos no se pueden descifrar sin la clave AES correcta (que vive en el ATECC608A) y el IV.
+
+---
+
+<Note>
+La transparencia construye confianza: el mapa de memoria es público para que cualquiera pueda verificar el comportamiento del firmware, pero todas las regiones permanecen cifradas y bloqueadas durante la operación normal.
+</Note>

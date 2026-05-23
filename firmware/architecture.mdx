@@ -17,9 +17,9 @@ graph TB
     end
 
     subgraph Security["Security & Services"]
-        SEC["zerokey-security.cpp<br/>AES-128 CBC encrypt/decrypt"]
+        SEC["zerokey-security.cpp<br/>CBC chaining + IV<br/>(blocks via ATECC AES)"]
         TOTP["zerokey-totp.cpp<br/>TOTP code generation"]
-        ATECC["zerokey-atecc.cpp<br/>ATECC608A driver"]
+        ATECC["zerokey-atecc.cpp<br/>ATECC608A driver<br/>+ AES + provisioning"]
     end
 
     subgraph Drivers["Hardware Drivers"]
@@ -62,8 +62,8 @@ Each module can evolve independently while keeping critical security routines au
 
 | File | Lines | Role |
 |------|-------|------|
-| `zerokey-security.cpp/.h` | ~755 | AES-128 CBC encrypt/decrypt, PIN verification, erase, backup/restore |
-| `zerokey-atecc.cpp/.h` | ~443 | ATECC608A I²C driver: TRNG, Counter, ReadSerial, CheckMac, SHA-256 |
+| `zerokey-security.cpp/.h` | ~750 | AES-CBC chaining around the chip's single-block AES command, PIN verification, erase, backup/restore |
+| `zerokey-atecc.cpp/.h` | ~640 | ATECC608A I²C driver: TRNG, Counter, ReadSerial, CheckMac, SHA-256, hardware AES, Lock, and the one-shot AES provisioning routine |
 | `zerokey-io.cpp/.h` | ~1561 | Touch event dispatch, TOTP date/time input, serial command handler |
 | `zerokey-menu.cpp/.h` | ~1051 | Menu tree, setup wizard (10 pages), confirm/info/activity pages |
 | `zerokey-display.cpp/.h` | ~750 | SSD1306 rendering: main screen, PIN screen, editor, progress, scrolling |
@@ -101,6 +101,9 @@ sequenceDiagram
     FW->>HW: Init SSD1306 OLED at 0x3C
     FW->>HW: Read keyboard layout from EEPROM 0x003E
     FW->>HW: Read last TOTP epoch from EEPROM 0x0040
+    FW->>HW: Ping ATECC608A + read lock status
+    FW->>HW: If first boot — provision AES + lock zones
+    FW->>HW: AES self-test (encrypt + decrypt round-trip)
     FW->>FW: Read config flag from EEPROM 0x0000
 
     alt Flag ≠ 0x42

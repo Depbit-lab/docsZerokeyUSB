@@ -1,0 +1,178 @@
+---
+title: "Documentación de ZeroKeyUSB"
+description: "Centro principal de guías, especificaciones de hardware, internals del firmware y recursos de soporte."
+---
+
+## Bienvenida
+
+**ZeroKeyUSB** es un gestor de contraseñas independiente y basado en hardware, diseñado para mantener tus credenciales completamente offline.  
+Se comporta como un teclado USB: teclea tus usuarios cifrados, contraseñas y códigos TOTP opcionales donde los necesites.  
+Sin apps. Sin nube. Sin suscripciones.
+
+Todo lo que necesitas para **montar el hardware**, **entender el firmware** y **mantener tu dispositivo seguro** está organizado a continuación.
+
+<Card
+  title="Empezar"
+  icon="rocket"
+  href="/es/quickstart"
+  horizontal
+>
+  Aprende cómo flashear el firmware, fijar tu PIN maestro y empezar a usar ZeroKeyUSB de forma segura.
+</Card>
+
+---
+
+## Funciones principales
+
+<Columns cols={2}>
+  <Card
+    title="Cifrado offline"
+    icon="lock"
+    href="/es/firmware/security"
+  >
+    Protege tus datos con **cifrado AES-128 CBC**. La clave se genera con el TRNG del ATECC608A y permanece dentro del slot 8 del chip — el cifrado y descifrado se ejecutan en el motor AES hardware del elemento seguro, sin exponer nunca la clave al MCU.  
+    El PIN se verifica vía SHA-256 y un contador monotónico hardware. No requiere conexión a Internet nunca.
+  </Card>
+
+  <Card
+    title="Elemento seguro hardware"
+    icon="shield"
+    href="/es/hardware/overview"
+  >
+    Un elemento seguro **ATECC608A** proporciona números aleatorios verdaderos de calidad hardware, un **contador monotónico** resistente a manipulación para el rate-limiting del PIN, y un serial único del chip usado como salt del PIN.
+  </Card>
+
+  <Card
+    title="Simplicidad hardware"
+    icon="microchip"
+    href="/es/hardware/overview"
+  >
+    Construido alrededor de un microcontrolador **SAMD21E18A** y una EEPROM **M24C64-WMN6TP**, completamente alimentado por **USB-C**.  
+    Sin baterías, sin chips wireless — verdaderamente air-gapped.
+  </Card>
+
+  <Card
+    title="Salida de teclado universal"
+    icon="keyboard"
+    href="/es/firmware/usb-utilities"
+  >
+    Actúa como un **teclado HID USB** estándar con soporte para 9 layouts de idioma (EN-US, DE, FR, ES, IT, PT, SV, DA, HU) para teclear credenciales en cualquier campo enfocado.  
+    Funciona en todos los sistemas operativos importantes.
+  </Card>
+
+  <Card
+    title="Pantalla OLED integrada"
+    icon="display"
+    href="/es/firmware/display"
+  >
+    Navega las credenciales almacenadas y los códigos 2FA en una **pantalla OLED SSD1306 de 128×32 píxeles** con autoscroll para textos largos.
+  </Card>
+
+  <Card
+    title="Contraseñas de un solo uso basadas en tiempo (TOTP)"
+    icon="clock"
+    href="/es/firmware/totp"
+  >
+    Genera códigos 2FA de 6 dígitos **localmente y offline**.  
+    Requiere una **sincronización horaria** única desde el host vía USB — nunca a través de Internet.
+  </Card>
+
+  <Card
+    title="Open source y transparente"
+    icon="code"
+    href="https://github.com/Depbit-lab/zerokeyusb"
+  >
+    Cada línea de firmware y cada esquema de hardware es público.  
+    Audita, verifica y contribuye para mejorar el dispositivo.
+  </Card>
+
+  <Card
+    title="62 slots de credenciales"
+    icon="database"
+    href="/es/firmware/eeprom-management"
+  >
+    Almacena hasta **62 entradas de sitio/usuario/contraseña** más secretos TOTP opcionales, todas cifradas con AES-128 CBC en reposo en la EEPROM externa.
+  </Card>
+</Columns>
+
+---
+
+## Seguridad de un vistazo
+
+| Capa | Tecnología | Ubicación |
+|-------|-----------|----------|
+| Cifrado | AES-128 ECB (hardware, comando `AES` del ATECC608A) + encadenamiento CBC software | ATECC608A + MCU SAMD21 |
+| Clave de cifrado | 16 B aleatorios (TRNG del ATECC608A, escritos por el chip al primer arranque) | Slot 8 del ATECC608A (IsSecret=1, nunca legible) |
+| IV | 16 B aleatorios (TRNG del ATECC608A) | EEPROM `0x0010` |
+| Hashing del PIN | SHA-256(PIN ∥ chip_serial) | MCU (software) |
+| Salt del PIN | Serial del chip de 9 bytes | Config Zone del ATECC608A |
+| Rate-limit del PIN | Counter0 monotónico (hardware) | ATECC608A |
+| Presupuesto de PIN | 50 intentos antes de borrado | Umbral en EEPROM `0x0020` |
+| Integridad de arranque | Verificación de firma ECDSA P-256 | Bootloader |
+| Protección física | Encapsulado en resina epoxy + fuse BOOTPROT | PCB / fuses del SAMD21 |
+
+---
+
+## Resumen de la documentación
+
+<Columns cols={2}>
+  <Card
+    title="Inicio rápido"
+    icon="rocket"
+    href="/es/quickstart"
+  >
+    Guía paso a paso para flashear el firmware, crear tu PIN maestro y almacenar tus primeras credenciales.
+  </Card>
+
+  <Card
+    title="Hardware"
+    icon="microchip"
+    href="/es/hardware/overview"
+  >
+    Esquemas eléctricos, lista de componentes y mapa de memoria EEPROM para el **M24C64-WMN6TP**.
+  </Card>
+
+  <Card
+    title="Firmware"
+    icon="code"
+    href="/es/firmware/architecture"
+  >
+    Explora cómo interactúan los módulos: display, navegación por menús, almacenamiento EEPROM, salida de teclado y generación TOTP.
+  </Card>
+
+  <Card
+    title="Seguridad"
+    icon="shield"
+    href="/es/firmware/security"
+  >
+    Entiende cómo el cifrado AES-128 CBC, la verificación de PIN asistida por el ATECC608A, la generación del IV y el rate-limiting hardware aseguran tus datos.
+  </Card>
+
+  <Card
+    title="Cumplimiento y open source"
+    icon="book"
+    href="/es/certifications"
+  >
+    Certificaciones, licencias y directrices de contribución de la comunidad.
+  </Card>
+
+  <Card
+    title="Soporte"
+    icon="lifebuoy"
+    href="/es/support/faq"
+  >
+    Preguntas frecuentes, pasos de resolución de problemas y cómo contactar con la comunidad de ZeroKeyUSB o solicitar ayuda profesional.
+  </Card>
+</Columns>
+
+---
+
+## ¿Necesitas ayuda?
+
+<Card
+  title="Visita zerokeyusb.com"
+  icon="link"
+  href="https://zerokeyusb.com"
+>
+  Encuentra guías de usuario, actualizaciones y recursos de la comunidad para ZeroKeyUSB.
+</Card>

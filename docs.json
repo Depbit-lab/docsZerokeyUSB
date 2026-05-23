@@ -11,7 +11,7 @@
   "navigation": {
     "tabs": [
       {
-        "tab": "Documentation",
+        "tab": "English",
         "groups": [
           {
             "group": "Introduction",
@@ -97,12 +97,87 @@
         ]
       },
       {
-        "tab": "Downloads",
+        "tab": "Español",
         "groups": [
           {
-            "group": "Reference",
+            "group": "Introducción",
             "pages": [
-              "api-reference/introduction"
+              "es/index",
+              {
+                "group": "Primeros pasos",
+                "pages": [
+                  "es/quickstart",
+                  "es/getting-started/importing-credentials",
+                  "es/getting-started/creating-backups"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "Hardware",
+            "pages": [
+              "es/hardware/overview",
+              "es/hardware/mcu-samd21",
+              "es/hardware/display-ssd1306",
+              "es/hardware/touch-sensor",
+              "es/hardware/eeprom",
+              "es/hardware/atecc608a",
+              "es/hardware/usb-interface"
+            ]
+          },
+          {
+            "group": "Firmware",
+            "pages": [
+              "es/firmware/architecture",
+              {
+                "group": "Bootloader y cadena de confianza",
+                "pages": [
+                  "es/firmware/bootloader/verification",
+                  "es/firmware/bootloader/signer-tool",
+                  "es/firmware/bootloader/flashing-protocol"
+                ]
+              },
+              {
+                "group": "Módulos principales",
+                "pages": [
+                  "es/firmware/menu",
+                  "es/firmware/display",
+                  "es/firmware/io-touch-handling",
+                  "es/firmware/eeprom-management",
+                  "es/firmware/usb-utilities"
+                ]
+              },
+              {
+                "group": "Seguridad",
+                "pages": [
+                  "es/firmware/security",
+                  "es/firmware/security/aes-128-encryption",
+                  "es/firmware/security/pin-verification",
+                  "es/firmware/security/iv-generation"
+                ]
+              },
+              {
+                "group": "Autenticación de dos factores (TOTP)",
+                "pages": [
+                  "es/firmware/totp",
+                  "es/firmware/totp/epoch-synchronization",
+                  "es/firmware/totp/web-time-sync-tool"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "Cumplimiento",
+            "pages": [
+              "es/certifications",
+              "es/open-source"
+            ]
+          },
+          {
+            "group": "Soporte",
+            "pages": [
+              "es/support/faq",
+              "es/support/troubleshooting"
             ]
           }
         ]

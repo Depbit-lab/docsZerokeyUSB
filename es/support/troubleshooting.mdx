@@ -1,0 +1,92 @@
+---
+title: 'Resolución de problemas'
+description: 'Pasos recomendados para diagnosticar y solucionar problemas comunes con ZeroKeyUSB.'
+---
+
+> Sigue las secciones en orden — muchos problemas se resuelven tras completar los pasos previos.
+
+## Antes de empezar
+
+1. Asegúrate de que el dispositivo recibe alimentación estable a través de la conexión USB-C.  
+2. Confirma que estás usando el **firmware original de fábrica** (las actualizaciones rara vez son necesarias).  
+3. Toma nota de cualquier mensaje de error en pantalla y cambios de configuración recientes.  
+4. Si es posible, haz backup de tus credenciales vía el **web manager local** antes de hacer cambios.
+
+---
+
+## Tabla rápida de síntoma y solución
+
+| Síntoma | Causa posible | Acción recomendada |
+| --- | --- | --- |
+| El dispositivo no enciende | Cable o puerto USB no proporciona alimentación | Prueba otro cable o puerto USB-C; evita hubs USB; conecta directamente a PC o powerbank |
+| La pantalla OLED permanece en blanco | Retraso de inicialización del display o EEPROM no responde | Espera 5 segundos tras la conexión; si persiste, reconecta o comprueba las soldaduras de la EEPROM |
+| Los botones táctiles no responden | Controlador TS06 no detectado o mal calibrado | Limpia los pads dorados y reconecta; si sigue sin responder, realiza un reset de fábrica |
+| `EEPROM ERROR` o `IV MISSING` en pantalla | Comunicación con memoria o corrupción de datos | Power-cycle e intenta; si persiste, contacta soporte para inspección |
+| El PIN incorrecto retrasa el acceso | Lockout exponencial disparado tras intentos fallidos | Espera a que termine la cuenta atrás e intenta con el PIN correcto |
+| TOTP muestra `REQTIME` | Tiempo no sincronizado con el host | Usa el web manager y pulsa **Sync Time** antes de generar códigos |
+
+---
+
+## Procedimientos paso a paso
+
+### 1. Reinicio seguro
+
+- Desenchufa ZeroKeyUSB.  
+- Espera unos **5 segundos**.  
+- Reconéctalo a una fuente de alimentación USB (PC o móvil).  
+  La pantalla de bienvenida debería aparecer en 3–5 segundos.
+
+### 2. Resetear el controlador táctil
+
+1. Desconecta y reconecta el dispositivo.  
+2. Espera a que aparezca el logo de **ZeroKeyUSB**.  
+3. Toca cada pad dorado para confirmar que los cinco responden.  
+   Si el táctil sigue sin responder, realiza un **reset de fábrica** para recalibrar automáticamente.
+
+### 3. Flasheo de firmware (solo unidades de desarrollo)
+
+> ⚠️ Los dispositivos de producción están encapsulados en resina y no pueden ser reflasheados por el usuario.  
+> Esta sección se aplica **solo a placas de pre-producción**.
+
+1. Reconecta rápidamente el cable USB dos veces en menos de un segundo para entrar en modo bootloader.  
+2. Copia el fichero de firmware `.uf2` al drive llamado **ZEROBOOT**.  
+3. Espera a que la transferencia termine, luego reconecta normalmente.  
+4. Verifica la versión del firmware en **Menú → Settings → About**.
+
+### 4. Reset de fábrica y reconfiguración
+
+- Exporta credenciales vía el web manager (**Backup → Export**).  
+- Mantén pulsado el **pad táctil central** durante unos 10 segundos hasta que aparezca la cuenta atrás de confirmación.  
+- El proceso borra toda la memoria, incluyendo credenciales, firma del PIN e IV.  
+- Tras el reinicio, re-importa tu backup o ejecuta el setup inicial de nuevo.
+
+---
+
+## Recoger datos para soporte
+
+- Conecta el dispositivo y abre el **Serial Monitor** a **115200 bps** para capturar la salida de log.  
+- Haz fotos de cualquier error en pantalla.  
+- Anota el **número de serie** (`SN ZK-XXXXXXXX`) y la **versión del firmware** desde **Menú → Settings → About**.
+
+---
+
+## Contactar con soporte
+
+Si los problemas persisten:
+
+- Envía un ticket de soporte en [zerokeyusb.com/support](https://zerokeyusb.com/support) incluyendo:
+  - Número de serie del dispositivo  
+  - Versión del firmware  
+  - Capturas o fotos del problema  
+  - Pasos que ya has probado  
+- Nuestro equipo responderá en **24 horas laborables** con más orientación.
+
+> ⚠️ **No intentes abrir ni reflashear un dispositivo sellado.**  
+> Hacerlo destruirá el encapsulado impermeable e invalidará la garantía.
+
+---
+
+<Note>
+Esta guía cubre diagnóstico a nivel de usuario.  
+Para calibración de fábrica o debug avanzado, contacta directamente con los partners de servicio autorizados.
+</Note>

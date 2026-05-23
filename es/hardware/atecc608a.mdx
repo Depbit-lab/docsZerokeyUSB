@@ -1,0 +1,175 @@
+---
+title: "Elemento seguro ATECC608A"
+description: "Función, configuración de slots, comandos y propiedades de seguridad del ATECC608A en ZeroKeyUSB."
+---
+
+El **Microchip ATECC608A** (SKU: MAHDA-T) es el elemento seguro hardware en el corazón de la arquitectura de seguridad de ZeroKeyUSB. Proporciona la entropía, identidad, rate-limiting **y el cifrador AES en sí** — cada bloque de credencial se cifra y descifra dentro de este chip.
+
+---
+
+## ¿Por qué un elemento seguro?
+
+El MCU SAMD21 por sí solo no puede proporcionar:
+
+- **Números aleatorios verdaderos** — los MCUs generan números pseudo-aleatorios a partir de semillas software; la calidad es difícil de verificar.
+- **Contadores monotónicos resistentes a manipulación** — los contadores software se pueden resetear borrando la EEPROM o reflasheando el firmware.
+- **Identidad única del dispositivo** — un serial del chip grabado en el die durante la fabricación proporciona un salt hardware no falsificable.
+- **Un almacén de claves resistente a inspección I²C** — una vez bloqueada la zona de datos con `IsSecret=1`, la clave maestra AES no se puede leer, ni siquiera por código que corra en el MCU.
+
+El ATECC608A cubre los cuatro roles. Antes se consideraba que AES en este chip era inalcanzable en los chips `MAHDA-T`; el firmware actual lo habilita durante una rutina de aprovisionamiento única en el primer arranque.
+
+---
+
+## Conexión hardware
+
+| Señal | Pin SAMD21 | Pin ATECC608A |
+|--------|-----------|---------------|
+| SDA | PA08 | SDA |
+| SCL | PA09 | SCL |
+| GND | GND | GND |
+| VCC | 3,3 V | VCC |
+
+Dirección I²C: **`0x60`**  
+Velocidad del bus: **100 kHz** (configurado en el arranque y coincide con el bootloader)
+
+---
+
+## Nota sobre el SKU — MAHDA-T
+
+La variante `MAHDA-T` se entrega con:
+
+- Comando AES hardware **deshabilitado en fábrica** (el byte 13 `AES_Enable` tiene el bit 0 a cero). Los bits 6 y 7 del mismo byte están programados de fábrica; cualquier escritura que intente borrarlos es rechazada por el chip con `SS=0x03` (parse error).
+- Varios otros bytes en los primeros 16 de la Config Zone están factory-locked (SN, RevNum). Una escritura de 4 bytes que solape con esos bytes se rechaza por completo.
+- Comandos estándar TRNG, Counter, CheckMac y ReadSerial habilitados.
+- Configuración de slot por defecto de fábrica: cada slot está desbloqueado, legible y escribible hasta que el aprovisionamiento bloquee las zonas.
+
+El firmware sortea estas peculiaridades durante el aprovisionamiento en el primer arranque:
+
+1. Lee los bloques afectados a RAM.
+2. Aplica máscara OR solo a los bits que necesitan cambiar (set `AES_Enable` bit 0, set `SlotConfig[8].IsSecret`, set `SlotConfig[8].WriteConfig=Never`, set `KeyConfig[8].KeyType=AES`).
+3. Escribe el bloque entero de 32 bytes de vuelta para que el chip ignore los bytes de solo lectura que hay dentro.
+4. Re-lee y verifica que cada modificación tuvo efecto antes de bloquear.
+
+Una vez completado el aprovisionamiento con éxito, el chip ejecuta bloques AES durante el resto de la vida del dispositivo.
+
+---
+
+## Mapa de slots
+
+Establecido por el propio dispositivo al primer arranque y bloqueado permanentemente:
+
+| Slot | Tamaño usado | Propósito | SlotConfig / KeyConfig |
+|------|-----------|---------|------------------------|
+| **8** | 16 B (primer sub-key AES) | Clave maestra AES-128 — generada por el TRNG del chip, no sale nunca del chip | `IsSecret=1`, `WriteConfig=Never`, `KeyType=6 (AES)`. El chip se niega a devolver los datos del slot vía `Read`. |
+| **9** | 32 B | Clave de PIN: `SHA-256(pinArray[16] ∥ chip_serial[9])` | `IsSecret=0`, `WriteConfig=Always`. La app reescribe el slot cuando el usuario cambia su PIN. Legible por I²C. |
+| **Counter 0** | 4 B mono | Contador de intentos de PIN | Solo incremento, lectura permitida |
+
+> **Nota de seguridad del Slot 9:** Como `MAHDA-T` rechaza escrituras en claro a slots con IsSecret (slots 0–7), la clave de PIN se almacena en el slot 9 que mantiene `IsSecret=0`. Esto significa que el hash de 32 bytes del PIN es **legible** por I²C por cualquiera con acceso físico. Un adversario podría leer el hash e intentar ataques de diccionario offline contra SHA-256(PIN∥serial). Los PINs cortos (< 6 dígitos) son particularmente vulnerables a este enfoque.
+
+> **Trade-off del Slot 8:** Poner `WriteConfig=Never` significa que la clave AES no puede regenerarse después de que la zona de datos esté bloqueada. Si el chip falla, todas las credenciales cifradas con esa clave son irrecuperables. El precio es `IsSecret=1` (la clave no puede leerse por I²C). Exporta una copia de seguridad por USB-CDC antes de fiarte del dispositivo para algo importante.
+
+---
+
+## Comandos usados
+
+### `RANDOM` (opcode `0x1B`)
+- Mode `0x00`: refresca la semilla DRBG interna con entropía hardware antes de generar 32 bytes aleatorios.
+- Usado para generar la clave maestra AES (16 B) dentro del chip y el IV (16 B) al aprovisionamiento. La clave nunca sale del chip — el firmware nunca ve sus bytes; solo el IV se copia a EEPROM.
+
+### `AES` (opcode `0x51`)
+- Mode `0x00`: cifra un bloque de 16 bytes usando la clave del slot 8.
+- Mode `0x01`: descifra un bloque de 16 bytes usando la clave del slot 8.
+- Param2 = `0x0008` (slot 8). El chip mira `KeyConfig[8].KeyType`, confirma que es `6` (AES), usa el sub-key de 16 bytes del slot y ejecuta una ronda AES hardware sobre la entrada.
+- Llamado una vez por bloque de 16 bytes por `cbcEncrypt32` / `cbcDecrypt32` en `zerokey-security.cpp`. El encadenamiento CBC se aplica alrededor de estas llamadas en el MCU.
+
+### `LOCK` (opcode `0x17`)
+- Mode `0x80`: bloquea la zona Config (saltando comprobación CRC).
+- Mode `0x81`: bloquea la zona Data + OTP.
+- Usado durante el aprovisionamiento. Una vez ejecutado, la zona elegida no se puede modificar jamás.
+
+### `WRITE` (opcode `0x12`)
+- Escritura de 32 bytes en claro a la zona Config (`p1=0x80`) — usada por `provisionAesAndLock()` para configurar `AES_Enable`, `SlotConfig[8]` y `KeyConfig[8]`.
+- Escritura de 32 bytes en claro a la zona Data (`p1=0x82`) — usada para rellenar el slot 8 con la clave AES recién generada y para (re)escribir el HMAC del PIN en el slot 9.
+- Cada escritura va seguida de un verify por re-lectura para que el firmware aborte sin bloquear si el chip rechazó silenciosamente el cambio.
+
+### `INFO` (opcode `0x30`)
+- Mode `0x00`: devuelve la palabra de revisión de 4 bytes.
+- Usado como comprobación de vida (`ping()`) para detectar un chip sin aprovisionar o ausente al arrancar.
+
+### `READ` (opcode `0x02`)
+- Lectura de bloques de 32 bytes desde la zona Config.
+- Usado por `readSerial()` para extraer el serial de 9 bytes del chip (bytes 0–3 y 8–12 del bloque 0 de Config).
+- Usado por `readConfigBlock()` (solo aprovisionamiento) y `readLockStatus()`.
+
+### `COUNTER` (opcode `0x24`)
+- Mode `0x00` (read): devuelve el valor actual de Counter0.
+- Mode `0x01` (increment): incrementa Counter0 atómicamente y devuelve el nuevo valor.
+- Llamado antes de cada intento de verificación del PIN. El contador es monotónico hardware — no hay forma software de decrementarlo.
+
+### `CHECKMAC` (opcode `0x28`) — definido pero no usado en la ruta de verificación principal
+- Computa `SHA-256(slot_key ∥ ClientChallenge ∥ OtherData)` dentro del chip y la compara con una respuesta computada por el host.
+- Implementado en `checkMacAgainstPin()` para uso futuro. La `verifySignature()` actual usa una comparación directa de hash en EEPROM.
+
+---
+
+## Protocolo de wake / sleep
+
+El ATECC608A usa una secuencia de wake I²C no estándar:
+
+1. Llevar SDA a bajo durante > 60 µs. Conseguido direccionando `0x00` a 100 kHz (NACK ignorado esperado).
+2. Esperar ≥ 1,5 ms (t_WHI).
+3. Leer la respuesta de wake de 4 bytes: esperar `[0x04, 0x11, CRC_lo, CRC_hi]`.
+4. Validar CRC-16 (poli `0x8005`, init `0x0000`, sin reflexión) sobre los 2 primeros bytes.
+
+Todos los comandos siguen el patrón: `wake()` → `execute()` → `sleep()`. El chip vuelve a sleep de bajo consumo tras cada operación.
+
+---
+
+## Derivación de la clave del PIN
+
+```
+derivePinKey(pin_bytes[16], out[32]):
+    serial[9] = ATECC608A.readSerial()
+    buf[25] = pin_bytes[16] || serial[9]
+    out[32] = SHA-256(buf)
+```
+
+- `pin_bytes` son los valores crudos de dígitos de `pinArray[16]` (cada byte = 0–9 de la entrada táctil).
+- `serial` es el identificador único de 9 bytes del dispositivo (irreversible, programado en fábrica).
+- La misma fórmula la usa el **kit de aprovisionamiento** al escribir el slot 9, garantizando que la app y el chip estén de acuerdo.
+
+Como `serial` es único por chip, el mismo PIN en dos dispositivos ZeroKeyUSB diferentes produce claves de 32 bytes completamente diferentes.
+
+---
+
+## Counter0 — límite hard del PIN
+
+Counter0 se inicializa al aprovisionamiento a su valor de fábrica actual `cur_counter`. El umbral guardado en EEPROM en `0x0020` se pone a `cur_counter + 50`.
+
+Cada intento de PIN — correcto o no — llama a `counterIncrement()`. En un PIN correcto el umbral se resetea a `new_counter + 50`. En PINs incorrectos el umbral permanece fijo, así que tras **50 intentos consecutivos incorrectos** sin uno correcto, `new_counter ≥ threshold` y el firmware borra todos los slots de credenciales (`eraseAll()`).
+
+El valor máximo del contador es `2^20 - 1` (≈ 1 048 575) según el datasheet del ATECC608A. Es suficiente para décadas de uso normal.
+
+---
+
+## Protocolo CRC
+
+Todos los paquetes de comando del ATECC608A usan un CRC-16 personalizado:
+- Polinomio: `0x8005`
+- Valor inicial: `0x0000`
+- Sin reflexión de entrada/salida
+- Sin XOR final
+
+El CRC cubre los bytes del paquete desde `count` hasta el último byte de datos, excluyendo los propios bytes CRC. El CRC de respuesta cubre del byte 0 (`count`) al último byte de datos.
+
+---
+
+## Estado de bloqueo
+
+`getLockStatus()` lee el bloque 2 de la Config Zone (bytes 64–95):
+- Byte 86 (`LockValue`): `0x55` = zona Data+OTP desbloqueada; cualquier otro valor = bloqueada.
+- Byte 87 (`LockConfig`): `0x55` = zona Config desbloqueada; cualquier otro valor = bloqueada.
+
+Un dispositivo totalmente aprovisionado tiene ambas zonas bloqueadas. La rutina de aprovisionamiento bloquea primero la zona Config (tras escribir `AES_Enable`, `SlotConfig[8]`, `KeyConfig[8]`), luego escribe la clave AES aleatoria en el slot 8, y finalmente bloquea la zona Data.
+
+Si el firmware arranca un chip con ambas zonas bloqueadas pero `KeyConfig[8].KeyType ≠ 6`, se para con `CHIP BRICKED KT=<n>` en el OLED en lugar de dejar que las llamadas AES posteriores fallen con códigos de estado opacos. Ese estado significa que una versión anterior del firmware bloqueó el chip con una configuración inválida de clave AES; el chip es físicamente irrecuperable.

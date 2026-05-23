@@ -1,0 +1,234 @@
+---
+title: "Arquitectura del firmware"
+description: "Entiende cómo está organizado el firmware de ZeroKeyUSB, desde los drivers hardware hasta el gestor seguro de credenciales."
+---
+
+## Modular por diseño
+
+El firmware de ZeroKeyUSB está escrito en C++ para el microcontrolador **Microchip SAMD21E18A** (ARM Cortex-M0+, 48 MHz, 256 KB flash, 32 KB SRAM).  
+Sigue una arquitectura en capas que mantiene los drivers de hardware, las primitivas de seguridad y la interfaz de usuario claramente separadas.
+
+```mermaid
+graph TB
+    subgraph Application["Capa de aplicación"]
+        MENU["zerokey-menu.cpp<br/>Sistema de menús + asistente"]
+        IO["zerokey-io.cpp<br/>Enrutado de eventos táctiles"]
+        SETUP["zerokey-setup.cpp<br/>Arranque + flag de config"]
+    end
+
+    subgraph Security["Seguridad y servicios"]
+        SEC["zerokey-security.cpp<br/>Encadenamiento CBC + IV<br/>(bloques vía AES del ATECC)"]
+        TOTP["zerokey-totp.cpp<br/>Generación de códigos TOTP"]
+        ATECC["zerokey-atecc.cpp<br/>Driver ATECC608A<br/>+ AES + aprovisionamiento"]
+    end
+
+    subgraph Drivers["Drivers de hardware"]
+        DISP["zerokey-display.cpp<br/>OLED SSD1306 (I²C)"]
+        EEPROM["zerokey-eeprom.cpp<br/>EEPROM M24C64 (I²C)"]
+        USB["Keyboard.h + SerialUSB<br/>Compuesto HID + CDC"]
+        UTILS["zerokey-utils.cpp<br/>Orientación pantalla, tecleo"]
+    end
+
+    subgraph HAL["HAL del SAMD21 / CMSIS"]
+        WIRE["Wire (I²C)"]
+        USBHAL["Periférico USB FS"]
+    end
+
+    MENU --> SEC
+    IO --> MENU
+    IO --> SEC
+    SETUP --> SEC
+    SETUP --> DISP
+    SEC --> ATECC
+    SEC --> EEPROM
+    TOTP --> EEPROM
+    TOTP --> ATECC
+    DISP --> WIRE
+    EEPROM --> WIRE
+    ATECC --> WIRE
+    USB --> USBHAL
+
+    style Application fill:#dbeafe,stroke:#2563eb
+    style Security fill:#fef3c7,stroke:#d97706
+    style Drivers fill:#dcfce7,stroke:#16a34a
+    style HAL fill:#f3e8ff,stroke:#7c3aed
+```
+
+Cada módulo puede evolucionar de forma independiente manteniendo las rutinas críticas de seguridad auditables y fáciles de revisar.
+
+---
+
+## Mapa de ficheros fuente
+
+| Fichero | Líneas | Función |
+|------|-------|------|
+| `zerokey-security.cpp/.h` | ~750 | Encadenamiento AES-CBC alrededor del comando AES de bloque único del chip, verificación de PIN, borrado, backup/restore |
+| `zerokey-atecc.cpp/.h` | ~640 | Driver I²C del ATECC608A: TRNG, Counter, ReadSerial, CheckMac, SHA-256, AES hardware, Lock y la rutina de aprovisionamiento AES de un disparo |
+| `zerokey-io.cpp/.h` | ~1561 | Dispatch de eventos táctiles, entrada de fecha/hora TOTP, gestor de comandos serie |
+| `zerokey-menu.cpp/.h` | ~1051 | Árbol de menús, asistente de setup (10 páginas), páginas de confirmación/info/actividad |
+| `zerokey-display.cpp/.h` | ~750 | Renderizado SSD1306: pantalla principal, pantalla PIN, editor, progreso, scroll |
+| `zerokey-eeprom.cpp/.h` | ~257 | Lectura/escritura de página, metadatos TOTP, layout de teclado, persistencia de epoch |
+| `zerokey-totp.cpp/.h` | ~500 | HMAC-SHA1/SHA256/SHA512, decodificación Base32, generación de códigos TOTP |
+| `zerokey-setup.cpp/.h` | ~159 | Secuencia de arranque, flag de config (`0x42`), init de TS06, probe de hardware |
+| `zerokey-utils.cpp/.h` | ~500 | Motor de tecleo, orientación de pantalla, pantalla de error, número de serie |
+| `zerokey-globals.h` | ~317 | Constantes, iconos (PROGMEM), externs de variables globales |
+| `zerokey-memorymap.h` | ~38 | Cálculo de direcciones EEPROM, constantes del layout de credenciales |
+
+---
+
+## Secuencia de arranque
+
+```mermaid
+sequenceDiagram
+    participant PWR as Alimentación USB
+    participant BL as Bootloader
+    participant FW as Firmware
+    participant HW as Hardware
+
+    PWR->>BL: Encendido
+    BL->>BL: Comprobación CRC32 + BLAKE2s MAC
+    
+    alt Firmware válido
+        BL->>FW: Salta a la aplicación
+    else Inválido
+        BL->>BL: 15 s de penalización
+        BL->>BL: Entra en modo DFU USB-CDC
+    end
+
+    FW->>HW: Wire.begin() — bus I²C a 100 kHz
+    FW->>HW: Probe del controlador táctil TS06 (5 reintentos)
+    FW->>HW: Configura sensibilidad TS06 (reg 0x00–0x02 = 0x3F)
+    FW->>HW: Init OLED SSD1306 en 0x3C
+    FW->>HW: Lee layout de teclado desde EEPROM 0x003E
+    FW->>HW: Lee último epoch TOTP desde EEPROM 0x0040
+    FW->>HW: Ping ATECC608A + lee estado de lock
+    FW->>HW: Si es primer arranque — aprovisiona AES + lockea zonas
+    FW->>HW: Self-test AES (encrypt + decrypt round-trip)
+    FW->>FW: Lee flag de config desde EEPROM 0x0000
+
+    alt Flag ≠ 0x42
+        FW-->>FW: Lanza el asistente de setup
+    else Flag = 0x42
+        FW->>FW: Aplica delay de backoff pendiente
+        FW-->>FW: Muestra pantalla de PIN
+    end
+```
+
+El flag de configuración en `0x0000` determina si el dispositivo muestra el asistente de setup (`flag ≠ 0x42`) o la pantalla de desbloqueo con PIN (`flag = 0x42`). El asistente escribe `0x42` tras la creación exitosa del PIN.
+
+---
+
+## Bucle principal
+
+El firmware corre un **bucle principal cooperativo** — sin RTOS, sin interrupciones para lógica de aplicación, sin asignación dinámica de memoria:
+
+```mermaid
+graph LR
+    A["Poll TS06<br/>estado táctil"] --> B["Debounce<br/>umbral 80 ms"]
+    B --> C["Dispatch del evento<br/>a la pantalla actual"]
+    C --> D["Actualizar pantalla<br/>refresco de frame completo"]
+    D --> E["Comprobar SerialUSB<br/>por comandos del host"]
+    E --> F["Actualizar TOTP<br/>epoch basado en millis"]
+    F --> A
+    style A fill:#fef3c7,stroke:#d97706,color:#000
+    style D fill:#dbeafe,stroke:#2563eb,color:#000
+```
+
+Cada iteración es determinista. Las operaciones sensibles al tiempo (cuenta atrás TOTP, delays de lockout) usan `millis()` en lugar de delays bloqueantes.
+
+---
+
+## Máquina de estados de pantalla
+
+Cada vista interactiva es un estado identificado por una constante `programPosition`. Los eventos táctiles se despachan en función de este valor:
+
+```mermaid
+stateDiagram-v2
+    [*] --> SPLASHSCREEN
+    SPLASHSCREEN --> SETUP : Primer arranque
+    SPLASHSCREEN --> PIN_SCREEN : Configurado
+    SETUP --> PIN_SCREEN : Asistente completado
+    PIN_SCREEN --> MAIN_INDEX : PIN correcto
+    PIN_SCREEN --> PIN_SCREEN : PIN incorrecto + delay
+    
+    state "Vistas principales" as main {
+        MAIN_INDEX --> MAIN_SITE
+        MAIN_SITE --> MAIN_USER
+        MAIN_USER --> MAIN_PASS
+        MAIN_PASS --> MAIN_2FA
+        MAIN_2FA --> MAIN_INDEX
+    }
+    
+    MAIN_SITE --> EDIT : Pulsación larga Centro
+    MAIN_USER --> EDIT : Pulsación larga Centro
+    MAIN_PASS --> EDIT : Pulsación larga Centro
+    EDIT --> MAIN_INDEX : Pulsación larga Centro (guardar)
+    
+    main --> MENU : Scroll más allá del último slot
+    MENU --> main : Derecha o Volver
+    
+    MAIN_2FA --> TOTP_SHOW_CODE : Tiene secreto + hora sincronizada
+    MAIN_2FA --> TOTP_DATE_ENTRY : Tiene secreto, sin hora
+```
+
+---
+
+## Topología del bus I²C
+
+Todos los periféricos comparten un único bus I²C:
+
+```mermaid
+graph LR
+    MCU["SAMD21<br/>PA08/PA09<br/>Maestro I²C"]
+    MCU -->|"0x3C"| OLED["SSD1306<br/>OLED 128×32"]
+    MCU -->|"0x50"| EEP["M24C64<br/>EEPROM 8 KB"]
+    MCU -->|"0x60"| ATECC["ATECC608A<br/>Elemento seguro"]
+    MCU -->|"0x69"| TS06["TS06<br/>Controlador táctil"]
+    
+    style MCU fill:#dbeafe,stroke:#2563eb,color:#000
+    style ATECC fill:#fef3c7,stroke:#d97706,color:#000
+    style EEP fill:#dcfce7,stroke:#16a34a,color:#000
+```
+
+Velocidad del bus: **100 kHz** (configurado al arranque, coincide con el bootloader).  
+La dirección del TS06 es `0xD2 >> 1 = 0x69`.
+
+---
+
+## Dispositivo USB compuesto
+
+ZeroKeyUSB se enumera como un **dispositivo USB Full-Speed compuesto** con dos interfaces:
+
+| Interfaz | Clase | Propósito |
+|-----------|-------|---------|
+| **Teclado HID** | 0x03 | Teclea credenciales al host — aparece como un teclado estándar |
+| **Serie CDC** | 0x0A | Protocolo ASCII a 115200 bps para backup/restore, sincronización horaria y diagnósticos |
+
+Ambas interfaces están activas simultáneamente tras el arranque. El canal CDC requiere desbloqueo con PIN antes de aceptar cualquier comando que modifique datos.
+
+---
+
+## Huella de memoria
+
+| Región | Tamaño | Uso |
+|--------|------|-------|
+| **Flash** | 256 KB total, ~64 KB usados | Código de firmware, fuentes, iconos PROGMEM, mapas de teclado, datos constantes |
+| **SRAM** | 32 KB total, ~16 KB usados | Buffers UI, `currentSite/User/Pass[16]`, `pinArray[16]`, workspace TOTP |
+| **EEPROM** | 8 KB (M24C64) | Credenciales cifradas (62 slots × 128 B), IV, hash de PIN, config, metadatos TOTP |
+
+No se usa asignación dinámica de memoria (`malloc`/`new`) en ningún sitio. Todos los buffers son asignados en pila o estáticos.
+
+---
+
+## Build y verificación
+
+- Compilado con **ARM GCC** usando el core SAMD de Arduino.
+- Proceso de build gestionado por `Makefile` — soporta compilación selectiva y flasheo J-Link vía `Dashboard.bat`.
+- El binario del firmware se firma con un **MAC BLAKE2s** y se le añade un footer de seguridad de 28 bytes.
+- El bootloader verifica esta firma en cada arranque usando CRC32 + BLAKE2s antes de saltar al código de aplicación.
+- El firmware sin firmar o manipulado dispara un **delay de penalización de 15 segundos** y cae en modo DFU USB-CDC.
+
+<Note>
+ZeroKeyUSB corre sobre un stack de firmware mínimo: sin RTOS, sin asignación dinámica de memoria y sin puertas traseras de debug.  
+Todas las tareas son cooperativas y deterministas en tiempo — la simplicidad se trata como una característica de seguridad.
+</Note>

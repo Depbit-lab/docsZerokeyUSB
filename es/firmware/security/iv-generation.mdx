@@ -1,0 +1,84 @@
+---
+title: "Generación del vector de inicialización"
+description: "Cómo ZeroKeyUSB crea el IV de AES-CBC usando el TRNG del ATECC608A, lo valida y gestiona la regeneración."
+---
+
+El vector de inicialización (IV) garantiza que bloques de plaintext idénticos produzcan ciphertext distinto bajo AES-128 CBC. ZeroKeyUSB genera el IV **una vez al aprovisionar** usando el TRNG hardware del ATECC608A, lo guarda en EEPROM y lo valida en cada unlock.
+
+---
+
+## Procedimiento de generación
+
+Llamado como parte de `storeSignature()` (la rutina de configuración del PIN):
+
+1. `generateAndStoreIV()` llama a `fillIVFromAtecc(iv)`.
+2. `fillIVFromAtecc()` llama a `zerokeyAtecc.random(buf)` — el comando `RANDOM` del ATECC608A con modo `0x00` (actualiza la semilla DRBG interna antes de generar).
+3. Los primeros **16 bytes** de la salida TRNG de 32 bytes se copian a `iv[16]`.
+4. `ivIsValid()` comprueba el resultado: rechaza todo `0x00` o todo `0xFF` (estadísticamente imposible con un TRNG en funcionamiento, pero protege contra fallos del chip).
+5. El IV se escribe en EEPROM en `0x0010–0x001F` vía `eepromWriteRaw()`.
+6. Tras guardar el IV, se llama a `eraseAll()` para resetear todas las páginas de credenciales a blancos cifrados bajo el nuevo IV.
+
+El proceso entero corre en el dispositivo sin intervención del host.
+
+---
+
+## Layout de EEPROM
+
+| Dirección | Contenido |
+|---------|---------|
+| `0x0010` | Byte 0 del IV |
+| `0x0011` | Byte 1 del IV |
+| … | … |
+| `0x001F` | Byte 15 del IV |
+
+---
+
+## Validación al unlock
+
+`loadIVfromEEPROM()` se llama antes de cada operación de cifrado o descifrado:
+
+1. Lee 16 bytes desde `0x0010`.
+2. Si la lectura I²C falla → intenta regenerar desde TRNG y reescribir en EEPROM.
+3. Si `ivIsValid()` devuelve false (todo-cero o todo-FF) → regenera desde el TRNG del ATECC y guarda.
+4. Si la regeneración también falla → devuelve `false`; el llamador muestra una pantalla de error.
+
+---
+
+## Disparadores de regeneración
+
+El IV se regenera automáticamente cuando:
+
+- La lectura de EEPROM falla (error I²C).
+- El valor guardado es todo `0x00` o todo `0xFF` (EEPROM en blanco/corrupta).
+- El usuario genera un PIN nuevo (el flujo completo de `storeSignature()` regenera el IV).
+
+**Consecuencia de la regeneración:** todas las páginas de credenciales fueron cifradas bajo el IV anterior. Regenerar el IV sin también reescribir las páginas de ciphertext hace ilegibles las credenciales existentes. La función `generateAndStoreIV()` por lo tanto llama a `eraseAll()` inmediatamente después de guardar el nuevo IV para llevar la EEPROM a un estado consistente (blancos cifrados).
+
+---
+
+## ¿Por qué un único IV global por dispositivo?
+
+- Mantiene el layout simple, determinista y totalmente auditable.
+- El modo CBC con un IV fijo a través de todos los slots no debilita la confidencialidad mientras la clave AES sea secreta y el IV en sí se haya generado aleatoriamente — la clave varía por dispositivo.
+- IVs por registro requerirían 16 bytes adicionales por slot de credencial y complicarían significativamente el layout de EEPROM.
+- La garantía primaria de confidencialidad viene de la clave maestra AES de 128 bits generada aleatoriamente, no de la unicidad del IV entre registros.
+
+<Note>
+El IV nunca sale del dispositivo. El ciphertext extraído de un ZeroKeyUSB no se puede descifrar con otra unidad incluso si se conocen el PIN y el serial del dispositivo, porque la clave maestra AES es única por dispositivo y vive dentro del ATECC608A — no hay forma de copiarla y usarla en otro sitio.
+</Note>
+
+---
+
+## Detección de manipulación
+
+- `ivIsValid()` rechaza valores obviamente corruptos (todo-cero, todo-FF).
+- Si el IV se voltea bit a bit en la EEPROM, el siguiente descifrado AES-CBC producirá basura para el primer bloque de cada slot (el IV solo afecta la entrada XOR para el bloque 0; los bloques posteriores son auto-sincronizantes en el descifrado CBC).
+- No hay CRC ni MAC guardado junto con el IV en la implementación actual. Un atacante que pueda escribir bytes arbitrarios en la dirección EEPROM `0x0010` puede forzar regeneración del IV (y por lo tanto pérdida de datos) corrompiendo esos bytes.
+
+---
+
+## Propiedades del TRNG del ATECC608A
+
+- El comando `RANDOM` con modo `0x00` actualiza la semilla DRBG interna del chip desde entropía hardware antes de devolver 32 bytes aleatorios.
+- El DRBG está diseñado a requisitos FIPS 140-2 con una vida máxima de semilla antes de re-sembrar forzosamente.
+- La salida se valida localmente (`ivIsValid`) para capturar fallos patológicos.
