@@ -5,25 +5,6 @@ description: "How to enter date/time the first time, view the 6-digit code with 
 
 ZeroKeyUSB can generate **TOTP codes (RFC 6238)** fully offline — the same ones you'd see in Google Authenticator, without a phone. This guide covers the usage flow. To add a TOTP secret to a credential, see [Importing credentials](/getting-started/importing-credentials).
 
-<svg width="0" height="0" style={{position:'absolute'}} aria-hidden="true">
-  <defs>
-    <filter id="zds"><feDropShadow dx="0" dy="4" stdDeviation="3" floodOpacity="0.35"/></filter>
-    <linearGradient id="zusb" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stopColor="#5a6478"/>
-      <stop offset="50%" stopColor="#2c3243"/>
-      <stop offset="100%" stopColor="#5a6478"/>
-    </linearGradient>
-    <radialGradient id="zgold">
-      <stop offset="20%" stopColor="#e8d27a"/>
-      <stop offset="100%" stopColor="#8a7838"/>
-    </radialGradient>
-    <radialGradient id="zcyan">
-      <stop offset="20%" stopColor="#e0f5ff"/>
-      <stop offset="100%" stopColor="#3a8dd1"/>
-    </radialGradient>
-  </defs>
-</svg>
-
 <Note>
 **Before you start:** the credential must have a TOTP secret loaded (in the `2FA` field). If you see `2FA --` on screen, it doesn't have one. Load the secret from the web manager or over USB-CDC first.
 </Note>
@@ -34,24 +15,7 @@ ZeroKeyUSB can generate **TOTP codes (RFC 6238)** fully offline — the same one
 
 From the credential's main screen, press **Down** until you reach the 2FA field. The icon switches from padlock (Pass) to key (2FA). If the credential has a secret loaded, you'll see `2FA (OK)`. Otherwise, `2FA --`.
 
-<svg viewBox="0 0 600 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Step 1: navigate to 2FA">
-  <rect x="6" y="76" width="20" height="48" rx="2" fill="url(#zusb)"/>
-  <rect x="11" y="92" width="10" height="16" rx="1" fill="#1a1f29"/>
-  <rect x="20" y="20" width="560" height="160" rx="16" fill="#d4dae6" filter="url(#zds)"/>
-  <rect x="60" y="38" width="380" height="124" rx="4" fill="#0c1018"/>
-  <rect x="74" y="55" width="352" height="90" fill="#000"/>
-  <text x="78" y="88" fontFamily="ui-monospace, monospace" fontSize="28" fontWeight="bold" fill="#e6f6ff">1</text>
-  <rect x="74" y="101" width="60" height="44" fill="#e6f6ff"/>
-  <text x="98" y="135" fontFamily="ui-monospace, monospace" fontSize="20" fill="#000">🔑</text>
-  <text x="155" y="86" fontFamily="ui-monospace, monospace" fontSize="20" fill="#e6f6ff">Google</text>
-  <text x="155" y="130" fontFamily="ui-monospace, monospace" fontSize="20" fill="#e6f6ff">2FA (OK)</text>
-  <circle cx="500" cy="60"  r="16" fill="url(#zgold)"/>
-  <circle cx="464" cy="100" r="16" fill="url(#zgold)"/>
-  <circle cx="500" cy="100" r="24" fill="#7ad0ff" opacity="0.35"/>
-  <circle cx="500" cy="100" r="16" fill="url(#zcyan)"/>
-  <circle cx="536" cy="100" r="16" fill="url(#zgold)"/>
-  <circle cx="500" cy="140" r="16" fill="url(#zgold)"/>
-</svg>
+<img src="/images/steps/totp-codes-01-nav-2fa.svg" alt="2FA field selected" />
 
 *With the 2FA field selected (inverted key icon), press **Center** (short) to start calculating the code.*
 
@@ -61,35 +25,7 @@ From the credential's main screen, press **Down** until you reach the 2FA field.
 
 The ATECC608A has no RTC. It needs date and time **just once** per session (between power cycles). The device asks for the date first in `DD/MM/YY` format.
 
-<svg viewBox="0 0 600 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Step 2: enter date">
-  <rect x="6" y="76" width="20" height="48" rx="2" fill="url(#zusb)"/>
-  <rect x="11" y="92" width="10" height="16" rx="1" fill="#1a1f29"/>
-  <rect x="20" y="20" width="560" height="160" rx="16" fill="#d4dae6" filter="url(#zds)"/>
-  <rect x="60" y="38" width="380" height="124" rx="4" fill="#0c1018"/>
-  <rect x="74" y="55" width="352" height="90" fill="#000"/>
-  <text x="78" y="68" fontFamily="ui-monospace, monospace" fontSize="11" fill="#e6f6ff">Date (DD/MM/YY)</text>
-  <g fontFamily="ui-monospace, monospace" fontSize="22" fontWeight="bold" fill="#e6f6ff">
-    <rect x="78" y="100" width="22" height="30" fill="#e6f6ff"/>
-    <text x="82" y="124" fill="#000">2</text>
-    <text x="103" y="124">7</text>
-    <text x="124" y="124">/</text>
-    <text x="145" y="124">0</text>
-    <text x="166" y="124">5</text>
-    <text x="187" y="124">/</text>
-    <text x="208" y="124">2</text>
-    <text x="229" y="124">6</text>
-  </g>
-  <circle cx="500" cy="60"  r="24" fill="#7ad0ff" opacity="0.35"/>
-  <circle cx="500" cy="60"  r="16" fill="url(#zcyan)"/>
-  <circle cx="464" cy="100" r="24" fill="#7ad0ff" opacity="0.35"/>
-  <circle cx="464" cy="100" r="16" fill="url(#zcyan)"/>
-  <circle cx="500" cy="100" r="24" fill="#7ad0ff" opacity="0.35"/>
-  <circle cx="500" cy="100" r="16" fill="url(#zcyan)"/>
-  <circle cx="536" cy="100" r="24" fill="#7ad0ff" opacity="0.35"/>
-  <circle cx="536" cy="100" r="16" fill="url(#zcyan)"/>
-  <circle cx="500" cy="140" r="24" fill="#7ad0ff" opacity="0.35"/>
-  <circle cx="500" cy="140" r="16" fill="url(#zcyan)"/>
-</svg>
+<img src="/images/steps/totp-codes-02-date.svg" alt="Enter date" />
 
 | Button | Action |
 |--------|--------|
@@ -105,32 +41,7 @@ The ATECC608A has no RTC. It needs date and time **just once** per session (betw
 
 Same flow, now in `HH:MM` (24h local time) format.
 
-<svg viewBox="0 0 600 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Step 3: enter time">
-  <rect x="6" y="76" width="20" height="48" rx="2" fill="url(#zusb)"/>
-  <rect x="11" y="92" width="10" height="16" rx="1" fill="#1a1f29"/>
-  <rect x="20" y="20" width="560" height="160" rx="16" fill="#d4dae6" filter="url(#zds)"/>
-  <rect x="60" y="38" width="380" height="124" rx="4" fill="#0c1018"/>
-  <rect x="74" y="55" width="352" height="90" fill="#000"/>
-  <text x="78" y="68" fontFamily="ui-monospace, monospace" fontSize="11" fill="#e6f6ff">Time (HH:MM)</text>
-  <g fontFamily="ui-monospace, monospace" fontSize="22" fontWeight="bold" fill="#e6f6ff">
-    <text x="82" y="124">1</text>
-    <text x="103" y="124">4</text>
-    <text x="124" y="124">:</text>
-    <rect x="143" y="100" width="22" height="30" fill="#e6f6ff"/>
-    <text x="147" y="124" fill="#000">3</text>
-    <text x="166" y="124">2</text>
-  </g>
-  <circle cx="500" cy="60"  r="24" fill="#7ad0ff" opacity="0.35"/>
-  <circle cx="500" cy="60"  r="16" fill="url(#zcyan)"/>
-  <circle cx="464" cy="100" r="24" fill="#7ad0ff" opacity="0.35"/>
-  <circle cx="464" cy="100" r="16" fill="url(#zcyan)"/>
-  <circle cx="500" cy="100" r="24" fill="#7ad0ff" opacity="0.35"/>
-  <circle cx="500" cy="100" r="16" fill="url(#zcyan)"/>
-  <circle cx="536" cy="100" r="24" fill="#7ad0ff" opacity="0.35"/>
-  <circle cx="536" cy="100" r="16" fill="url(#zcyan)"/>
-  <circle cx="500" cy="140" r="24" fill="#7ad0ff" opacity="0.35"/>
-  <circle cx="500" cy="140" r="16" fill="url(#zcyan)"/>
-</svg>
+<img src="/images/steps/totp-codes-03-time.svg" alt="Enter time" />
 
 *Same buttons as the date. When done, press **Center** to compute the code.*
 
@@ -144,24 +55,7 @@ The time can be your exact local time — the device does not apply a timezone. 
 
 After entering date and time, the ATECC608A computes HMAC-SHA1 of secret + epoch/30 and shows the resulting 6 digits. The bottom bar empties as the 30-second window approaches its end.
 
-<svg viewBox="0 0 600 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Step 4: view TOTP code">
-  <rect x="6" y="76" width="20" height="48" rx="2" fill="url(#zusb)"/>
-  <rect x="11" y="92" width="10" height="16" rx="1" fill="#1a1f29"/>
-  <rect x="20" y="20" width="560" height="160" rx="16" fill="#d4dae6" filter="url(#zds)"/>
-  <rect x="60" y="38" width="380" height="124" rx="4" fill="#0c1018"/>
-  <rect x="74" y="55" width="352" height="90" fill="#000"/>
-  <text x="78" y="68" fontFamily="ui-monospace, monospace" fontSize="11" fill="#e6f6ff">2FA code</text>
-  <text x="380" y="68" fontFamily="ui-monospace, monospace" fontSize="11" fill="#e6f6ff">23s</text>
-  <text x="250" y="116" textAnchor="middle" fontFamily="ui-monospace, monospace" fontSize="32" fontWeight="bold" fill="#e6f6ff">748392</text>
-  <rect x="140" y="132" width="220" height="6" fill="none" stroke="#e6f6ff" strokeWidth="1"/>
-  <rect x="142" y="134" width="170" height="2" fill="#e6f6ff"/>
-  <circle cx="500" cy="60"  r="16" fill="url(#zgold)"/>
-  <circle cx="464" cy="100" r="16" fill="url(#zgold)"/>
-  <circle cx="500" cy="100" r="24" fill="#7ad0ff" opacity="0.35"/>
-  <circle cx="500" cy="100" r="16" fill="url(#zcyan)"/>
-  <circle cx="536" cy="100" r="16" fill="url(#zgold)"/>
-  <circle cx="500" cy="140" r="16" fill="url(#zgold)"/>
-</svg>
+<img src="/images/steps/totp-codes-04-view-code.svg" alt="TOTP code on screen" />
 
 *With your cursor on the 2FA input field of your app, short-press **Center**. The device types the 6 code digits to the host as if from a normal keyboard.*
 
@@ -175,25 +69,7 @@ If the countdown reaches 0 before you confirm, the code regenerates automaticall
 
 While the device stays plugged in, you won't have to re-enter date and time. The next time you enter a 2FA field (in any credential), you jump straight to step 4 with a code computed using the current time.
 
-<svg viewBox="0 0 600 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Step 5: next code">
-  <rect x="6" y="76" width="20" height="48" rx="2" fill="url(#zusb)"/>
-  <rect x="11" y="92" width="10" height="16" rx="1" fill="#1a1f29"/>
-  <rect x="20" y="20" width="560" height="160" rx="16" fill="#d4dae6" filter="url(#zds)"/>
-  <rect x="60" y="38" width="380" height="124" rx="4" fill="#0c1018"/>
-  <rect x="74" y="55" width="352" height="90" fill="#000"/>
-  <text x="78" y="68" fontFamily="ui-monospace, monospace" fontSize="11" fill="#e6f6ff">2FA code</text>
-  <text x="380" y="68" fontFamily="ui-monospace, monospace" fontSize="11" fill="#e6f6ff">12s</text>
-  <text x="250" y="116" textAnchor="middle" fontFamily="ui-monospace, monospace" fontSize="32" fontWeight="bold" fill="#e6f6ff">091245</text>
-  <rect x="140" y="132" width="220" height="6" fill="none" stroke="#e6f6ff" strokeWidth="1"/>
-  <rect x="142" y="134" width="88" height="2" fill="#e6f6ff"/>
-  <circle cx="500" cy="60"  r="16" fill="url(#zgold)"/>
-  <circle cx="464" cy="100" r="24" fill="#7ad0ff" opacity="0.35"/>
-  <circle cx="464" cy="100" r="16" fill="url(#zcyan)"/>
-  <circle cx="500" cy="100" r="24" fill="#7ad0ff" opacity="0.35"/>
-  <circle cx="500" cy="100" r="16" fill="url(#zcyan)"/>
-  <circle cx="536" cy="100" r="16" fill="url(#zgold)"/>
-  <circle cx="500" cy="140" r="16" fill="url(#zgold)"/>
-</svg>
+<img src="/images/steps/totp-codes-05-next-code.svg" alt="Next code in session" />
 
 *Short-press **Center** to type the code to the host, or **Left** to return to the credential's main view without typing anything.*
 
