@@ -1,0 +1,430 @@
+---
+title: "Initial Tutorial"
+description: "Screen-by-screen walkthrough of the wizard that appears the first time you plug your ZeroKeyUSB in. Orientation, keyboard layout and master PIN."
+---
+
+The first time you plug your ZeroKeyUSB into a USB-C port, a 9-page setup wizard starts automatically (in Spanish by default — the localized strings appear below). This guide walks you from the welcome screen to a device ready to store credentials.
+
+{/* ---------- Reusable SVG defs sprite ---------- */}
+
+<svg width="0" height="0" style={{position:'absolute'}} aria-hidden="true">
+  <defs>
+    <filter id="zds"><feDropShadow dx="0" dy="4" stdDeviation="3" floodOpacity="0.35"/></filter>
+    <linearGradient id="zusb" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stopColor="#5a6478"/>
+      <stop offset="50%" stopColor="#2c3243"/>
+      <stop offset="100%" stopColor="#5a6478"/>
+    </linearGradient>
+    <radialGradient id="zgold">
+      <stop offset="20%" stopColor="#e8d27a"/>
+      <stop offset="100%" stopColor="#8a7838"/>
+    </radialGradient>
+    <radialGradient id="zcyan">
+      <stop offset="20%" stopColor="#e0f5ff"/>
+      <stop offset="100%" stopColor="#3a8dd1"/>
+    </radialGradient>
+  </defs>
+</svg>
+
+---
+
+## Step 1 — Welcome splash
+
+When you plug the cable in, the OLED lights up showing the bootloader logo for a couple of seconds. This confirms that the firmware booted correctly and the ECDSA signature of the binary has been validated by the ATECC608A secure element.
+
+<svg viewBox="0 0 600 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Step 1: ZEROKEY USB splash screen">
+  <rect x="6" y="76" width="20" height="48" rx="2" fill="url(#zusb)"/>
+  <rect x="11" y="92" width="10" height="16" rx="1" fill="#1a1f29"/>
+  <rect x="20" y="20" width="560" height="160" rx="16" fill="#d4dae6" filter="url(#zds)"/>
+  <rect x="60" y="38" width="380" height="124" rx="4" fill="#0c1018"/>
+  <rect x="74" y="55" width="352" height="90" fill="#000"/>
+  <g fontFamily="ui-monospace, Consolas, monospace" fill="#e6f6ff" fontWeight="bold">
+    <text x="250" y="92" textAnchor="middle" fontSize="26">ZEROKEY</text>
+    <text x="250" y="128" textAnchor="middle" fontSize="26">USB</text>
+  </g>
+  <circle cx="500" cy="60"  r="16" fill="url(#zgold)"/>
+  <circle cx="464" cy="100" r="16" fill="url(#zgold)"/>
+  <circle cx="500" cy="100" r="16" fill="url(#zgold)"/>
+  <circle cx="536" cy="100" r="16" fill="url(#zgold)"/>
+  <circle cx="500" cy="140" r="16" fill="url(#zgold)"/>
+</svg>
+
+*Wait about 2 seconds. The wizard appears automatically — you don't have to press anything.*
+
+---
+
+## Step 2 — Page 1: Welcome
+
+First page of the wizard. The inverted top bar shows the title and a page indicator `<1/9>`. The body briefly describes what the device is and what to do.
+
+<svg viewBox="0 0 600 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Step 2: welcome page">
+  <rect x="6" y="76" width="20" height="48" rx="2" fill="url(#zusb)"/>
+  <rect x="11" y="92" width="10" height="16" rx="1" fill="#1a1f29"/>
+  <rect x="20" y="20" width="560" height="160" rx="16" fill="#d4dae6" filter="url(#zds)"/>
+  <rect x="60" y="38" width="380" height="124" rx="4" fill="#0c1018"/>
+  <rect x="74" y="55" width="352" height="90" fill="#000"/>
+  <rect x="74" y="55" width="352" height="14" fill="#e6f6ff"/>
+  <g fontFamily="ui-monospace, Consolas, monospace">
+    <text x="80" y="66" fontSize="11" fill="#000">Bienvenido a</text>
+    <text x="388" y="66" fontSize="11" fill="#000">{"<1/9>"}</text>
+    <g fill="#e6f6ff" fontSize="11">
+      <text x="80" y="84">ZerokeyUSB.</text>
+      <text x="80" y="100">Una llave offline</text>
+      <text x="80" y="116">y a prueba de</text>
+      <text x="80" y="132">manipulacion...</text>
+    </g>
+  </g>
+  <circle cx="500" cy="60"  r="16" fill="url(#zgold)"/>
+  <circle cx="464" cy="100" r="16" fill="url(#zgold)"/>
+  <circle cx="500" cy="100" r="16" fill="url(#zgold)"/>
+  <circle cx="500" cy="140" r="16" fill="url(#zgold)"/>
+  <circle cx="536" cy="100" r="24" fill="#7ad0ff" opacity="0.35"/>
+  <circle cx="536" cy="100" r="16" fill="url(#zcyan)"/>
+</svg>
+
+*Press **Right** to advance. If the body has more text than fits on screen, use **Up/Down** to scroll before continuing.*
+
+---
+
+## Step 3 — Page 2: Navigation
+
+Explains what each of the 5 pads does. This is the only page that describes the controls explicitly.
+
+<svg viewBox="0 0 600 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Step 3: navigation page">
+  <rect x="6" y="76" width="20" height="48" rx="2" fill="url(#zusb)"/>
+  <rect x="11" y="92" width="10" height="16" rx="1" fill="#1a1f29"/>
+  <rect x="20" y="20" width="560" height="160" rx="16" fill="#d4dae6" filter="url(#zds)"/>
+  <rect x="60" y="38" width="380" height="124" rx="4" fill="#0c1018"/>
+  <rect x="74" y="55" width="352" height="90" fill="#000"/>
+  <rect x="74" y="55" width="352" height="14" fill="#e6f6ff"/>
+  <g fontFamily="ui-monospace, Consolas, monospace">
+    <text x="80" y="66" fontSize="11" fill="#000">Navegacion</text>
+    <text x="388" y="66" fontSize="11" fill="#000">{"<2/9>"}</text>
+    <g fill="#e6f6ff" fontSize="11">
+      <text x="80" y="84">Los 5 puntos</text>
+      <text x="80" y="100">dorados son: Arr,</text>
+      <text x="80" y="116">Abj, Izd, Drc y</text>
+      <text x="80" y="132">Centro.</text>
+    </g>
+  </g>
+  <circle cx="500" cy="60"  r="16" fill="url(#zgold)"/>
+  <circle cx="464" cy="100" r="16" fill="url(#zgold)"/>
+  <circle cx="500" cy="100" r="16" fill="url(#zgold)"/>
+  <circle cx="500" cy="140" r="16" fill="url(#zgold)"/>
+  <circle cx="536" cy="100" r="24" fill="#7ad0ff" opacity="0.35"/>
+  <circle cx="536" cy="100" r="16" fill="url(#zcyan)"/>
+</svg>
+
+*Read the page and press **Right** to move to the next one.*
+
+---
+
+## Step 4 — Page 3: Rotate screen
+
+If the golden dots end up on your left instead of on the right, flip the device physically — or rotate the screen in software with **Center**. The orientation is saved in EEPROM and persists across power cycles.
+
+<svg viewBox="0 0 600 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Step 4: rotate screen">
+  <rect x="6" y="76" width="20" height="48" rx="2" fill="url(#zusb)"/>
+  <rect x="11" y="92" width="10" height="16" rx="1" fill="#1a1f29"/>
+  <rect x="20" y="20" width="560" height="160" rx="16" fill="#d4dae6" filter="url(#zds)"/>
+  <rect x="60" y="38" width="380" height="124" rx="4" fill="#0c1018"/>
+  <rect x="74" y="55" width="352" height="90" fill="#000"/>
+  <rect x="74" y="55" width="352" height="14" fill="#e6f6ff"/>
+  <g fontFamily="ui-monospace, Consolas, monospace">
+    <text x="80" y="66" fontSize="11" fill="#000">Girar pantalla</text>
+    <text x="388" y="66" fontSize="11" fill="#000">{"<3/9>"}</text>
+    <g fill="#e6f6ff" fontSize="11">
+      <text x="80" y="84">Si los puntos</text>
+      <text x="80" y="100">estan al reves,</text>
+      <text x="80" y="116">gira la pantalla.</text>
+      <text x="80" y="132">Orient: NORMAL</text>
+    </g>
+  </g>
+  <circle cx="500" cy="60"  r="16" fill="url(#zgold)"/>
+  <circle cx="464" cy="100" r="16" fill="url(#zgold)"/>
+  <circle cx="500" cy="140" r="16" fill="url(#zgold)"/>
+  <circle cx="500" cy="100" r="24" fill="#7ad0ff" opacity="0.35"/>
+  <circle cx="500" cy="100" r="16" fill="url(#zcyan)"/>
+  <circle cx="536" cy="100" r="24" fill="#7ad0ff" opacity="0.35"/>
+  <circle cx="536" cy="100" r="16" fill="url(#zcyan)"/>
+</svg>
+
+*Press **Center** to toggle the orientation (you will see `NORMAL ↔ ROTADA` on screen). When the controls feel right, press **Right** to continue.*
+
+---
+
+## Step 5 — Page 4: Keyboard layout
+
+ZeroKeyUSB emulates a USB keyboard. So that passwords with special characters (`@`, `!`, `#`, etc.) type correctly on your computer, the device needs to know **your** keyboard layout.
+
+<svg viewBox="0 0 600 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Step 5: keyboard layout">
+  <rect x="6" y="76" width="20" height="48" rx="2" fill="url(#zusb)"/>
+  <rect x="11" y="92" width="10" height="16" rx="1" fill="#1a1f29"/>
+  <rect x="20" y="20" width="560" height="160" rx="16" fill="#d4dae6" filter="url(#zds)"/>
+  <rect x="60" y="38" width="380" height="124" rx="4" fill="#0c1018"/>
+  <rect x="74" y="55" width="352" height="90" fill="#000"/>
+  <rect x="74" y="55" width="352" height="14" fill="#e6f6ff"/>
+  <g fontFamily="ui-monospace, Consolas, monospace">
+    <text x="80" y="66" fontSize="11" fill="#000">Distribucion</text>
+    <text x="388" y="66" fontSize="11" fill="#000">{"<4/9>"}</text>
+    <g fill="#e6f6ff" fontSize="11">
+      <text x="80" y="84">Elige la del PC</text>
+      <text x="80" y="100">anfitrion.</text>
+      <text x="80" y="116">Layout: EN-US</text>
+      <text x="80" y="132">Centro: cambiar</text>
+    </g>
+  </g>
+  <circle cx="500" cy="60"  r="16" fill="url(#zgold)"/>
+  <circle cx="464" cy="100" r="16" fill="url(#zgold)"/>
+  <circle cx="500" cy="140" r="16" fill="url(#zgold)"/>
+  <circle cx="500" cy="100" r="24" fill="#7ad0ff" opacity="0.35"/>
+  <circle cx="500" cy="100" r="16" fill="url(#zcyan)"/>
+  <circle cx="536" cy="100" r="24" fill="#7ad0ff" opacity="0.35"/>
+  <circle cx="536" cy="100" r="16" fill="url(#zcyan)"/>
+</svg>
+
+*Press **Center** to cycle through EN-US, ES-ES, FR-FR, DE-DE, IT-IT, PT-PT, DA-DK, SV-SE, HU-HU. When yours appears, press **Right**.*
+
+<Tip>You can change this later from **Menu → Settings → Keyboard**.</Tip>
+
+---
+
+## Step 6 — Page 5: Master PIN (introduction)
+
+This page explains the PIN rules before asking for one. Pick between 4 and 16 digits (0–9). It is the only thing standing between an attacker and your credentials.
+
+<svg viewBox="0 0 600 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Step 6: PIN explanation">
+  <rect x="6" y="76" width="20" height="48" rx="2" fill="url(#zusb)"/>
+  <rect x="11" y="92" width="10" height="16" rx="1" fill="#1a1f29"/>
+  <rect x="20" y="20" width="560" height="160" rx="16" fill="#d4dae6" filter="url(#zds)"/>
+  <rect x="60" y="38" width="380" height="124" rx="4" fill="#0c1018"/>
+  <rect x="74" y="55" width="352" height="90" fill="#000"/>
+  <rect x="74" y="55" width="352" height="14" fill="#e6f6ff"/>
+  <g fontFamily="ui-monospace, Consolas, monospace">
+    <text x="80" y="66" fontSize="11" fill="#000">PIN maestro</text>
+    <text x="388" y="66" fontSize="11" fill="#000">{"<5/9>"}</text>
+    <g fill="#e6f6ff" fontSize="11">
+      <text x="80" y="84">Elige 4-16 digitos.</text>
+      <text x="80" y="100">Si lo pierdes,</text>
+      <text x="80" y="116">pierdes tus datos.</text>
+      <text x="80" y="132">Centro: empezar</text>
+    </g>
+  </g>
+  <circle cx="500" cy="60"  r="16" fill="url(#zgold)"/>
+  <circle cx="464" cy="100" r="16" fill="url(#zgold)"/>
+  <circle cx="536" cy="100" r="16" fill="url(#zgold)"/>
+  <circle cx="500" cy="140" r="16" fill="url(#zgold)"/>
+  <circle cx="500" cy="100" r="24" fill="#7ad0ff" opacity="0.35"/>
+  <circle cx="500" cy="100" r="16" fill="url(#zcyan)"/>
+</svg>
+
+*Press **Center** to move on to the PIN entry screen.*
+
+<Warning>
+**There is no PIN recovery.** If you forget it, the only option is a factory reset that wipes **all** your credentials. Memorize the PIN — or write it down somewhere physically safe.
+</Warning>
+
+---
+
+## Step 7 — Enter the PIN
+
+The numpad screen. Each digit is entered with **Up/Down** (to choose 0–9) and **Right** (to confirm and advance to the next digit). The small arrows on the sides of the active digit remind you of the available moves.
+
+<svg viewBox="0 0 600 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Step 7: PIN numpad">
+  <rect x="6" y="76" width="20" height="48" rx="2" fill="url(#zusb)"/>
+  <rect x="11" y="92" width="10" height="16" rx="1" fill="#1a1f29"/>
+  <rect x="20" y="20" width="560" height="160" rx="16" fill="#d4dae6" filter="url(#zds)"/>
+  <rect x="60" y="38" width="380" height="124" rx="4" fill="#0c1018"/>
+  <rect x="74" y="55" width="352" height="90" fill="#000"/>
+  <rect x="172" y="75" width="50" height="50" fill="none" stroke="#e6f6ff" strokeWidth="2"/>
+  <text x="186" y="113" fontFamily="ui-monospace, monospace" fontSize="32" fill="#e6f6ff" fontWeight="bold">1</text>
+  <rect x="228" y="75" width="50" height="50" fill="none" stroke="#e6f6ff" strokeWidth="2"/>
+  <text x="242" y="113" fontFamily="ui-monospace, monospace" fontSize="32" fill="#e6f6ff" fontWeight="bold">2</text>
+  <polygon points="253,57 245,68 261,68" fill="#e6f6ff"/>
+  <polygon points="253,143 245,132 261,132" fill="#e6f6ff"/>
+  <polygon points="285,90 285,110 295,100" fill="#e6f6ff"/>
+  <circle cx="500" cy="60"  r="24" fill="#7ad0ff" opacity="0.35"/>
+  <circle cx="500" cy="60"  r="16" fill="url(#zcyan)"/>
+  <circle cx="464" cy="100" r="16" fill="url(#zgold)"/>
+  <circle cx="500" cy="100" r="16" fill="url(#zgold)"/>
+  <circle cx="536" cy="100" r="24" fill="#7ad0ff" opacity="0.35"/>
+  <circle cx="536" cy="100" r="16" fill="url(#zcyan)"/>
+  <circle cx="500" cy="140" r="24" fill="#7ad0ff" opacity="0.35"/>
+  <circle cx="500" cy="140" r="16" fill="url(#zcyan)"/>
+</svg>
+
+*For each digit of your PIN: **Up/Down** to the correct number, then **Right** to confirm it. When you finish the last digit, the cursor jumps to the tick (✓) symbol. Press **Center** on the tick to save the PIN.*
+
+<Tip>To erase the last digit if you make a mistake, press **Left**.</Tip>
+
+---
+
+## Step 8 — Page 6: PIN saved
+
+After entering the PIN, the wizard shows it back to you **once** so you can memorize it. This is your last chance to see it in cleartext.
+
+<svg viewBox="0 0 600 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Step 8: PIN saved">
+  <rect x="6" y="76" width="20" height="48" rx="2" fill="url(#zusb)"/>
+  <rect x="11" y="92" width="10" height="16" rx="1" fill="#1a1f29"/>
+  <rect x="20" y="20" width="560" height="160" rx="16" fill="#d4dae6" filter="url(#zds)"/>
+  <rect x="60" y="38" width="380" height="124" rx="4" fill="#0c1018"/>
+  <rect x="74" y="55" width="352" height="90" fill="#000"/>
+  <rect x="74" y="55" width="352" height="14" fill="#e6f6ff"/>
+  <g fontFamily="ui-monospace, Consolas, monospace">
+    <text x="80" y="66" fontSize="11" fill="#000">PIN guardado</text>
+    <text x="388" y="66" fontSize="11" fill="#000">{"<6/9>"}</text>
+    <g fill="#e6f6ff" fontSize="11">
+      <text x="80" y="86">PIN: 123</text>
+      <text x="80" y="106">Memorizalo!</text>
+      <text x="80" y="130">Drcha: continuar</text>
+    </g>
+  </g>
+  <circle cx="500" cy="60"  r="16" fill="url(#zgold)"/>
+  <circle cx="464" cy="100" r="16" fill="url(#zgold)"/>
+  <circle cx="500" cy="100" r="16" fill="url(#zgold)"/>
+  <circle cx="500" cy="140" r="16" fill="url(#zgold)"/>
+  <circle cx="536" cy="100" r="24" fill="#7ad0ff" opacity="0.35"/>
+  <circle cx="536" cy="100" r="16" fill="url(#zcyan)"/>
+</svg>
+
+*Write the PIN down or memorize it. When you have it, press **Right**.*
+
+---
+
+## Step 9 — Page 7: Unlocking
+
+Explains that from now on, every time you plug the USB in, you will have to enter the PIN. And that repeated failures trigger an exponential wait.
+
+<svg viewBox="0 0 600 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Step 9: how to unlock">
+  <rect x="6" y="76" width="20" height="48" rx="2" fill="url(#zusb)"/>
+  <rect x="11" y="92" width="10" height="16" rx="1" fill="#1a1f29"/>
+  <rect x="20" y="20" width="560" height="160" rx="16" fill="#d4dae6" filter="url(#zds)"/>
+  <rect x="60" y="38" width="380" height="124" rx="4" fill="#0c1018"/>
+  <rect x="74" y="55" width="352" height="90" fill="#000"/>
+  <rect x="74" y="55" width="352" height="14" fill="#e6f6ff"/>
+  <g fontFamily="ui-monospace, Consolas, monospace">
+    <text x="80" y="66" fontSize="11" fill="#000">Desbloqueo</text>
+    <text x="388" y="66" fontSize="11" fill="#000">{"<7/9>"}</text>
+    <g fill="#e6f6ff" fontSize="11">
+      <text x="80" y="84">Cada vez que</text>
+      <text x="80" y="100">conectes el USB</text>
+      <text x="80" y="116">te pedira el PIN.</text>
+      <text x="80" y="132">PINs erroneos...</text>
+    </g>
+  </g>
+  <circle cx="500" cy="60"  r="16" fill="url(#zgold)"/>
+  <circle cx="464" cy="100" r="16" fill="url(#zgold)"/>
+  <circle cx="500" cy="100" r="16" fill="url(#zgold)"/>
+  <circle cx="500" cy="140" r="16" fill="url(#zgold)"/>
+  <circle cx="536" cy="100" r="24" fill="#7ad0ff" opacity="0.35"/>
+  <circle cx="536" cy="100" r="16" fill="url(#zcyan)"/>
+</svg>
+
+*Read the page and press **Right** to continue.*
+
+<Note>
+**Exponential backoff:** first failure = 5 s wait, second = 10 s, third = 20 s… up to ~43 min max. The counter resets when you enter the correct PIN. Nothing is wiped automatically.
+</Note>
+
+---
+
+## Step 10 — Page 8: Accounts
+
+A preview of the main screen — how credentials are navigated once you are unlocked.
+
+<svg viewBox="0 0 600 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Step 10: navigating credentials">
+  <rect x="6" y="76" width="20" height="48" rx="2" fill="url(#zusb)"/>
+  <rect x="11" y="92" width="10" height="16" rx="1" fill="#1a1f29"/>
+  <rect x="20" y="20" width="560" height="160" rx="16" fill="#d4dae6" filter="url(#zds)"/>
+  <rect x="60" y="38" width="380" height="124" rx="4" fill="#0c1018"/>
+  <rect x="74" y="55" width="352" height="90" fill="#000"/>
+  <rect x="74" y="55" width="352" height="14" fill="#e6f6ff"/>
+  <g fontFamily="ui-monospace, Consolas, monospace">
+    <text x="80" y="66" fontSize="11" fill="#000">Cuentas</text>
+    <text x="388" y="66" fontSize="11" fill="#000">{"<8/9>"}</text>
+    <g fill="#e6f6ff" fontSize="11">
+      <text x="80" y="84">Arr/Abj cambia de</text>
+      <text x="80" y="100">hueco. Izd/Drc</text>
+      <text x="80" y="116">rota entre sitio,</text>
+      <text x="80" y="132">usuario, clave...</text>
+    </g>
+  </g>
+  <circle cx="500" cy="60"  r="16" fill="url(#zgold)"/>
+  <circle cx="464" cy="100" r="16" fill="url(#zgold)"/>
+  <circle cx="500" cy="100" r="16" fill="url(#zgold)"/>
+  <circle cx="500" cy="140" r="16" fill="url(#zgold)"/>
+  <circle cx="536" cy="100" r="24" fill="#7ad0ff" opacity="0.35"/>
+  <circle cx="536" cy="100" r="16" fill="url(#zcyan)"/>
+</svg>
+
+*Press **Right**.*
+
+---
+
+## Step 11 — Page 9: All set
+
+Last page. Reminds you that you can reach the main menu by pressing **Left** on the first credential (or **Right** on the last, going through "Add New" first).
+
+<svg viewBox="0 0 600 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Step 11: all set">
+  <rect x="6" y="76" width="20" height="48" rx="2" fill="url(#zusb)"/>
+  <rect x="11" y="92" width="10" height="16" rx="1" fill="#1a1f29"/>
+  <rect x="20" y="20" width="560" height="160" rx="16" fill="#d4dae6" filter="url(#zds)"/>
+  <rect x="60" y="38" width="380" height="124" rx="4" fill="#0c1018"/>
+  <rect x="74" y="55" width="352" height="90" fill="#000"/>
+  <rect x="74" y="55" width="352" height="14" fill="#e6f6ff"/>
+  <g fontFamily="ui-monospace, Consolas, monospace">
+    <text x="80" y="66" fontSize="11" fill="#000">Todo listo!</text>
+    <text x="388" y="66" fontSize="11" fill="#000">{"<9/9>"}</text>
+    <g fill="#e6f6ff" fontSize="11">
+      <text x="80" y="84">Puedes volver a</text>
+      <text x="80" y="100">estos consejos</text>
+      <text x="80" y="116">desde Ajustes.</text>
+      <text x="80" y="132">Centro: ir al PIN</text>
+    </g>
+  </g>
+  <circle cx="500" cy="60"  r="16" fill="url(#zgold)"/>
+  <circle cx="464" cy="100" r="16" fill="url(#zgold)"/>
+  <circle cx="536" cy="100" r="16" fill="url(#zgold)"/>
+  <circle cx="500" cy="140" r="16" fill="url(#zgold)"/>
+  <circle cx="500" cy="100" r="24" fill="#7ad0ff" opacity="0.35"/>
+  <circle cx="500" cy="100" r="16" fill="url(#zcyan)"/>
+</svg>
+
+*Press **Center** to exit the wizard and reach the PIN screen. That's it — the device is set up.*
+
+---
+
+## Step 12 — Ready to use
+
+After pressing Center, the device takes you to the PIN numpad to enter the PIN you just created (the **same** one you will see every time you plug the device in from now on). When you enter the PIN correctly, you will reach the main screen — but since there are no credentials yet, the **Add New** screen appears directly.
+
+<svg viewBox="0 0 600 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Step 12: Add New screen">
+  <rect x="6" y="76" width="20" height="48" rx="2" fill="url(#zusb)"/>
+  <rect x="11" y="92" width="10" height="16" rx="1" fill="#1a1f29"/>
+  <rect x="20" y="20" width="560" height="160" rx="16" fill="#d4dae6" filter="url(#zds)"/>
+  <rect x="60" y="38" width="380" height="124" rx="4" fill="#0c1018"/>
+  <rect x="74" y="55" width="352" height="90" fill="#000"/>
+  <rect x="200" y="86" width="100" height="32" fill="none" stroke="#e6f6ff" strokeWidth="2"/>
+  <text x="250" y="108" textAnchor="middle" fontFamily="ui-monospace, monospace" fontSize="13" fill="#e6f6ff">Anadir Nuevo</text>
+  <circle cx="500" cy="60"  r="16" fill="url(#zgold)"/>
+  <circle cx="464" cy="100" r="16" fill="url(#zgold)"/>
+  <circle cx="536" cy="100" r="16" fill="url(#zgold)"/>
+  <circle cx="500" cy="140" r="16" fill="url(#zgold)"/>
+  <circle cx="500" cy="100" r="24" fill="#7ad0ff" opacity="0.35"/>
+  <circle cx="500" cy="100" r="16" fill="url(#zcyan)"/>
+</svg>
+
+*Press **Center** to create your first credential — or follow the dedicated guide at [Create your first credential](/getting-started/first-credential).*
+
+---
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Create your first credential" icon="key" href="/getting-started/first-credential">
+    Save your first password step by step with the on-device editor.
+  </Card>
+  <Card title="Navigate the menu" icon="bars" href="/getting-started/menu-navigation">
+    Learn the Backup, Settings, Danger and Info options.
+  </Card>
+</CardGroup>

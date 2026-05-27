@@ -1,131 +1,259 @@
 ---
-title: "Creating Backups"
-description: "Safely export, store, and restore credentials from your ZeroKeyUSB."
+title: "Create a Backup"
+description: "Export all your credentials as CSV over USB serial. Screen by screen, from the menu to the saved file."
 ---
 
-Keeping an offline backup ensures you can recover your passwords if the device is lost or damaged. ZeroKeyUSB makes the process deliberate — no credentials leave the device without explicit authorization.
+A backup protects you against loss or damage of the device. ZeroKeyUSB makes the process **deliberate**: no credential leaves the device until you physically press the authorization button.
+
+<svg width="0" height="0" style={{position:'absolute'}} aria-hidden="true">
+  <defs>
+    <filter id="zds"><feDropShadow dx="0" dy="4" stdDeviation="3" floodOpacity="0.35"/></filter>
+    <linearGradient id="zusb" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stopColor="#5a6478"/>
+      <stop offset="50%" stopColor="#2c3243"/>
+      <stop offset="100%" stopColor="#5a6478"/>
+    </linearGradient>
+    <radialGradient id="zgold">
+      <stop offset="20%" stopColor="#e8d27a"/>
+      <stop offset="100%" stopColor="#8a7838"/>
+    </radialGradient>
+    <radialGradient id="zcyan">
+      <stop offset="20%" stopColor="#e0f5ff"/>
+      <stop offset="100%" stopColor="#3a8dd1"/>
+    </radialGradient>
+  </defs>
+</svg>
+
+<Warning>
+The backup is emitted as **plaintext** over USB serial. Encrypt it right after capturing it (GPG, age, 7z with password…) and store it offline.
+</Warning>
+
+---
+
+## Before you start
+
+| You need | For |
+|----------|-----|
+| The device unlocked | Export only works with the PIN already entered |
+| A serial tool | Web manager, `screen`, `minicom`, PuTTY or similar at 115200 bps |
+| A safe place to store the file | Encrypted disk, locked SD card, etc. |
+
+---
+
+## Step 1 — Open the menu
+
+From the first credential, press **Left**. (You can also get there by pressing **Right** from the last credential → "Add New" → Right.) See [Navigate the menu](/getting-started/menu-navigation) if in doubt.
+
+<svg viewBox="0 0 600 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Step 1: open the menu">
+  <rect x="6" y="76" width="20" height="48" rx="2" fill="url(#zusb)"/>
+  <rect x="11" y="92" width="10" height="16" rx="1" fill="#1a1f29"/>
+  <rect x="20" y="20" width="560" height="160" rx="16" fill="#d4dae6" filter="url(#zds)"/>
+  <rect x="60" y="38" width="380" height="124" rx="4" fill="#0c1018"/>
+  <rect x="74" y="55" width="352" height="90" fill="#000"/>
+  <rect x="74" y="55" width="72" height="44" fill="#e6f6ff"/>
+  <text x="78" y="88" fontFamily="ui-monospace, monospace" fontSize="28" fontWeight="bold" fill="#000">1</text>
+  <text x="100" y="135" fontFamily="ui-monospace, monospace" fontSize="20" fill="#e6f6ff">👤</text>
+  <text x="155" y="86" fontFamily="ui-monospace, monospace" fontSize="20" fill="#e6f6ff">Google</text>
+  <text x="155" y="130" fontFamily="ui-monospace, monospace" fontSize="20" fill="#e6f6ff">user1</text>
+  <circle cx="500" cy="60"  r="16" fill="url(#zgold)"/>
+  <circle cx="464" cy="100" r="24" fill="#7ad0ff" opacity="0.35"/>
+  <circle cx="464" cy="100" r="16" fill="url(#zcyan)"/>
+  <circle cx="500" cy="100" r="16" fill="url(#zgold)"/>
+  <circle cx="536" cy="100" r="16" fill="url(#zgold)"/>
+  <circle cx="500" cy="140" r="16" fill="url(#zgold)"/>
+</svg>
+
+*Press **Left** while on credential 1.*
+
+---
+
+## Step 2 — Select "Backup"
+
+In the root menu, **Backup** is selected by default. Press **Center** to enter the submenu.
+
+<svg viewBox="0 0 600 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Step 2: select Backup">
+  <rect x="6" y="76" width="20" height="48" rx="2" fill="url(#zusb)"/>
+  <rect x="11" y="92" width="10" height="16" rx="1" fill="#1a1f29"/>
+  <rect x="20" y="20" width="560" height="160" rx="16" fill="#d4dae6" filter="url(#zds)"/>
+  <rect x="60" y="38" width="380" height="124" rx="4" fill="#0c1018"/>
+  <rect x="74" y="55" width="352" height="90" fill="#000"/>
+  <rect x="74" y="55" width="28" height="90" fill="#e6f6ff"/>
+  <g fontFamily="ui-monospace, monospace" fontSize="14" fontWeight="bold" fill="#000">
+    <text x="83" y="80">M</text>
+    <text x="83" y="96">E</text>
+    <text x="83" y="112">N</text>
+    <text x="83" y="128">U</text>
+  </g>
+  <g fontFamily="ui-monospace, monospace" fontSize="13">
+    <rect x="104" y="58" width="320" height="20" fill="#e6f6ff"/>
+    <text x="114" y="73" fill="#000">Backup</text>
+    <text x="114" y="93" fill="#e6f6ff">Settings</text>
+    <text x="114" y="113" fill="#e6f6ff">Danger</text>
+    <text x="114" y="133" fill="#e6f6ff">Info</text>
+  </g>
+  <circle cx="500" cy="60"  r="16" fill="url(#zgold)"/>
+  <circle cx="464" cy="100" r="16" fill="url(#zgold)"/>
+  <circle cx="500" cy="100" r="24" fill="#7ad0ff" opacity="0.35"/>
+  <circle cx="500" cy="100" r="16" fill="url(#zcyan)"/>
+  <circle cx="536" cy="100" r="16" fill="url(#zgold)"/>
+  <circle cx="500" cy="140" r="16" fill="url(#zgold)"/>
+</svg>
+
+*Press **Center**.*
+
+---
+
+## Step 3 — Select "Export"
+
+Inside Backup you have `Import`, `Export` and `< Back`. Press **Down** once to highlight `Export`, then **Center**.
+
+<svg viewBox="0 0 600 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Step 3: select Export">
+  <rect x="6" y="76" width="20" height="48" rx="2" fill="url(#zusb)"/>
+  <rect x="11" y="92" width="10" height="16" rx="1" fill="#1a1f29"/>
+  <rect x="20" y="20" width="560" height="160" rx="16" fill="#d4dae6" filter="url(#zds)"/>
+  <rect x="60" y="38" width="380" height="124" rx="4" fill="#0c1018"/>
+  <rect x="74" y="55" width="352" height="90" fill="#000"/>
+  <rect x="74" y="55" width="28" height="90" fill="#e6f6ff"/>
+  <g fontFamily="ui-monospace, monospace" fontSize="14" fontWeight="bold" fill="#000">
+    <text x="83" y="80">M</text>
+    <text x="83" y="96">E</text>
+    <text x="83" y="112">N</text>
+    <text x="83" y="128">U</text>
+  </g>
+  <g fontFamily="ui-monospace, monospace" fontSize="13">
+    <text x="114" y="73" fill="#e6f6ff">Import</text>
+    <rect x="104" y="78" width="320" height="20" fill="#e6f6ff"/>
+    <text x="114" y="93" fill="#000">Export</text>
+    <text x="114" y="113" fill="#e6f6ff">{"< Back"}</text>
+  </g>
+  <circle cx="500" cy="60"  r="16" fill="url(#zgold)"/>
+  <circle cx="464" cy="100" r="16" fill="url(#zgold)"/>
+  <circle cx="500" cy="100" r="24" fill="#7ad0ff" opacity="0.35"/>
+  <circle cx="500" cy="100" r="16" fill="url(#zcyan)"/>
+  <circle cx="536" cy="100" r="16" fill="url(#zgold)"/>
+  <circle cx="500" cy="140" r="24" fill="#7ad0ff" opacity="0.35"/>
+  <circle cx="500" cy="140" r="16" fill="url(#zcyan)"/>
+</svg>
+
+*Press **Down** to reach `Export`, then **Center** to activate.*
+
+---
+
+## Step 4 — Physical authorization
+
+After pressing Center, the authorization screen appears. This is a **security measure**: the device doesn't export until you hold Center for more than 800 ms (you'll see the large button halo).
+
+<svg viewBox="0 0 600 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Step 4: authorization">
+  <rect x="6" y="76" width="20" height="48" rx="2" fill="url(#zusb)"/>
+  <rect x="11" y="92" width="10" height="16" rx="1" fill="#1a1f29"/>
+  <rect x="20" y="20" width="560" height="160" rx="16" fill="#d4dae6" filter="url(#zds)"/>
+  <rect x="60" y="38" width="380" height="124" rx="4" fill="#0c1018"/>
+  <rect x="74" y="55" width="352" height="90" fill="#000"/>
+  <g fontFamily="ui-monospace, monospace" fontSize="11" fill="#e6f6ff">
+    <text x="250" y="76" textAnchor="middle">Send credentials</text>
+    <text x="250" y="98" textAnchor="middle">to the host.</text>
+    <text x="250" y="125" textAnchor="middle">Hold Center</text>
+    <text x="250" y="140" textAnchor="middle">to authorize.</text>
+  </g>
+  <circle cx="500" cy="60"  r="16" fill="url(#zgold)"/>
+  <circle cx="464" cy="100" r="16" fill="url(#zgold)"/>
+  <circle cx="536" cy="100" r="16" fill="url(#zgold)"/>
+  <circle cx="500" cy="140" r="16" fill="url(#zgold)"/>
+  <circle cx="500" cy="100" r="32" fill="#7ad0ff" opacity="0.5"/>
+  <circle cx="500" cy="100" r="16" fill="url(#zcyan)"/>
+</svg>
+
+*Before continuing, open your serial terminal on the host and connect to the device (115200 bps), or open the [web manager](https://zerokeyusb.com/manager). When it's ready to receive, **hold Center for ~1 second**.*
+
+<Tip>
+Changed your mind? **Release before 800 ms** or press **Left** — the operation is cancelled and you return to the menu.
+</Tip>
+
+---
+
+## Step 5 — Send progress
+
+After authorizing, the device starts decrypting each slot (one by one with AES-128 CBC) and sending it over USB-CDC as a CSV line. The screen shows the progress.
+
+<svg viewBox="0 0 600 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Step 5: export progress">
+  <rect x="6" y="76" width="20" height="48" rx="2" fill="url(#zusb)"/>
+  <rect x="11" y="92" width="10" height="16" rx="1" fill="#1a1f29"/>
+  <rect x="20" y="20" width="560" height="160" rx="16" fill="#d4dae6" filter="url(#zds)"/>
+  <rect x="60" y="38" width="380" height="124" rx="4" fill="#0c1018"/>
+  <rect x="74" y="55" width="352" height="90" fill="#000"/>
+  <rect x="74" y="55" width="352" height="14" fill="#e6f6ff"/>
+  <text x="80" y="66" fontFamily="ui-monospace, monospace" fontSize="11" fill="#000">Exporting...</text>
+  <text x="78" y="92" fontFamily="ui-monospace, monospace" fontSize="11" fill="#e6f6ff">Slot 24 of 62</text>
+  <rect x="78" y="118" width="344" height="14" fill="none" stroke="#e6f6ff" strokeWidth="1"/>
+  <rect x="80" y="120" width="135" height="10" fill="#e6f6ff"/>
+  <circle cx="500" cy="60"  r="16" fill="url(#zgold)"/>
+  <circle cx="464" cy="100" r="16" fill="url(#zgold)"/>
+  <circle cx="500" cy="100" r="16" fill="url(#zgold)"/>
+  <circle cx="536" cy="100" r="16" fill="url(#zgold)"/>
+  <circle cx="500" cy="140" r="16" fill="url(#zgold)"/>
+</svg>
+
+*You don't have to press anything. The device walks through all 62 slots and on completion shows "Export complete" for 1 second before returning to the menu.*
+
+---
+
+## Step 6 — Capture the CSV on the host
+
+While the device sends, on your serial terminal you'll see lines appear:
+
+```csv
+62
+0,Google,user1,contrasena1,JBSWY3DPEHPK3PXP
+1,Apple,user2,password,
+2,Netflix,user3,Atalaya,
+3,github,user4,no me acuerdo,JBSWY3DPEHPK3PXP;algo=SHA256
+4,Amazon,comprador99,123456,
+...
+```
+
+| Field | Meaning |
+|-------|---------|
+| Line 0 | Total number of slots (always `62`) |
+| `slotIndex` | 0–61 |
+| `site` | Site (≤16 chars) |
+| `username` | Username (≤16 chars) |
+| `password` | Password |
+| `totpSecret` | Optional — Base32 (with optional `;algo=SHA256`) or empty |
+
+Save the whole output to a file (`zerokeyusb-2026-05-27.csv`, for example). The web manager has a "Save" button that does this for you.
+
+---
+
+## Step 7 — Encrypt immediately
+
+<Warning>
+The CSV you just saved contains **all** your passwords in cleartext. Encrypt it as soon as you've captured it and delete the unencrypted version.
+</Warning>
+
+```bash
+# Option A: GPG (symmetric, AES-256)
+gpg -c --cipher-algo AES256 zerokeyusb-2026-05-27.csv
+shred -u zerokeyusb-2026-05-27.csv
+
+# Option B: age with passphrase
+age -p -o zerokeyusb-2026-05-27.csv.age zerokeyusb-2026-05-27.csv
+shred -u zerokeyusb-2026-05-27.csv
+
+# Option C: 7z with a strong password (Windows)
+7z a -p -mhe=on zerokeyusb-2026-05-27.7z zerokeyusb-2026-05-27.csv
+del zerokeyusb-2026-05-27.csv
+```
 
 ---
 
 ## When to back up
 
-- After importing or adding several credentials
-- Before performing a factory reset or firmware update
-- Before entering Danger Zone for any destructive action
-- Periodically as part of your security routine
-
----
-
-## Backup format
-
-Backups are transmitted as **plaintext CSV** over the USB serial (CDC) channel.
-
-Each line follows the format:
-```
-slotIndex,siteName,userName,password[,totpSecret]
-```
-
-The first line is the total number of slots (`62`).
-
-<Warning>
-Backups contain all credentials in **plain text**. Treat them with extreme care — encrypt immediately after saving and store offline.
-</Warning>
-
----
-
-## Exporting from the device
-
-```mermaid
-sequenceDiagram
-    participant User
-    participant Device as ZeroKeyUSB
-    participant Host as Host Computer
-
-    User->>Device: Navigate to Menu → Backup → Export
-    Note over Device: Or send "EXPORT" via serial
-    Device->>Device: Show authorization prompt
-    User->>Device: Hold Center (800 ms)
-    
-    loop For each of 62 slots
-        Device->>Device: Decrypt slot (AES-128 CBC)
-        Device->>Host: "index,site,user,pass[,totp]"
-        Device->>Device: Show progress bar
-    end
-    
-    Device->>Device: Show "Export complete"
-```
-
-### Steps
-
-1. **Unlock** the device with your Master PIN.
-2. Navigate to **Menu → Backup → Export**, or send `EXPORT` over USB serial.
-3. **Hold Center** to authorize the export.
-4. Connect a serial terminal or the web manager to capture the output (115200 bps).
-5. The device decrypts all 62 slots and streams them as CSV lines.
-6. Save the output to a file.
-
----
-
-## Storing the backup securely
-
-After exporting:
-
-1. **Encrypt immediately** using a tool you trust:
-   ```bash
-   gpg -c --cipher-algo AES256 backup.csv
-   # or
-   age -p backup.csv > backup.csv.age
-   ```
-2. **Delete the unencrypted file** from your downloads folder.
-3. Store the encrypted file in **at least two separate locations** (e.g., encrypted USB drive + secure cloud storage).
-4. Consider printing a copy and sealing it in a secure location for disaster recovery.
-5. Name the file with the date: `2026-04-zerokeyusb.csv.gpg`.
-
----
-
-## Restoring a backup
-
-```mermaid
-sequenceDiagram
-    participant User
-    participant Device as ZeroKeyUSB
-    participant Host as Host Computer
-
-    User->>Device: Navigate to Menu → Backup → Import
-    Note over Device: Or send "IMPORT" via serial
-    Device->>Device: Show authorization prompt
-    User->>Device: Hold Center (800 ms)
-    Device->>Host: "REQUEST_SAVE"
-    
-    Host->>Device: Total number of records
-    
-    loop For each record
-        Host->>Device: "index,site,user,pass[,totp]"
-        Device->>Device: Encrypt + write to EEPROM
-        Device->>Device: Show progress
-    end
-    
-    Device->>Device: "Import complete"
-```
-
-### Steps
-
-1. Decrypt your backup file if encrypted.
-2. **Unlock** the device and navigate to **Menu → Backup → Import**, or send `IMPORT` over serial.
-3. **Hold Center** to authorize.
-4. When you see `REQUEST_SAVE`, send the total record count, then each CSV line.
-5. Wait for the device to confirm each record: `"Record N stored correctly."`.
-
----
-
-## Verifying the restore
-
-After restoring:
-
-- Browse a few credentials to confirm they match the backup.
-- Test TOTP codes if applicable — time may need re-syncing.
-- Perform a quick login test on a non-critical account.
-- Create a fresh backup of the restored state.
+| When | Why |
+|------|-----|
+| After adding or importing several credentials | So you don't lose new work |
+| Before factory reset or firmware reflashing | The reset is irreversible |
+| Before any **Danger** submenu action | Same |
+| Periodically | As part of your security routine |
 
 ---
 
@@ -133,8 +261,21 @@ After restoring:
 
 | Practice | Why |
 |----------|-----|
-| Back up before any Danger Zone action | Factory reset is irreversible |
-| Encrypt backups immediately | CSV is plaintext — anyone who finds it has all your passwords |
-| Store in ≥ 2 locations | Protects against single point of failure |
-| Test restores periodically | Ensures your backup is usable when you need it |
-| Delete old backups when replaced | Reduces exposure window |
+| Encrypt right away | Plain CSV is a huge risk |
+| Store in ≥ 2 separate physical locations | Protects against single-disk/cloud failure |
+| Test a restore now and then | Guarantees the file is usable when you need it |
+| Shred old backups | Reduces exposure window |
+| Name with date (`YYYY-MM-DD`) | So you know which is most recent |
+
+---
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Import credentials" icon="cloud-arrow-up" href="/getting-started/importing-credentials">
+    Restore from a backup or migrate from another manager.
+  </Card>
+  <Card title="Navigate the menu" icon="bars" href="/getting-started/menu-navigation">
+    Learn the rest of the menu options.
+  </Card>
+</CardGroup>

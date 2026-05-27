@@ -21,8 +21,13 @@
                 "group": "Getting Started",
                 "pages": [
                   "quickstart",
-                  "getting-started/importing-credentials",
-                  "getting-started/creating-backups"
+                  "getting-started/setup-wizard",
+                  "getting-started/first-credential",
+                  "getting-started/edit-credential",
+                  "getting-started/totp-codes",
+                  "getting-started/menu-navigation",
+                  "getting-started/creating-backups",
+                  "getting-started/importing-credentials"
                 ]
               }
             ]
@@ -107,8 +112,13 @@
                 "group": "Primeros pasos",
                 "pages": [
                   "es/quickstart",
-                  "es/getting-started/importing-credentials",
-                  "es/getting-started/creating-backups"
+                  "es/getting-started/setup-wizard",
+                  "es/getting-started/first-credential",
+                  "es/getting-started/edit-credential",
+                  "es/getting-started/totp-codes",
+                  "es/getting-started/menu-navigation",
+                  "es/getting-started/creating-backups",
+                  "es/getting-started/importing-credentials"
                 ]
               }
             ]
