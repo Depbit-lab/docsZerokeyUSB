@@ -1,9 +1,9 @@
 ---
 title: "Navigate the Menu"
-description: "How to access the main menu from the credential list and move through Backup, Settings, Danger and Info."
+description: "How to access the main menu from the credential list and move through Tools, Settings, Danger and Info."
 ---
 
-The main menu holds the actions that are **not** credentials: backups, screen/layout settings, dangerous options (factory reset) and firmware info. This guide shows you how to get there and how to move inside it.
+The main menu holds the actions that are **not** credentials: tools (backups and the Bitcoin wallet), screen/layout settings, dangerous options (factory reset) and firmware info. This guide shows you how to get there and how to move inside it.
 
 ---
 
@@ -27,16 +27,22 @@ If you're near the end of your list, another way is **Right** repeatedly: after 
 
 ---
 
+## Jump 10 at a time
+
+Hold **Left** or **Right** (long-press) while browsing credentials to jump **10 used slots** at once in that direction, instead of one. A short tap still moves one slot. Handy when you have many credentials.
+
+---
+
 ## Menu screen
 
 Once inside, you see four options in the root menu. The inverted `MENU` bar occupies the leftmost 10 pixels as a visual marker.
 
-<img src="/images/steps/menu-navigation-03-root-menu.svg" alt="Root menu with Backup highlighted" />
+<img src="/images/steps/menu-navigation-03-root-menu.svg" alt="Root menu" />
 
 | Item | What it does |
 |------|--------------|
-| **Backup** | Submenu with `Import` and `Export` credentials over USB serial |
-| **Settings** | Rotate screen, UI language, keyboard layout and re-launch tutorial |
+| **Tools** | `Export` / `Import` credentials over USB, plus the **Bitcoin** wallet |
+| **Settings** | Rotate screen, UI language, keyboard layout, screen-reader mode and re-launch tutorial |
 | **Danger** | Factory reset (wipes **everything**) and bootloader mode (for reflashing) |
 | **Info** | Firmware version, serial number and status |
 
@@ -55,6 +61,7 @@ For example, inside **Settings**:
 | Rotate screen | Rotates the display 180° (controls flip too) |
 | Language: XX | Cycles UI language (Spanish ↔ English) |
 | Keyboard: XX-XX | Cycles the USB keyboard layout |
+| Reader: On/Off | Persists the [screen-reader mode](/getting-started/recovery-no-screen) across reboots |
 | Tutorial | Re-launches the first-boot wizard |
 | `< Back` | Returns to the parent menu (equivalent to pressing Left) |
 
@@ -81,17 +88,18 @@ Navigation is **circular**: credentials → "Add New" → menu → first credent
 
 ## Submenus — quick reference
 
-### Backup
+### Tools
 
 | Item | Action |
 |------|--------|
-| Import | Receive credentials over USB-CDC (see [guide](/getting-started/importing-credentials)) |
 | Export | Send all credentials over USB-CDC (see [guide](/getting-started/creating-backups)) |
+| Import | Receive credentials over USB-CDC (see [guide](/getting-started/importing-credentials)) |
+| Bitcoin | On-device Bitcoin wallet: create, view seed, watch-only export and PSBT signing (see [guide](/getting-started/bitcoin)) |
 
 ### Danger
 
 <Warning>
-Actions in the **Danger** submenu are irreversible. Before entering, make sure you have a recent backup.
+Actions in the **Danger** submenu are irreversible. Factory reset, bootloader and the credential Import/Export now require **holding Center** (~1.5 s) to confirm — a single tap will not trigger them, and **Left** cancels. A progress border fills around the screen while you hold.
 </Warning>
 
 | Item | Action |
@@ -108,8 +116,14 @@ Shows firmware version (`v1.0`), device serial number and integrity check. Infor
 ## Next steps
 
 <CardGroup cols={2}>
+  <Card title="Bitcoin wallet" icon="bitcoin-sign" href="/getting-started/bitcoin">
+    Create a wallet, export watch-only and sign transactions.
+  </Card>
+  <Card title="Broken / no screen" icon="eye-low-vision" href="/getting-started/recovery-no-screen">
+    Read the screen over USB if the display fails.
+  </Card>
   <Card title="Create a backup" icon="cloud-arrow-down" href="/getting-started/creating-backups">
-    First use of the Backup → Export submenu.
+    First use of the Tools → Export submenu.
   </Card>
   <Card title="Import credentials" icon="cloud-arrow-up" href="/getting-started/importing-credentials">
     Restore from a backup or migrate from another manager.

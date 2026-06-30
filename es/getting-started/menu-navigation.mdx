@@ -1,9 +1,9 @@
 ---
 title: "Navegar el menú"
-description: "Cómo acceder al menú principal desde la lista de credenciales y moverte por Backup, Ajustes, Peligro e Info."
+description: "Cómo acceder al menú principal desde la lista de credenciales y moverte por Tools, Ajustes, Peligro e Info."
 ---
 
-El menú principal contiene las acciones que **no** son credenciales: copias de seguridad, ajustes de pantalla y layout, opciones peligrosas (reset de fábrica) e información del firmware. Esta guía te enseña a llegar allí y a moverte dentro.
+El menú principal contiene las acciones que **no** son credenciales: herramientas (copias de seguridad y la cartera Bitcoin), ajustes de pantalla y layout, opciones peligrosas (reset de fábrica) e información del firmware. Esta guía te enseña a llegar allí y a moverte dentro.
 
 ---
 
@@ -27,16 +27,22 @@ Si estás cerca del final de tu lista, otra forma de llegar es **Derecha** repet
 
 ---
 
+## Saltar de 10 en 10
+
+Mantén pulsado **Izquierda** o **Derecha** (pulsación larga) mientras navegas las credenciales para saltar **10 huecos usados** de golpe en esa dirección, en lugar de uno. Un toque corto sigue moviendo un hueco. Útil cuando tienes muchas credenciales.
+
+---
+
 ## Pantalla del menú
 
 Una vez dentro, ves cuatro opciones en el menú raíz. La barra `MENU` invertida ocupa los primeros 10 píxeles a la izquierda como marca visual.
 
-<img src="/images/steps/menu-navigation-03-root-menu.svg" alt="Menú raíz con Backup resaltado" />
+<img src="/images/steps/menu-navigation-03-root-menu.svg" alt="Menú raíz" />
 
 | Item | Qué hace |
 |------|----------|
-| **Backup** | Submenú con `Importar` y `Exportar` credenciales por USB serie |
-| **Ajustes** | Rotar pantalla, idioma de la UI, layout del teclado y re-lanzar el tutorial |
+| **Tools** | `Exportar` / `Importar` credenciales por USB, más la cartera **Bitcoin** |
+| **Ajustes** | Rotar pantalla, idioma de la UI, layout del teclado, modo lector de pantalla y re-lanzar el tutorial |
 | **Peligro** | Reset de fábrica (borra **todo**) y modo bootloader (para reflashear) |
 | **Info** | Versión del firmware, número de serie y estado |
 
@@ -55,6 +61,7 @@ Por ejemplo, dentro de **Ajustes**:
 | Rotar pantalla | Gira la pantalla 180° (también gira los controles) |
 | Idioma: XX | Cicla el idioma de la UI (Español ↔ Inglés) |
 | Teclado: XX-XX | Cicla el layout del teclado USB |
+| Reader: On/Off | Hace persistente el [modo lector de pantalla](/es/getting-started/recovery-no-screen) entre reinicios |
 | Tutorial | Relanza el wizard de primer encendido |
 | `< Volver` | Vuelve al menú padre (equivalente a pulsar Izquierda) |
 
@@ -81,17 +88,18 @@ La navegación es **circular**: credenciales → "Anadir Nuevo" → menú → pr
 
 ## Submenús — referencia rápida
 
-### Backup
+### Tools
 
 | Item | Acción |
 |------|--------|
-| Importar | Recibe credenciales por USB-CDC (ver [guía](/es/getting-started/importing-credentials)) |
 | Exportar | Envía todas las credenciales por USB-CDC (ver [guía](/es/getting-started/creating-backups)) |
+| Importar | Recibe credenciales por USB-CDC (ver [guía](/es/getting-started/importing-credentials)) |
+| Bitcoin | Cartera Bitcoin en el dispositivo: crear, ver seed, export watch-only y firma de PSBT (ver [guía](/es/getting-started/bitcoin)) |
 
 ### Peligro
 
 <Warning>
-Las acciones del submenú **Peligro** son irreversibles. Antes de entrar, asegúrate de tener una copia de seguridad reciente.
+Las acciones del submenú **Peligro** son irreversibles. El reset de fábrica, el bootloader y el Importar/Exportar de credenciales ahora requieren **mantener pulsado Centro** (~1,5 s) para confirmar — un toque no las activa, y **Izquierda** cancela. Un borde de progreso se va completando alrededor de la pantalla mientras mantienes pulsado.
 </Warning>
 
 | Item | Acción |
@@ -108,8 +116,14 @@ Muestra la versión del firmware (`v1.0`), el número de serie del dispositivo y
 ## Próximos pasos
 
 <CardGroup cols={2}>
+  <Card title="Cartera Bitcoin" icon="bitcoin-sign" href="/es/getting-started/bitcoin">
+    Crear una cartera, exportar watch-only y firmar transacciones.
+  </Card>
+  <Card title="Pantalla rota / sin pantalla" icon="eye-low-vision" href="/es/getting-started/recovery-no-screen">
+    Lee la pantalla por USB si el display falla.
+  </Card>
   <Card title="Hacer una copia de seguridad" icon="cloud-arrow-down" href="/es/getting-started/creating-backups">
-    El primer uso del submenú Backup → Exportar.
+    El primer uso del submenú Tools → Exportar.
   </Card>
   <Card title="Importar credenciales" icon="cloud-arrow-up" href="/es/getting-started/importing-credentials">
     Recuperar de una copia o migrar de otro gestor.
