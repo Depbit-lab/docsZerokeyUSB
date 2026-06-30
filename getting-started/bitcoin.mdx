@@ -1,0 +1,109 @@
+---
+title: "Bitcoin Wallet"
+description: "Create an airgapped Bitcoin wallet on the device, export a watch-only key to your phone, and sign transactions (PSBT) — the private key never leaves the device."
+---
+
+ZeroKeyUSB can act as an **airgapped Bitcoin signer**. The wallet is a standard **BIP84 native SegWit** wallet (`m/84'/0'/0'`, `bc1q…` addresses). The 12-word seed is generated **on the device** from the ATECC608A hardware TRNG, stored AES-encrypted, and shown **only on the OLED** — it never leaves over USB. You watch balances and build transactions on a separate wallet (phone/desktop); the device only ever reveals **public** data (the `zpub`) and **signatures**.
+
+<Note>
+Find the Bitcoin menu under **Tools → Bitcoin**. Mainnet only.
+</Note>
+
+| Menu item | What it does |
+|-----------|--------------|
+| **Show seed** | Re-displays the 12 words on the OLED (screen only) |
+| **Watch-only** | Prints the `zpub`, master fingerprint and `wpkh` descriptor over USB |
+| **Create wallet** | Generates a new 12-word seed (overwrites any existing one) |
+
+---
+
+## 1 · Create the wallet
+
+<Steps>
+  <Step title="Open Tools → Bitcoin → Create wallet">
+    If a wallet already exists, the device asks you to **hold Center** to confirm the overwrite (this **destroys** the old seed). On a fresh device it starts straight away.
+  </Step>
+  <Step title="Write the 12 words on paper">
+    The device shows the words in pages of three. Advance by tapping. **Write them on paper only** — never photograph them or type them into a computer.
+  </Step>
+  <Step title="Store the paper safely">
+    Anyone with these 12 words controls the funds. The device keeps the seed encrypted; the paper is your only backup.
+  </Step>
+</Steps>
+
+<Warning>
+**Create wallet** generates a brand-new random seed and overwrites the previous one. Coins on the old wallet are lost unless you backed up its 12 words.
+</Warning>
+
+You can re-check the words any time with **Show seed**.
+
+---
+
+## 2 · Set up a watch-only wallet (phone/desktop)
+
+To see balances and build transactions you import the **public** account key into a normal wallet (BlueWallet, Nunchuk, Sparrow, Bitcoin Core…). The device exposes it as a `zpub` and a `wpkh` descriptor with the master-key origin — the origin is required so the transactions you build are recognised by the signer.
+
+<Steps>
+  <Step title="Open the Bitcoin webtool">
+    Open `bitcoin.html` in Chrome or Edge (Web Serial), **Connect device**, and unlock the device with your PIN.
+  </Step>
+  <Step title="Get watch-only from device">
+    Press **Get watch-only**. The page shows the fingerprint, `zpub` and the full descriptor `wpkh([FP/84h/0h/0h]zpub…/0/*)#checksum`, plus a **QR code**.
+  </Step>
+  <Step title="Scan into your wallet">
+    Scan the **descriptor QR** (or the `zpub` QR) into your mobile wallet. It can now show balances and create transactions, but it cannot spend — it has no private key.
+  </Step>
+</Steps>
+
+<Tip>
+You can also trigger the export from the device itself: **Tools → Bitcoin → Watch-only** prints the same data over the serial connection.
+</Tip>
+
+---
+
+## 3 · Sign a transaction (PSBT)
+
+The flow is the standard airgapped PSBT flow: build the spend on your watch-only wallet, sign it on ZeroKeyUSB, then broadcast from the wallet.
+
+<Steps>
+  <Step title="Build the spend">
+    In your watch-only wallet, create the transaction and **export the unsigned PSBT** (base64).
+  </Step>
+  <Step title="Send it to the device">
+    In `bitcoin.html`, paste the PSBT and press **Send to device**.
+  </Step>
+  <Step title="Verify ON THE DEVICE">
+    The OLED shows the destination, the amount being sent and the fee. **Verify these on the device screen**, not in the browser.
+  </Step>
+  <Step title="Hold Center to sign">
+    Hold **Center** to sign (a progress border fills around the screen). Tap any other button to cancel. The device returns the **signed PSBT** to the webtool.
+  </Step>
+  <Step title="Broadcast">
+    Copy the signed PSBT back into your wallet, finalise and broadcast.
+  </Step>
+</Steps>
+
+<Warning>
+Always confirm the **address and amount on the device's own screen** before holding to sign. A compromised computer can show you one thing in the browser while sending another — the device screen is the trusted display.
+</Warning>
+
+If the PSBT has no inputs belonging to this wallet, the device replies **"No inputs for us"** and signs nothing — that is expected when the PSBT is for a different wallet.
+
+---
+
+## Security model
+
+- The **seed never leaves** the device over USB. It is shown only on the OLED, and stored AES-encrypted (same key as your credentials, protected by your PIN).
+- Only **public** data (`zpub`, descriptor) and **signatures** are sent over USB.
+- Signing requires a deliberate **Center hold** after on-screen review — never blind-signs.
+- Entropy comes from the **ATECC608A hardware TRNG**; the device refuses to generate a seed if the hardware RNG check fails.
+- The wallet is **BIP84 mainnet** (`m/84'/0'/0'`).
+
+<CardGroup cols={2}>
+  <Card title="Navigate the menu" icon="bars" href="/getting-started/menu-navigation">
+    Where to find Tools → Bitcoin.
+  </Card>
+  <Card title="Broken / no screen" icon="eye-low-vision" href="/getting-started/recovery-no-screen">
+    Recover access if the display fails.
+  </Card>
+</CardGroup>

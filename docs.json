@@ -27,7 +27,9 @@
                   "getting-started/totp-codes",
                   "getting-started/menu-navigation",
                   "getting-started/creating-backups",
-                  "getting-started/importing-credentials"
+                  "getting-started/importing-credentials",
+                  "getting-started/bitcoin",
+                  "getting-started/recovery-no-screen"
                 ]
               }
             ]
@@ -118,7 +120,9 @@
                   "es/getting-started/totp-codes",
                   "es/getting-started/menu-navigation",
                   "es/getting-started/creating-backups",
-                  "es/getting-started/importing-credentials"
+                  "es/getting-started/importing-credentials",
+                  "es/getting-started/bitcoin",
+                  "es/getting-started/recovery-no-screen"
                 ]
               }
             ]
@@ -196,14 +200,14 @@
     "global": {
       "anchors": [
         {
-          "anchor": "Hardware Repo",
-          "href": "https://github.com/Depbit-lab/zerokeyusb-hardware",
-          "icon": "book-open-cover"
+          "anchor": "Repositorio de software",
+          "href": "https://github.com/Depbit-lab/Zerokey",
+          "icon": "newspaper"
         },
         {
-          "anchor": "Firmware Repo",
-          "href": "https://github.com/Depbit-lab/zerokeyusb",
-          "icon": "newspaper"
+          "anchor": "Repositorio de documentación",
+          "href": "https://github.com/Depbit-lab/docsZerokeyUSB",
+          "icon": "book-open-cover"
         }
       ]
     }

@@ -1,0 +1,71 @@
+---
+title: "Modo pantalla rota / sin pantalla"
+description: "Si la OLED falla, ZeroKeyUSB puede teclear por USB lo que habría en pantalla para que aún puedas meter el PIN y usar el dispositivo."
+---
+
+Si la pantalla se rompe, el dispositivo no queda inservible. Un **modo lector de pantalla** hace que ZeroKeyUSB teclee el contenido de la pantalla actual por **USB HID (teclado)**, línea a línea, en un campo de texto enfocado de tu ordenador o móvil. Puedes seguir metiendo el PIN, navegar las credenciales y teclear contraseñas — a ciegas.
+
+<Note>
+El host teclea en el campo de texto que tengas enfocado. Abre una app de notas / caja de texto vacía **antes** de activarlo, para que la salida vaya a un sitio inofensivo.
+</Note>
+
+---
+
+## Activarlo
+
+<Steps>
+  <Step title="Llega a la pantalla de PIN">
+    Conecta el dispositivo y llega a la pantalla del PIN (la pantalla normal de arranque).
+  </Step>
+  <Step title="Mantén Centro 10 segundos">
+    Mantén pulsado el botón **Centro ~10 s**. Un borde se va completando alrededor de la pantalla durante los 10 s; al completarse, el modo se alterna. Si sueltas antes de los 10 s no pasa nada.
+  </Step>
+  <Step title="Mira aparecer el texto">
+    El dispositivo empieza a teclear el estado actual en tu campo de texto enfocado, p. ej. `ZK reader ON` y luego la línea del PIN.
+  </Step>
+</Steps>
+
+Mantén Centro 10 s de nuevo para desactivarlo.
+
+<Tip>
+Para hacerlo **permanente** (útil cuando la pantalla está realmente muerta), actívalo en **Ajustes → Reader: On/Off**. Eso guarda la elección en EEPROM y el dispositivo arranca directamente en modo lector. El gesto de 10 s solo lo alterna para la sesión actual.
+</Tip>
+
+---
+
+## Qué teclea
+
+El dispositivo mantiene **una línea** en pantalla, borrándola y reescribiéndola según navegas:
+
+| Pantalla | Teclea |
+|----------|--------|
+| Entrada de PIN | `PIN 125 >7` — los dígitos metidos, y luego el dígito seleccionado (`>OK` = el tick de confirmar) |
+| Credencial (sitio) | `3: google.com` |
+| Credencial (user / pass / 2FA) | `3: user`, `3: password`, `3: 2FA` |
+| Menú | `Menu: <item seleccionado>` |
+| Página de confirmación | `<título> Hold=OK Left=No` |
+
+Meter el PIN a ciegas: usa **Arriba/Abajo** para cambiar el dígito seleccionado (mira cómo cambia `>n`), **Derecha** para añadirlo, **Izquierda** para borrar, y selecciona el tick (`>OK`) y luego **Derecha/Centro** para desbloquear — igual que en pantalla, pero leyendo la línea tecleada en vez de la OLED.
+
+Cuando pulsas **Centro** en una credencial, la línea de anuncio se borra y se teclea el **valor real** (user / contraseña) — así, con la pantalla muerta, aún puedes leer una contraseña pulsando Centro en una caja de texto.
+
+---
+
+## Notas y seguridad
+
+<Warning>
+Esto teclea el contenido de tu pantalla — **incluidos los dígitos del PIN y, al pulsar Centro, las contraseñas** — en el campo enfocado. Úsalo para recuperación, en un campo de texto privado que controles, y borra ese campo después.
+</Warning>
+
+- Funciona en la pantalla de PIN incluso antes de desbloquear, así que un dispositivo con la pantalla rota aún se puede desbloquear.
+- La **seed** de Bitcoin nunca se teclea con este modo — es solo-pantalla por diseño.
+- El tecleo va a un ritmo deliberado, así que cada línea tarda un momento en aparecer.
+
+<CardGroup cols={2}>
+  <Card title="Navegar el menú" icon="bars" href="/es/getting-started/menu-navigation">
+    Dónde está el ajuste Reader.
+  </Card>
+  <Card title="Solución de problemas" icon="wrench" href="/es/support/troubleshooting">
+    Otras opciones de recuperación.
+  </Card>
+</CardGroup>

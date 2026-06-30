@@ -1,0 +1,71 @@
+---
+title: "Broken / No Screen Mode"
+description: "If the OLED fails, ZeroKeyUSB can type what would be on screen over USB so you can still enter your PIN and use the device."
+---
+
+If the display breaks, the device is not bricked. A **screen-reader mode** makes ZeroKeyUSB type the current screen contents over **USB HID (keyboard)**, one line at a time, into a focused text field on your computer or phone. You can still enter your PIN, browse credentials and type passwords — blind.
+
+<Note>
+The host types into whatever text field is focused. Open a notes app / empty text box **before** activating, so the output goes somewhere harmless.
+</Note>
+
+---
+
+## Activate it
+
+<Steps>
+  <Step title="Get to the PIN screen">
+    Plug the device in and reach the PIN prompt (the normal boot screen).
+  </Step>
+  <Step title="Hold Center for 10 seconds">
+    Press and **hold the Center button for ~10 s**. A border fills around the screen over the full 10 s; when it completes, the mode toggles. Release before 10 s and nothing happens.
+  </Step>
+  <Step title="Watch the text appear">
+    The device starts typing the current state into your focused text field, e.g. `ZK reader ON` then the PIN line.
+  </Step>
+</Steps>
+
+Hold Center for 10 s again to turn it off.
+
+<Tip>
+To make it **permanent** (useful when the screen is genuinely dead), enable it in **Settings → Reader: On/Off**. That stores the choice in EEPROM and the device boots straight into screen-reader mode. The 10 s gesture only toggles it for the current session.
+</Tip>
+
+---
+
+## What it types
+
+The device keeps **one line** on screen, erasing and rewriting it as you navigate:
+
+| Screen | Types |
+|--------|-------|
+| PIN entry | `PIN 125 >7` — the digits entered so far, then the currently selected digit (`>OK` = the confirm tick) |
+| Credential (site) | `3: google.com` |
+| Credential (user / pass / 2FA) | `3: user`, `3: password`, `3: 2FA` |
+| Menu | `Menu: <selected item>` |
+| Confirm page | `<title> Hold=OK Left=No` |
+
+Entering the PIN blind: use **Up/Down** to change the selected digit (watch `>n` update), **Right** to add it, **Left** to delete, and select the tick (`>OK`) then **Right/Center** to unlock — exactly as on screen, but reading the typed line instead of the OLED.
+
+When you press **Center** on a credential, the announcement line is erased and the **real value** (user / password) is typed — so with a dead screen you can still read a password by pressing Center in a text box.
+
+---
+
+## Notes & safety
+
+<Warning>
+This types your screen contents — **including PIN digits and, on Center, passwords** — into the focused field. Use it for recovery, into a private text field you control, and clear that field afterwards.
+</Warning>
+
+- It works at the PIN screen even before unlocking, so a broken-screen device can still be unlocked.
+- The Bitcoin **seed** is never typed by this mode — it is screen-only by design.
+- Typing is deliberately paced, so each line takes a moment to appear.
+
+<CardGroup cols={2}>
+  <Card title="Navigate the menu" icon="bars" href="/getting-started/menu-navigation">
+    Where the Reader setting lives.
+  </Card>
+  <Card title="Troubleshooting" icon="wrench" href="/support/troubleshooting">
+    Other recovery options.
+  </Card>
+</CardGroup>

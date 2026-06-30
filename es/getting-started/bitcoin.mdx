@@ -1,0 +1,109 @@
+---
+title: "Cartera Bitcoin"
+description: "Crea una cartera Bitcoin airgapped en el dispositivo, exporta una clave watch-only a tu móvil y firma transacciones (PSBT) — la clave privada nunca sale del dispositivo."
+---
+
+ZeroKeyUSB puede actuar como **firmador Bitcoin airgapped**. La cartera es una cartera estándar **BIP84 native SegWit** (`m/84'/0'/0'`, direcciones `bc1q…`). La seed de 12 palabras se genera **en el dispositivo** a partir del TRNG por hardware del ATECC608A, se guarda cifrada con AES y se muestra **solo en la OLED** — nunca sale por USB. Ves saldos y construyes transacciones en otra cartera (móvil/escritorio); el dispositivo solo revela datos **públicos** (el `zpub`) y **firmas**.
+
+<Note>
+El menú Bitcoin está en **Tools → Bitcoin**. Solo mainnet.
+</Note>
+
+| Item del menú | Qué hace |
+|---------------|----------|
+| **Show seed** | Vuelve a mostrar las 12 palabras en la OLED (solo pantalla) |
+| **Watch-only** | Imprime el `zpub`, el fingerprint del master y el descriptor `wpkh` por USB |
+| **Create wallet** | Genera una nueva seed de 12 palabras (sobrescribe la existente) |
+
+---
+
+## 1 · Crear la cartera
+
+<Steps>
+  <Step title="Abre Tools → Bitcoin → Create wallet">
+    Si ya existe una cartera, el dispositivo te pide **mantener pulsado Centro** para confirmar la sobrescritura (esto **destruye** la seed anterior). En un dispositivo nuevo empieza directamente.
+  </Step>
+  <Step title="Apunta las 12 palabras en papel">
+    El dispositivo muestra las palabras en páginas de tres. Avanza tocando. **Apúntalas solo en papel** — nunca las fotografíes ni las teclees en un ordenador.
+  </Step>
+  <Step title="Guarda el papel a buen recaudo">
+    Cualquiera con esas 12 palabras controla los fondos. El dispositivo guarda la seed cifrada; el papel es tu única copia.
+  </Step>
+</Steps>
+
+<Warning>
+**Create wallet** genera una seed nueva aleatoria y sobrescribe la anterior. Las monedas de la cartera vieja se pierden salvo que hayas apuntado sus 12 palabras.
+</Warning>
+
+Puedes volver a comprobar las palabras cuando quieras con **Show seed**.
+
+---
+
+## 2 · Configurar una cartera watch-only (móvil/escritorio)
+
+Para ver saldos y construir transacciones importas la clave de cuenta **pública** en una cartera normal (BlueWallet, Nunchuk, Sparrow, Bitcoin Core…). El dispositivo la expone como `zpub` y como descriptor `wpkh` con el origen de la clave maestra — el origen es necesario para que las transacciones que construyas las reconozca el firmador.
+
+<Steps>
+  <Step title="Abre el webtool de Bitcoin">
+    Abre `bitcoin.html` en Chrome o Edge (Web Serial), pulsa **Connect device** y desbloquea el dispositivo con tu PIN.
+  </Step>
+  <Step title="Get watch-only from device">
+    Pulsa **Get watch-only**. La página muestra el fingerprint, el `zpub` y el descriptor completo `wpkh([FP/84h/0h/0h]zpub…/0/*)#checksum`, además de un **código QR**.
+  </Step>
+  <Step title="Escanea en tu cartera">
+    Escanea el **QR del descriptor** (o el QR del `zpub`) en tu cartera móvil. Ya puede mostrar saldos y crear transacciones, pero no puede gastar — no tiene clave privada.
+  </Step>
+</Steps>
+
+<Tip>
+También puedes lanzar el export desde el propio dispositivo: **Tools → Bitcoin → Watch-only** imprime los mismos datos por la conexión serie.
+</Tip>
+
+---
+
+## 3 · Firmar una transacción (PSBT)
+
+El flujo es el estándar airgapped de PSBT: construye el gasto en tu cartera watch-only, fírmalo en ZeroKeyUSB y transmítelo desde la cartera.
+
+<Steps>
+  <Step title="Construye el gasto">
+    En tu cartera watch-only, crea la transacción y **exporta el PSBT sin firmar** (base64).
+  </Step>
+  <Step title="Envíalo al dispositivo">
+    En `bitcoin.html`, pega el PSBT y pulsa **Send to device**.
+  </Step>
+  <Step title="Verifica EN EL DISPOSITIVO">
+    La OLED muestra el destino, el importe que se envía y la comisión. **Verifica esto en la pantalla del dispositivo**, no en el navegador.
+  </Step>
+  <Step title="Mantén pulsado Centro para firmar">
+    Mantén **Centro** para firmar (un borde de progreso se completa alrededor de la pantalla). Toca cualquier otro botón para cancelar. El dispositivo devuelve el **PSBT firmado** al webtool.
+  </Step>
+  <Step title="Transmite">
+    Copia el PSBT firmado de vuelta a tu cartera, finaliza y transmite.
+  </Step>
+</Steps>
+
+<Warning>
+Confirma siempre la **dirección y el importe en la propia pantalla del dispositivo** antes de mantener pulsado para firmar. Un ordenador comprometido puede mostrarte una cosa en el navegador y enviar otra — la pantalla del dispositivo es el display de confianza.
+</Warning>
+
+Si el PSBT no tiene entradas que pertenezcan a esta cartera, el dispositivo responde **"No inputs for us"** y no firma nada — es lo esperado cuando el PSBT es de otra cartera.
+
+---
+
+## Modelo de seguridad
+
+- La **seed nunca sale** del dispositivo por USB. Se muestra solo en la OLED y se guarda cifrada con AES (la misma clave que tus credenciales, protegida por tu PIN).
+- Por USB solo viajan datos **públicos** (`zpub`, descriptor) y **firmas**.
+- Firmar requiere un **hold de Centro** deliberado tras la revisión en pantalla — nunca firma a ciegas.
+- La entropía viene del **TRNG por hardware del ATECC608A**; el dispositivo se niega a generar una seed si el chequeo del RNG por hardware falla.
+- La cartera es **BIP84 mainnet** (`m/84'/0'/0'`).
+
+<CardGroup cols={2}>
+  <Card title="Navegar el menú" icon="bars" href="/es/getting-started/menu-navigation">
+    Dónde encontrar Tools → Bitcoin.
+  </Card>
+  <Card title="Pantalla rota / sin pantalla" icon="eye-low-vision" href="/es/getting-started/recovery-no-screen">
+    Recupera el acceso si el display falla.
+  </Card>
+</CardGroup>
