@@ -19,7 +19,7 @@ block-beta
         B["0x0001: Modo de pantalla (1B)"]
         C["0x0002: Intentos fallidos (1B)"]
         D["0x0010–0x001F: IV AES (16B)"]
-        E["0x0020–0x0023: Umbral de PIN (4B)"]
+        E["0x0020–0x0023: legacy / reservado (4B)"]
         F["0x0024: Flag de aprovisionamiento (1B)"]
         G["0x0028–0x0037: legacy / reservado (16B)"]
         I["0x003E: Layout de teclado (1B)"]
@@ -39,9 +39,9 @@ block-beta
 |---------|------|---------|---------------|
 | `0x0000` | 1 B | Flag del asistente de config (`0x42` = hecho) | `zerokey-setup.cpp` |
 | `0x0001` | 1 B | Orientación de pantalla (0 = normal, 1 = invertida) | `EEPROM_SCREEN_MODE_ADDR` |
-| `0x0002` | 1 B | Contador soft de intentos fallidos (backoff UX) | `FAILED_ATTEMPTS_ADDR` |
+| `0x0002` | 1 B | Contador de intentos fallidos (backoff persistente, reaplicado al arrancar) | `FAILED_ATTEMPTS_ADDR` |
 | `0x0010–0x001F` | 16 B | Vector de inicialización AES-CBC | `EEPROM_IV_ADDR` |
-| `0x0020–0x0023` | 4 B | Umbral de intentos de PIN (LE uint32) | `EEPROM_THRESHOLD_ADDR` |
+| `0x0020–0x0023` | 4 B | *Reservado.* Umbral de intentos legacy del lockout por Counter0 ya eliminado; no se lee ni escribe. | — |
 | `0x0024` | 1 B | Flag de aprovisionamiento (`0xA5` = aprovisionado) | `EEPROM_PROVISION_FLAG` |
 | `0x0028–0x0037` | 16 B | *Reservado.* Contenía la clave maestra AES en firmware anteriores; la clave ahora vive en el slot 8 del ATECC y nunca toca la EEPROM. | — |
 | `0x003E` | 1 B | Selector de layout de teclado (0–8) | `EEPROM_LAYOUT_ADDR` |

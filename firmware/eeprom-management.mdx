@@ -19,7 +19,7 @@ block-beta
         B["0x0001: Screen mode (1B)"]
         C["0x0002: Failed attempts (1B)"]
         D["0x0010–0x001F: AES IV (16B)"]
-        E["0x0020–0x0023: PIN threshold (4B)"]
+        E["0x0020–0x0023: legacy / reserved (4B)"]
         F["0x0024: Provision flag (1B)"]
         G["0x0028–0x0037: legacy / reserved (16B)"]
         I["0x003E: Keyboard layout (1B)"]
@@ -39,9 +39,9 @@ block-beta
 |---------|------|---------|---------------|
 | `0x0000` | 1 B | Config wizard flag (`0x42` = done) | `zerokey-setup.cpp` |
 | `0x0001` | 1 B | Screen orientation (0 = normal, 1 = inverted) | `EEPROM_SCREEN_MODE_ADDR` |
-| `0x0002` | 1 B | Soft failed-attempts counter (UX backoff) | `FAILED_ATTEMPTS_ADDR` |
+| `0x0002` | 1 B | Failed-attempts counter (persistent backoff, re-applied at boot) | `FAILED_ATTEMPTS_ADDR` |
 | `0x0010–0x001F` | 16 B | AES-CBC Initialization Vector | `EEPROM_IV_ADDR` |
-| `0x0020–0x0023` | 4 B | PIN attempt threshold (LE uint32) | `EEPROM_THRESHOLD_ADDR` |
+| `0x0020–0x0023` | 4 B | *Reserved.* Legacy PIN-attempt threshold from the removed Counter0 lockout; no longer read or written. | — |
 | `0x0024` | 1 B | Provisioning flag (`0xA5` = provisioned) | `EEPROM_PROVISION_FLAG` |
 | `0x0028–0x0037` | 16 B | *Reserved.* Held the AES master key in older firmware; the key now lives in ATECC slot 8 and never touches EEPROM. | — |
 | `0x003E` | 1 B | Keyboard layout selector (0–8) | `EEPROM_LAYOUT_ADDR` |

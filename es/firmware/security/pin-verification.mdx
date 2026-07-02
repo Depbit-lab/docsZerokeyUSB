@@ -1,9 +1,9 @@
 ---
 title: "Verificación del PIN"
-description: "Flujo de unlock, rate-limiting hardware con Counter0, comparación de hash SHA-256 y delays adaptativos para el PIN maestro."
+description: "Flujo de unlock, comparación de hash SHA-256 y el backoff exponencial persistente que limita el ritmo del PIN maestro."
 ---
 
-ZeroKeyUSB usa un PIN maestro (1–16 dígitos) para autenticar al usuario. El proceso de verificación combina una **comparación software de hash a tiempo constante** con un **contador monotónico hardware** en el ATECC608A para bloquear intentos de fuerza bruta tanto a nivel software como hardware.
+ZeroKeyUSB usa un PIN maestro (1–16 dígitos) para autenticar al usuario. El proceso de verificación combina una **comparación software de hash a tiempo constante** con un **backoff exponencial persistente** que se vuelve a aplicar en cada arranque, haciendo la fuerza bruta impracticable sin destruir jamás los datos guardados.
 
 ---
 
@@ -40,48 +40,49 @@ El serial del chip actúa como salt hardware: el mismo PIN numérico en otro dis
 Cada intento de unlock ejecuta los siguientes pasos en `verifySignature()`:
 
 ```
-1. zerokeyAtecc.counterIncrement(Counter0) → new_counter
-2. Leer umbral desde EEPROM [0x0020]
-3. Si new_counter >= umbral → eraseAll() + halt (lockout hard)
-4. derivePinKey(pinArray, derived):
+Al arrancar, antes de que la pantalla de PIN acepte ninguna entrada:
+    waitFromEeprom()   // reaplica el backoff acumulado para el contador de fallos guardado
+
+Luego cada intento de unlock ejecuta verifySignature():
+1. derivePinKey(pinArray, derived):
        serial = ATECC608A.readSerial()
        derived = SHA-256(pinArray[16] || serial[9])
-5. Leer hash guardado desde EEPROM [0x0048] → stored[32]
-6. diff = 0; for i in 0..31: diff |= stored[i] ^ derived[i]  // tiempo constante
-7. Si diff == 0:
-       writeThreshold(new_counter + 50)   // resetear presupuesto
-       writeFailedAttemptsCounter(0)
+2. Leer hash guardado desde EEPROM [0x0048] → stored[32]
+3. diff = 0; for i in 0..31: diff |= stored[i] ^ derived[i]  // tiempo constante
+4. Si diff == 0:
+       writeFailedAttemptsCounter(0)      // limpia el backoff
        → ACCESO CONCEDIDO
-8. Si no:
+5. Si no:
        incrementFailedAttemptsCounter()
        waitFromEeprom()                   // backoff exponencial
        → ACCESO DENEGADO
 ```
 
----
-
-## Contador hardware — límite hard
-
-**Counter0 en el ATECC608A** es un contador hardware monotónico. Sus propiedades clave:
-
-- Incrementa en 1 con cada llamada a `counterIncrement()` — una vez por intento de PIN.
-- **No se puede decrementar, resetear ni rebajar** por software, ciclo de alimentación ni reset hardware.
-- Persiste a través de pérdidas de alimentación dentro de la memoria no volátil del chip.
-- El umbral guardado en EEPROM `0x0020` es un uint32 (little-endian) que representa el valor del contador al que ocurre el siguiente borrado.
-
-| Evento | Efecto en contador | Efecto en umbral |
-|-------|---------------|-----------------|
-| Intento de PIN incorrecto | +1 | sin cambios |
-| PIN correcto | +1 | resetea a `Counter0 + 50` |
-| Counter ≥ umbral | — | dispara `eraseAll()` |
-
-Con una racha ininterrumpida de PINs incorrectos, el contador alcanza el umbral en exactamente **50 intentos** y dispara un borrado completo de credenciales.
+En esta ruta **no hay incremento de `Counter0`, ni lectura de umbral, ni borrado automático**. Un diseño anterior usaba el Counter0 monotónico del ATECC608A para borrar la bóveda tras 50 PINs incorrectos; eso se eliminó. La defensa real es el backoff persistente descrito abajo.
 
 ---
 
-## Delays adaptativos — backoff soft
+## Rate-limiting persistente — la defensa real contra fuerza bruta
 
-Guardado en EEPROM `0x0002`. Este contador a nivel UX se resetea en un PIN correcto:
+**No hay borrado automático** tras un número de intentos fallidos; la bóveda nunca se destruye por PINs incorrectos. En su lugar, cada intento se ralentiza con un backoff exponencial cuyo contador vive en EEPROM (`0x0002`) y por tanto sobrevive a la pérdida de alimentación.
+
+El detalle clave es *cuándo* se aplica el retardo. En cada arranque, `readConfigurationFlag()` llama a `waitFromEeprom()` **antes de que la pantalla de PIN acepte ninguna entrada**. Así, un atacante no puede saltarse la penalización cortando la corriente a mitad de la cuenta atrás: tras cada intento fallido, el retardo acumulado se reimpone en el siguiente encendido. Una vez el contador supera ~10 fallos, cada intento adicional cuesta ≈ 43 minutos, de modo que la fuerza bruta online es impracticable (un PIN de 4 dígitos tardaría del orden de un año) — todo ello sin destruir jamás los datos del usuario.
+
+| Evento | Contador de fallos (EEPROM `0x0002`) |
+|-------|--------------------------------------|
+| PIN incorrecto | +1, y luego aplica el retardo de backoff |
+| PIN correcto | se resetea a 0 |
+| Ciclo de alimentación | el retardo del contador guardado se reaplica al arrancar |
+
+`eraseAll()` sigue existiendo, pero solo lo dispara **manualmente** el usuario (reset de fábrica / PIN olvidado) — nunca automáticamente por PINs incorrectos.
+
+> **Salvedad offline.** El rate-limit solo se aplica a los intentos hechos a través del dispositivo. El hash del PIN es legible por I²C (EEPROM `0x0048` y slot 9 del ATECC con `IsSecret=0`), así que un atacante que alcance físicamente el bus I²C puede copiar el hash y el serial del chip y crackear el PIN offline sin ningún retardo. Lo que lo impide es la **encapsulación en resina** que bloquea el acceso al bus — más usar un PIN largo. No es el backoff.
+
+---
+
+## Backoff exponencial — tabla de retardos
+
+Guardado en EEPROM `0x0002` y reaplicado al arrancar; se resetea solo con un PIN correcto:
 
 | Intentos fallidos | Tiempo de espera |
 |-----------------|-----------|
@@ -120,7 +121,7 @@ Iniciado vía **Menú → Change PIN** → `storeSignature()`:
 2. `derivePinKey(pinArray, derived)` computa el nuevo hash.
 3. El nuevo hash de 32 bytes se escribe en el slot 9 del ATECC.
 4. El nuevo hash de 32 bytes se escribe en EEPROM `0x0048`.
-5. Se lee Counter0 actual; el umbral se pone a `Counter0 + 50`.
+5. Se limpia el contador de intentos fallidos (EEPROM `0x0002`).
 6. El ping al ATECC confirma que el chip sigue vivo. La clave AES del slot 8 **no se toca** durante la configuración del PIN — se aprovisiona una vez al primer arranque y es irrevocable.
 7. El IV se carga o se genera.
 8. Se escribe el flag de config (`0x42`).

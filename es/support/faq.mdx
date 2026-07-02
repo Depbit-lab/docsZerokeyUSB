@@ -53,7 +53,7 @@ Tus credenciales están protegidas por **tres capas**:
 
 1. **Cifrado AES-128 CBC** — cada credencial se cifra con una clave de 128 bits generada por el generador de números aleatorios hardware del ATECC608A. Esta clave es única para tu dispositivo.
 2. **Verificación de PIN** — tu PIN maestro se hashea con SHA-256 usando el número de serie único del chip como salt. El hash se compara a tiempo constante para evitar ataques de timing.
-3. **Rate-limiting hardware** — un contador monotónico en el elemento seguro ATECC608A rastrea cada intento de PIN. Tras **50 intentos consecutivos incorrectos**, todos los datos se borran permanentemente.
+3. **Rate-limiting persistente** — cada PIN incorrecto dispara un retardo exponencial (hasta ≈ 43 minutos) guardado en EEPROM y reaplicado en cada arranque, así que no se puede saltar apagando y encendiendo. Los intentos se frenan hasta hacerlos impracticables, sin destruir jamás tus datos.
 
 Incluso si alguien extrajera físicamente el chip de memoria, la clave AES requerida para descifrar los datos fue generada por el TRNG hardware y no se deriva de tu PIN.
 
@@ -97,8 +97,10 @@ Dos niveles de protección:
 | 4 | 40 segundos |
 | … | Dobla hasta 43 minutos |
 
-**Límite hard (contador hardware):**
-Tras **50 intentos consecutivos incorrectos**, el contador hardware del ATECC608A cruza el umbral y el dispositivo **borra permanentemente todos los slots de credenciales**. Este contador no se puede resetear por ciclo de alimentación, reflasheo ni truco software — es un contador físico hardware dentro del elemento seguro.
+**Aplicación persistente:**
+El contador de intentos fallidos vive en EEPROM y el retardo acumulado se reaplica **en cada arranque, antes de que la pantalla de PIN acepte entrada** — así que cortar la corriente a mitad de la cuenta atrás no lo salta. Tras ~10 PINs incorrectos, cada intento adicional cuesta ≈ 43 minutos, lo que hace la fuerza bruta impracticable. Tus datos **nunca se borran automáticamente** por PINs incorrectos; la bóveda solo se borra con un Reset de fábrica iniciado por el usuario.
+
+> Nota: un atacante que abra físicamente el dispositivo y alcance el bus I²C podría leer el hash del PIN y crackearlo offline, saltándose este retardo. Por eso la placa va encapsulada en resina epoxy y por eso importa usar un PIN largo.
 
 ---
 

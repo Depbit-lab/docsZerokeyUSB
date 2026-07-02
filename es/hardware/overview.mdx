@@ -48,7 +48,7 @@ graph TB
 | Componente | Modelo | Dir I²C | Función |
 |-----------|-------|----------|---------|
 | **MCU** | Microchip SAMD21E18A | — | ARM Cortex-M0+ a 48 MHz. Ejecuta el firmware, el cifrado AES-128 CBC, el teclado HID USB y la serie CDC. |
-| **Elemento seguro** | Microchip ATECC608A (MAHDA-T) | `0x60` | TRNG hardware para generación de clave/IV, Counter0 monotónico para rate-limiting del PIN, serial del chip de 9 bytes como salt del PIN. |
+| **Elemento seguro** | Microchip ATECC608A (MAHDA-T) | `0x60` | TRNG hardware para generación de clave/IV, motor AES-128 hardware, serial del chip de 9 bytes como salt del PIN. |
 | **EEPROM** | ST M24C64-WMN6TP | `0x50` | Almacenamiento no volátil de 64 Kbit (8 KB). Contiene credenciales cifradas, hash del PIN, IV y metadatos TOTP. >1M ciclos de escritura. |
 | **Pantalla** | OLED SSD1306 | `0x3C` | OLED blanco monocromo de 128×32 píxeles. Muestra credenciales, menús, entrada de PIN, códigos TOTP y barras de progreso. |
 | **Controlador táctil** | TS06 | `0x69` | IC táctil capacitivo de 6 canales (5 usados). Pads dorados en el PCB para Arriba/Abajo/Izquierda/Derecha/Centro. |
@@ -76,7 +76,7 @@ El ATECC608A proporciona cuatro capacidades que el software por sí solo no pued
 |-----------|---------------|
 | **TRNG hardware** | Genera la clave maestra AES (16 B, dentro del chip) y el IV (16 B) con entropía hardware verdadera — no pseudo-aleatoria. |
 | **Motor AES-128** | Cada bloque de credencial se cifra y descifra con el AES hardware del chip. La clave vive en el slot 8 con `IsSecret=1` y nunca cruza el bus I²C. |
-| **Counter0 monotónico** | Contador hardware irreversible para intentos de PIN. No se puede reiniciar por software, ni por ciclos de alimentación, ni por borrado del chip. Tras 50 PINs incorrectos consecutivos, las credenciales se borran. |
+| **Zonas Config y Data bloqueadas** | Al primer arranque el chip bloquea permanentemente ambas zonas (irreversible), sellando la clave AES del slot 8 y la configuración AES-enable para que no se puedan alterar ni leer nunca. (El freno de fuerza bruta del PIN lo gestiona por separado un backoff persistente en EEPROM, no el chip.) |
 | **Serial del chip (9 B)** | Identificador único programado de fábrica usado como salt en el hashing del PIN: `SHA-256(PIN ∥ serial)`. El mismo PIN en otro dispositivo produce un hash completamente distinto. |
 
 > El SKU MAHDA-T se entrega con el comando AES hardware deshabilitado. La rutina de aprovisionamiento del primer arranque lo habilita, configura el slot 8 como contenedor de clave AES, genera la clave con el TRNG del chip y bloquea irreversiblemente las zonas Config y Data.

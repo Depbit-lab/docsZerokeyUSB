@@ -62,7 +62,8 @@ Establecido por el propio dispositivo al primer arranque y bloqueado permanentem
 |------|-----------|---------|------------------------|
 | **8** | 16 B (primer sub-key AES) | Clave maestra AES-128 — generada por el TRNG del chip, no sale nunca del chip | `IsSecret=1`, `WriteConfig=Never`, `KeyType=6 (AES)`. El chip se niega a devolver los datos del slot vía `Read`. |
 | **9** | 32 B | Clave de PIN: `SHA-256(pinArray[16] ∥ chip_serial[9])` | `IsSecret=0`, `WriteConfig=Always`. La app reescribe el slot cuando el usuario cambia su PIN. Legible por I²C. |
-| **Counter 0** | 4 B mono | Contador de intentos de PIN | Solo incremento, lectura permitida |
+
+Counter0 existe en el chip pero el firmware **no** lo usa para rate-limiting del PIN (ver la nota al final de esta página); el freno de fuerza bruta se hace con un backoff persistente en EEPROM.
 
 > **Nota de seguridad del Slot 9:** Como `MAHDA-T` rechaza escrituras en claro a slots con IsSecret (slots 0–7), la clave de PIN se almacena en el slot 9 que mantiene `IsSecret=0`. Esto significa que el hash de 32 bytes del PIN es **legible** por I²C por cualquiera con acceso físico. Un adversario podría leer el hash e intentar ataques de diccionario offline contra SHA-256(PIN∥serial). Los PINs cortos (< 6 dígitos) son particularmente vulnerables a este enfoque.
 
@@ -104,7 +105,7 @@ Establecido por el propio dispositivo al primer arranque y bloqueado permanentem
 ### `COUNTER` (opcode `0x24`)
 - Mode `0x00` (read): devuelve el valor actual de Counter0.
 - Mode `0x01` (increment): incrementa Counter0 atómicamente y devuelve el nuevo valor.
-- Llamado antes de cada intento de verificación del PIN. El contador es monotónico hardware — no hay forma software de decrementarlo.
+- Monotónico hardware — no hay forma software de decrementarlo. **No lo usa la ruta actual de verificación del PIN** (lo usaba el lockout por Counter0 ya eliminado); disponible para firmware futuro.
 
 ### `CHECKMAC` (opcode `0x28`) — definido pero no usado en la ruta de verificación principal
 - Computa `SHA-256(slot_key ∥ ClientChallenge ∥ OtherData)` dentro del chip y la compara con una respuesta computada por el host.
@@ -142,13 +143,13 @@ Como `serial` es único por chip, el mismo PIN en dos dispositivos ZeroKeyUSB di
 
 ---
 
-## Counter0 — límite hard del PIN
+## Rate-limiting del PIN (sin lockout por Counter0)
 
-Counter0 se inicializa al aprovisionamiento a su valor de fábrica actual `cur_counter`. El umbral guardado en EEPROM en `0x0020` se pone a `cur_counter + 50`.
+Un diseño anterior usaba Counter0 como límite hard destructivo: un umbral de `cur_counter + 50` en EEPROM `0x0020`, y un borrado (`eraseAll()`) cuando el contador lo cruzaba tras 50 PINs incorrectos. **Ese mecanismo se eliminó.** `verifySignature()` ya no incrementa Counter0 ni lee ningún umbral, y los PINs incorrectos nunca borran la bóveda.
 
-Cada intento de PIN — correcto o no — llama a `counterIncrement()`. En un PIN correcto el umbral se resetea a `new_counter + 50`. En PINs incorrectos el umbral permanece fijo, así que tras **50 intentos consecutivos incorrectos** sin uno correcto, `new_counter ≥ threshold` y el firmware borra todos los slots de credenciales (`eraseAll()`).
+La defensa real es un **backoff exponencial persistente**: un contador de intentos fallidos en EEPROM `0x0002` hace crecer el retardo hasta ≈ 43 minutos, y `waitFromEeprom()` se llama en cada arranque antes de que la pantalla de PIN acepte entrada, así que la penalización no se puede saltar apagando y encendiendo. `eraseAll()` sigue existiendo pero solo corre en un reset de fábrica iniciado por el usuario. Ver [Verificación del PIN](/es/firmware/security/pin-verification) para el flujo completo.
 
-El valor máximo del contador es `2^20 - 1` (≈ 1 048 575) según el datasheet del ATECC608A. Es suficiente para décadas de uso normal.
+El comando `COUNTER` y Counter0 siguen disponibles en el chip (documentados arriba) y podrían reactivarse en firmware futuro, pero no forman parte de la ruta de verificación actual.
 
 ---
 

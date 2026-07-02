@@ -28,7 +28,6 @@ graph LR
         TRNG["Hardware TRNG\nkey + IV generation"]
         AESHW["AES-128 ECB\nhardware engine\n(slot 8 key)"]
         KEY["AES key (16B)\nslot 8, IsSecret=1"]
-        CNT["Counter0\nmonotonic, irreversible"]
         SER["Chip Serial\n9-byte unique salt"]
     end
 
@@ -43,7 +42,6 @@ graph LR
     TRNG -->|"generates"| IV
     SER -->|"salt"| SHA
     SHA -->|"stores"| HASH
-    CNT -->|"gates unlock"| CBC
     IV -->|"loaded into RAM"| CBC
     CBC -->|"per-block AES via I²C"| AESHW
     CBC -->|"reads/writes"| CRED
@@ -56,7 +54,7 @@ graph LR
 | Chip | Role |
 |------|------|
 | **SAMD21E18A (MCU)** | Runs the application firmware, manages the CBC chaining logic, drives the OLED, USB HID, touch, and I²C bus. Single-block AES is delegated to the secure element. |
-| **ATECC608A-MAHDA-T (secure element)** | Generates true random numbers (TRNG), holds a unique 9-byte chip serial used as PIN salt, provides a tamper-resistant **monotonic hardware counter** (Counter0), and — once provisioned — performs every AES-128 ECB block in dedicated hardware using a key stored in slot 8 that **never leaves the chip**. |
+| **ATECC608A-MAHDA-T (secure element)** | Generates true random numbers (TRNG), holds a unique 9-byte chip serial used as PIN salt, and — once provisioned — performs every AES-128 ECB block in dedicated hardware using a key stored in slot 8 that **never leaves the chip**. |
 
 The MCU and ATECC608A share an I²C bus at address `0x60`. The MCU does not have a usable copy of the AES key: it sends 16-byte plaintext blocks to the chip and receives 16-byte ciphertext back. The chip generated the key itself at provisioning time using its TRNG; the byte sequence never crossed the I²C bus.
 
@@ -99,7 +97,7 @@ Decryption is symmetric: the chip returns plaintext, the MCU XORs it with the pr
 | `0x0001` | 1 B | Screen mode / orientation |
 | `0x0002` | 1 B | Soft failed-attempts counter (UX backoff) |
 | `0x0010–0x001F` | 16 B | AES-CBC Initialization Vector (TRNG-generated) |
-| `0x0020–0x0023` | 4 B | PIN attempt threshold (LE uint32 = Counter0 value + 50 on last success) |
+| `0x0020–0x0023` | 4 B | *Reserved* — legacy PIN-attempt threshold from the removed Counter0 lockout. No longer read or written. |
 | `0x0024` | 1 B | Provisioning flag (`0xA5` = provisioned) |
 | `0x0028–0x0037` | 16 B | *Reserved* — legacy AES master slot from the software-AES build. Not used since the key was moved into ATECC slot 8. |
 | `0x003E` | 1 B | Keyboard layout selector |
@@ -118,34 +116,29 @@ The PIN authorises an unlock cycle; it is **never used directly as an encryption
 
 ```mermaid
 flowchart TD
-    A["User enters PIN\n4-16 digits"] --> B["Counter0++\n(ATECC608A hardware)"]
-    B --> C{"Counter0 ≥ threshold?"}
-    C -->|Yes| D["eraseAll()\nWipe all slots + HALT"]
-    C -->|No| E["SHA-256(PIN ∥ serial)"]
+    A["User enters PIN\n4-16 digits"] --> E["SHA-256(PIN ∥ serial)"]
     E --> F{"Hash matches\nEEPROM @ 0x0048?"}
-    F -->|"Yes (constant-time)"| G["✅ Unlock\nThreshold = Counter0 + 50\nClear fail counter"]
-    F -->|"No"| H["❌ Deny\nIncrement fail counter\nExponential delay"]
+    F -->|"Yes (constant-time)"| G["✅ Unlock\nClear fail counter"]
+    F -->|"No"| H["❌ Deny\nIncrement fail counter\nExponential delay (persists)"]
     
-    style D fill:#fee2e2,stroke:#dc2626,color:#000
     style G fill:#bbf7d0,stroke:#16a34a,color:#000
     style H fill:#fef3c7,stroke:#d97706,color:#000
 ```
 
 The verification flow:
 
-1. The user enters up to **16 digits** on the capacitive pads.
-2. The firmware increments **Counter0** in the ATECC608A. This counter is monotonic and survives power cycles — it cannot be rolled back by software or by desoldering the MCU.
-3. The firmware reads the **attempt threshold** from EEPROM (`0x0020`). If `Counter0 ≥ threshold`, the device calls `eraseAll()` (wipes all credential slots) and halts.
-4. Otherwise, the firmware calls `derivePinKey()`: computes `SHA-256(pinArray[16] ∥ chip_serial[9])` to produce the 32-byte PIN hash.
-5. It reads the stored 32-byte hash from EEPROM (`0x0048`) and runs a **constant-time compare** (`diff |= stored[i] ^ derived[i]`).
-6. **On match:** the threshold is reset to `Counter0 + 50`, the soft failed-attempt counter is cleared, and the unlock proceeds.
-7. **On mismatch:** the soft counter increments and the device enforces an exponential backoff delay before the next attempt.
+1. On boot, before the PIN screen accepts input, the firmware replays the accumulated backoff for the stored failed-attempt count (`waitFromEeprom()`).
+2. The user enters up to **16 digits** on the capacitive pads.
+3. `derivePinKey()` computes `SHA-256(pinArray[16] ∥ chip_serial[9])` to produce the 32-byte PIN hash.
+4. It reads the stored 32-byte hash from EEPROM (`0x0048`) and runs a **constant-time compare** (`diff |= stored[i] ^ derived[i]`).
+5. **On match:** the failed-attempt counter is cleared and the unlock proceeds.
+6. **On mismatch:** the counter increments and the device enforces an exponential backoff delay before the next attempt — and again at the next boot.
 
-Because the rate-limit counter is in hardware, an attacker who dumps EEPROM still cannot brute-force the PIN against the device — Counter0 keeps marching forward with each attempt and the firmware wipes the vault once the threshold is crossed.
+The backoff counter lives in EEPROM (`0x0002`) and is re-applied on every power-up, so an attacker cannot skip the delay by cutting power. The vault is **never wiped** by wrong PINs. Note that this protects only guesses made *through the device*: an attacker who reads the PIN hash off the I²C bus can crack it offline with no delay, which is why the epoxy encapsulation (blocking bus access) and a long PIN matter.
 
-### Adaptive lockout — soft backoff (UX layer)
+### Exponential backoff — delay schedule
 
-Stored at EEPROM `0x0002`. Independent of the hard counter; reset on correct PIN.
+Stored at EEPROM `0x0002`; re-applied at boot; reset on correct PIN.
 
 | Failed attempts | Wait time |
 |-----------------|-----------|
@@ -158,13 +151,9 @@ Stored at EEPROM `0x0002`. Independent of the hard counter; reset on correct PIN
 
 Formula: `wait = BASE_SECONDS (5) × 2^(min(attempts,10)−1)`, capped at `MAX_WAIT_SECONDS` (2 560).
 
-### Hard limit — hardware counter
+### No destructive lockout
 
-- Threshold initialised at provisioning: `cur_counter + 50` (where `cur_counter` is read from the chip at that moment).
-- Each PIN attempt — right or wrong — increments Counter0 by one.
-- The threshold is bumped by 50 **only on a correct PIN**, so a stream of wrong attempts will eventually exhaust the budget.
-- The chip's monotonic counter **cannot be reset** — no software path, no power cycle, no physical reset resets it.
-- The hard limit is `ATTEMPT_BUDGET = 50`. After 50 consecutive wrong PINs without a correct one, the vault is wiped.
+An earlier design used the ATECC608A's monotonic `Counter0` to wipe the vault after 50 wrong PINs. That mechanism was **removed**: `verifySignature()` no longer increments Counter0, reads any threshold, or calls `eraseAll()` on failed attempts. The persistent backoff above is the sole automatic brute-force defence; `eraseAll()` runs only on a user-initiated factory reset.
 
 ---
 
@@ -176,7 +165,6 @@ Established by the device itself the first time it boots, then **locked permanen
 |------|-----------|---------|------------------------|
 | **8** | 16 B | AES-128 master key — generated on chip by the TRNG at first boot, used by every credential encrypt/decrypt | `IsSecret=1` / `WriteConfig=Never` / `KeyType=6 (AES)`. The key cannot be read out over I²C, nor rewritten once the data zone is locked. |
 | **9** | 32 B | `SHA-256(PIN_padded ∥ device_serial)` — the PIN key | `IsSecret=0` / `WriteConfig=Always` so the app can rewrite the slot when the user changes their PIN. Readable over I²C. |
-| **Counter 0** | 4 B monotonic | PIN attempt counter | Increment-only. Read by app before each unlock. |
 
 ### Provisioning sequence (first boot only)
 
@@ -194,7 +182,7 @@ Every write is followed by a read-back. If any verify fails, the function return
 
 > **Why bit-level writes?** The MAHDA-T parts ship with several "reserved" bits in byte 13 (`AES_Enable`) factory-set. A naive write that clears them is rejected by the chip with a parse error (`SS=0x03`). The provisioning code reads each byte first, OR-masks only the bits it actually needs to flip, and writes the whole 32-byte block back.
 
-> **Known trade-off (Slot 9 readable):** Slot 9 is not locked as secret because the MAHDA-T SKU rejects clear writes to IsSecret slots 0–7. The PIN hash lives there with `IsSecret=0`, so an attacker with physical I²C access can read the 32-byte hash and attempt an offline SHA-256(PIN∥serial) brute force. Counter0 hardware lockout limits online attempts but not offline cracking. Short PINs are vulnerable to this attack — use the maximum 16 digits.
+> **Known trade-off (Slot 9 readable):** Slot 9 is not locked as secret because the MAHDA-T SKU rejects clear writes to IsSecret slots 0–7. The PIN hash lives there with `IsSecret=0`, so an attacker with physical I²C access can read the 32-byte hash and attempt an offline SHA-256(PIN∥serial) brute force. The persistent backoff limits online attempts but does nothing against offline cracking — the epoxy encapsulation (blocking bus access) is what stands in the way there. Short PINs are vulnerable to this attack — use the maximum 16 digits.
 
 ---
 
@@ -205,7 +193,7 @@ The IV is generated **once** during provisioning by the ATECC608A's TRNG and sto
 - A read returning all-`0x00` or all-`0xFF` is treated as uninitialised and triggers regeneration from the TRNG.
 - If EEPROM read fails at unlock time, the firmware attempts TRNG regeneration and re-stores the IV.
 
-**Single device-wide IV:** all credential pages are chained against the same IV. This keeps the layout simple and auditable. The threat model leans on TRNG quality and Counter0, not on per-record nonces.
+**Single device-wide IV:** all credential pages are chained against the same IV. This keeps the layout simple and auditable. The threat model leans on TRNG quality and the secrecy of the AES key, not on per-record nonces.
 
 **Regeneration consequence:** if the IV is lost or regenerated without re-encrypting credentials, existing slots will decrypt to garbage (the ciphertext was produced under the old IV). The firmware's self-healing routine (`silentEraseAll`) is called automatically on first unlock if slot 0 page 0 is still raw `0xFF` (EEPROM default), and can be called again manually via `generateAndStoreIV()`.
 
@@ -267,7 +255,7 @@ Credentials can be exported and imported over the USB CDC serial interface:
 | AES key cannot be regenerated after provisioning | If the chip ever fails, the credentials encrypted under that key are unrecoverable | `WriteConfig=Never` is the cost of `IsSecret=1` plus locked data zone; pick the maximum-security trade-off and accept it. Keep an exported backup. |
 | Slot 9 PIN hash readable over I²C | Offline SHA-256 brute-force if I²C accessible | Short PINs (< 6 digits) are vulnerable; use max-length PINs |
 | Single device-wide IV | Same IV for all slots; no per-record nonces | IV entropy from ATECC TRNG; IV loss requires re-initialisation |
-| PIN comparison in software (not CheckMac) | Side-channel timing (mitigated by constant-time compare) | Hardware Counter0 still gates attempts |
+| PIN comparison in software (not CheckMac); hash readable over I²C | Offline SHA-256 brute-force if the I²C bus is reached; side-channel timing | Constant-time compare; persistent on-device backoff; epoxy encapsulation blocks bus access; use a long PIN |
 | Backup is plaintext over USB | Physical host can capture credentials | Document clearly; use only on trusted machines |
 | Each AES block is a chip round-trip over I²C | Slower than software AES — credentials decrypt in ~30 ms instead of ~3 ms | Acceptable for a hand-held password manager; the chip is the security boundary |
 
@@ -293,7 +281,7 @@ There are **no remote update mechanisms**: re-flashing requires physical access 
     How the ATECC608A's hardware AES engine encrypts every credential block, with CBC chaining wrapped around it on the MCU.
   </Card>
   <Card title="PIN Verification" icon="shield" href="/firmware/security/pin-verification">
-    Counter0, the EEPROM-stored SHA-256 hash, and the constant-time compare that gates unlock.
+    The persistent backoff, the EEPROM-stored SHA-256 hash, and the constant-time compare that gates unlock.
   </Card>
   <Card title="IV Generation" icon="dice" href="/firmware/security/iv-generation">
     How the ATECC608A TRNG seeds the device-wide IV and how regeneration is handled.
@@ -301,5 +289,5 @@ There are **no remote update mechanisms**: re-flashing requires physical access 
 </CardGroup>
 
 <Note>
-ZeroKeyUSB pairs an MCU with a hardened secure element. The chip provides the *entropy* (TRNG), the *identity* (chip serial used as PIN salt), the *rate limit* (Counter0), **and** the *cipher* itself — every AES block is computed inside the secure element using a key the MCU has never seen. The MCU's role is to chain those blocks into CBC, drive the UI, and shuttle plaintext / ciphertext to and from the EEPROM.
+ZeroKeyUSB pairs an MCU with a hardened secure element. The chip provides the *entropy* (TRNG), the *identity* (chip serial used as PIN salt), **and** the *cipher* itself — every AES block is computed inside the secure element using a key the MCU has never seen. The MCU's role is to chain those blocks into CBC, drive the UI, and shuttle plaintext / ciphertext to and from the EEPROM.
 </Note>

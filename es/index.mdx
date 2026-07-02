@@ -106,8 +106,7 @@ Todo lo que necesitas para **montar el hardware**, **entender el firmware** y **
 | IV | 16 B aleatorios (TRNG del ATECC608A) | EEPROM `0x0010` |
 | Hashing del PIN | SHA-256(PIN ∥ chip_serial) | MCU (software) |
 | Salt del PIN | Serial del chip de 9 bytes | Config Zone del ATECC608A |
-| Rate-limit del PIN | Counter0 monotónico (hardware) | ATECC608A |
-| Presupuesto de PIN | 50 intentos antes de borrado | Umbral en EEPROM `0x0020` |
+| Rate-limit del PIN | Backoff exponencial persistente, reaplicado al arrancar (sin borrado) | EEPROM `0x0002` |
 | Integridad de arranque | Verificación de firma ECDSA P-256 | Bootloader |
 | Protección física | Encapsulado en resina epoxy + fuse BOOTPROT | PCB / fuses del SAMD21 |
 

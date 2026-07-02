@@ -1,9 +1,9 @@
 ---
 title: "PIN Verification"
-description: "Unlock flow, Counter0 hardware rate-limiting, SHA-256 hash comparison, and adaptive delays for the Master PIN."
+description: "Unlock flow, SHA-256 hash comparison, and the persistent exponential backoff that rate-limits the Master PIN."
 ---
 
-ZeroKeyUSB uses a Master PIN (1–16 digits) to authenticate the user. The verification process combines a **software constant-time hash comparison** with a **hardware monotonic counter** in the ATECC608A to block brute-force attempts at both software and hardware levels.
+ZeroKeyUSB uses a Master PIN (1–16 digits) to authenticate the user. The verification process pairs a **software constant-time hash comparison** with a **persistent exponential backoff** that is re-applied on every boot, making brute-force attempts impractical without ever destroying stored data.
 
 ---
 
@@ -40,48 +40,49 @@ The chip serial acts as a hardware salt: the same numeric PIN on a different dev
 Each unlock attempt executes the following steps in `verifySignature()`:
 
 ```
-1. zerokeyAtecc.counterIncrement(Counter0) → new_counter
-2. Read threshold from EEPROM [0x0020]
-3. If new_counter >= threshold → eraseAll() + halt (hard lockout)
-4. derivePinKey(pinArray, derived):
+On boot, before the PIN screen accepts any input:
+    waitFromEeprom()   // replay the accumulated backoff for the stored fail count
+
+Then each unlock attempt runs verifySignature():
+1. derivePinKey(pinArray, derived):
        serial = ATECC608A.readSerial()
        derived = SHA-256(pinArray[16] || serial[9])
-5. Read stored hash from EEPROM [0x0048] → stored[32]
-6. diff = 0; for i in 0..31: diff |= stored[i] ^ derived[i]  // constant-time
-7. If diff == 0:
-       writeThreshold(new_counter + 50)   // reset budget
-       writeFailedAttemptsCounter(0)
+2. Read stored hash from EEPROM [0x0048] → stored[32]
+3. diff = 0; for i in 0..31: diff |= stored[i] ^ derived[i]  // constant-time
+4. If diff == 0:
+       writeFailedAttemptsCounter(0)      // clear the backoff
        → ACCESS GRANTED
-8. Else:
+5. Else:
        incrementFailedAttemptsCounter()
        waitFromEeprom()                   // exponential backoff
        → ACCESS DENIED
 ```
 
----
-
-## Hardware counter — hard limit
-
-**Counter0 in the ATECC608A** is a monotonic hardware counter. Its key properties:
-
-- Increments by 1 on every `counterIncrement()` call — once per PIN attempt.
-- **Cannot be decremented, reset, or rolled back** by any software, power cycle, or hardware reset.
-- Persists across power loss inside the chip's non-volatile memory.
-- The threshold stored at EEPROM `0x0020` is a uint32 (little-endian) representing the counter value at which the next wipe occurs.
-
-| Event | Counter effect | Threshold effect |
-|-------|---------------|-----------------|
-| Wrong PIN attempt | +1 | unchanged |
-| Correct PIN | +1 | reset to `Counter0 + 50` |
-| Counter ≥ threshold | — | `eraseAll()` triggered |
-
-With an uninterrupted stream of wrong PINs the counter catches up to the threshold in exactly **50 attempts** and triggers a full credential wipe.
+There is **no `Counter0` increment, threshold read, or automatic wipe** in this path. An earlier design used the ATECC608A's monotonic Counter0 to wipe the vault after 50 wrong PINs; that was removed. The live defence is the persistent backoff described below.
 
 ---
 
-## Adaptive delays — soft backoff
+## Persistent rate-limiting — the real brute-force defence
 
-Stored at EEPROM `0x0002`. This UX-layer counter is reset on a correct PIN:
+There is **no automatic wipe** after a number of failed attempts; the vault is never destroyed by wrong PINs. Instead, every guess is slowed by an exponential backoff whose counter lives in EEPROM (`0x0002`) and therefore survives power loss.
+
+The load-bearing detail is *when* the delay is applied. On every boot, `readConfigurationFlag()` calls `waitFromEeprom()` **before the PIN screen accepts any input**. So an attacker cannot skip the penalty by cutting power mid-countdown: after each failed guess the accumulated delay is re-imposed at the next power-up. Once the counter passes ~10 failures every further attempt costs ≈ 43 minutes, so online brute force is impractical (a 4-digit PIN would take on the order of a year) — all without ever destroying the user's data.
+
+| Event | Failed-attempt counter (EEPROM `0x0002`) |
+|-------|------------------------------------------|
+| Wrong PIN | +1, then enforce the backoff delay |
+| Correct PIN | reset to 0 |
+| Power cycle | the delay for the stored count is re-applied at boot |
+
+`eraseAll()` still exists, but it is only ever triggered **manually** by the user (factory reset / forgotten PIN) — never automatically by wrong PINs.
+
+> **Offline caveat.** The rate limit only applies to guesses made through the device. The PIN hash is readable over I²C (EEPROM `0x0048` and ATECC slot 9 with `IsSecret=0`), so an attacker who physically reaches the I²C bus can copy the hash and the chip serial and crack the PIN offline with no delay. What stops that is the **epoxy encapsulation** blocking bus access — plus using a long PIN. It is not the backoff.
+
+---
+
+## Exponential backoff — delay schedule
+
+Stored at EEPROM `0x0002` and re-applied at boot; reset only on a correct PIN:
 
 | Failed attempts | Wait time |
 |-----------------|-----------|
@@ -120,7 +121,7 @@ Initiated via **Menu → Change PIN** → `storeSignature()`:
 2. `derivePinKey(pinArray, derived)` computes the new hash.
 3. New 32-byte hash written to ATECC slot 9.
 4. New 32-byte hash written to EEPROM `0x0048`.
-5. Current Counter0 is read; threshold is set to `Counter0 + 50`.
+5. The failed-attempts counter (EEPROM `0x0002`) is cleared.
 6. ATECC ping confirms the chip is still alive. The AES key in slot 8 is **not touched** by PIN setup — it is provisioned once at first boot and is irrevocable.
 7. IV is loaded or generated.
 8. Setup config flag is written (`0x42`).

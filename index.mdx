@@ -106,8 +106,7 @@ Everything you need to **assemble the hardware**, **understand the firmware**, a
 | IV | 16 B random (ATECC608A TRNG) | EEPROM `0x0010` |
 | PIN hashing | SHA-256(PIN ∥ chip_serial) | MCU (software) |
 | PIN salt | 9-byte chip serial | ATECC608A Config Zone |
-| PIN rate-limit | Monotonic Counter0 (hardware) | ATECC608A |
-| PIN budget | 50 attempts before wipe | Threshold at EEPROM `0x0020` |
+| PIN rate-limit | Persistent exponential backoff, re-applied at boot (no wipe) | EEPROM `0x0002` |
 | Boot integrity | ECDSA P-256 signature verification | Bootloader |
 | Physical protection | Epoxy encapsulation + BOOTPROT fuse | PCB / SAMD21 fuses |
 
