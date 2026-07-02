@@ -1,0 +1,118 @@
+---
+title: "Screen-reader / No-screen mode (technical / audit)"
+description: "How the HID screen-reader (\"broken screen\") mode is implemented — the activation gesture, echo-line mechanics, exactly what it emits and what it never emits — so you can audit its data exposure."
+---
+
+This page documents the **implementation** of the HID screen‑reader so its data
+exposure can be audited. For the user recovery guide see
+[Broken / No‑screen mode](/getting-started/recovery-no-screen).
+
+The mode makes the device **type the current on‑screen state over USB HID
+(keyboard)**, one line at a time, so a unit with a dead OLED can still be
+unlocked and operated blind. Implementation lives in
+**`ZerokeyOS/zerokey-utils.cpp`** (emitter), **`zerokey-io.cpp`** (gesture) and
+**`zerokey-menu.cpp`** (persistent toggle).
+
+## State & activation
+
+- **Runtime flag** `screenReaderMode` (`zerokey-globals.cpp`, default `false`).
+- **Persistent flag** in EEPROM at `EEPROM_SCREEN_READER_ADDR = 0x0003`
+  (`1` = boot straight into reader mode). `initScreenReaderMode()` reads and
+  applies it at boot; **Settings → "Reader: On/Off"**
+  (`setScreenReaderPersistent`) writes it and flips the runtime flag so the
+  change takes effect immediately.
+- **Session gesture:** hold **Center for 10 s** (`SCREEN_READER_HOLD_MS = 10000`)
+  **while the PIN prompt is shown** (`PIN_SCREEN`/`EDITPIN`). A border animation
+  fills over the full 10 s and toggles `screenReaderMode` exactly on completion.
+
+<Note>
+The gesture is deliberately restricted to the **PIN screen** so it is reachable
+**before unlocking** — the whole point is to rescue a device whose screen died.
+Releasing before 10 s does nothing.
+</Note>
+
+## What it emits (echo‑line mechanics)
+
+The device keeps **one logical line** on the host. `announceCurrentScreen()`:
+
+- caches the text in `g_lastEcho` and the length in `g_hidEchoLen`;
+- on a state change, **backspaces** the previous echo and types the new one
+  (unchanged states are **not** retyped → no flicker);
+- sets `g_suppressNextAnnounce` to skip the one automatic announce that would
+  otherwise double up right after a real credential was typed.
+
+HID output uses a fixed cadence (`hidTapKey`): press, `12 ms`, `releaseAll`,
+`18 ms`; `\n`→`KEY_RETURN`, `\t`→`KEY_TAB`.
+
+| Screen | Emitted line |
+|--------|--------------|
+| PIN entry | `PIN 125 >7` — digits entered, then the selected digit (`>OK` = confirm tick) |
+| Credential (site) | `3: google.com` |
+| Credential fields | `3: user`, `3: password`, `3: 2FA` |
+| Menu | `Menu: <selected item>` |
+| Confirm page | `<title> Hold=OK Left=No` |
+
+**Blind PIN entry:** Up/Down change the selected digit (watch `>n`), Right adds
+it, Left deletes, then select `>OK` and Right/Center to unlock — the typed line
+mirrors what the OLED would show.
+
+**Revealing a value:** pressing **Center** on a credential wipes the echo
+(`typeCredential` backspaces `g_hidEchoLen`) and types the **real value**
+(user/password) exactly as normal HID typing would — so a password can be read
+blind into a focused text box.
+
+## Data‑exposure boundary (the audit‑relevant part)
+
+<Warning>
+The reader types **PIN digits** and, on an explicit Center, **passwords** into
+whatever field is focused. Use it only into a **private** text field you control
+and clear that field afterwards.
+</Warning>
+
+Two properties matter for an audit:
+
+1. **No new egress channel.** The reader only ever emits (a) the single status
+   line the OLED would show, or (b) — on an explicit Center — the *same* value
+   `typeCredential` already types during normal use. It exposes nothing that a
+   sighted user couldn't already get over HID.
+2. **The Bitcoin seed is never typed.** The seed viewer (`btcDisplaySeed`) draws
+   to the OLED only and has **no HID path**; the reader has no branch that emits
+   seed words or entropy. A broken‑screen unit therefore still **cannot** leak the
+   Bitcoin seed over USB. (See [Bitcoin signer](/firmware/bitcoin-signer).)
+
+## How to audit it yourself
+
+<Steps>
+  <Step title="Enumerate the emitters">
+    Grep for `announceCurrentScreen` and `hidTypeText`/`hidTapKey` in
+    `zerokey-utils.cpp`. Confirm every call site corresponds to a screen the OLED
+    already shows, and that none of them reads the `ZKBW` wallet page or the seed
+    words.
+  </Step>
+  <Step title="Confirm the gesture scope">
+    In `zerokey-io.cpp`, verify the 10 s toggle is gated on
+    `programPosition == PIN_SCREEN || EDITPIN` and `SCREEN_READER_HOLD_MS`.
+  </Step>
+  <Step title="Confirm persistence">
+    Verify the persistent flag is a single byte at `EEPROM_SCREEN_READER_ADDR
+    (0x0003)` and that it only toggles the same runtime behaviour.
+  </Step>
+</Steps>
+
+## Source map
+
+| Concern | Where |
+|---------|-------|
+| Emitter, echo line, credential reveal | `ZerokeyOS/zerokey-utils.cpp` |
+| 10 s activation gesture | `ZerokeyOS/zerokey-io.cpp` |
+| Persistent "Reader: On/Off" toggle | `ZerokeyOS/zerokey-menu.cpp` |
+| Runtime & persistent flag, EEPROM address | `ZerokeyOS/zerokey-globals.{h,cpp}` |
+
+<CardGroup cols={2}>
+  <Card title="User guide" icon="eye-low-vision" href="/getting-started/recovery-no-screen">
+    Activate and use the mode with a dead screen.
+  </Card>
+  <Card title="Bitcoin signer" icon="bitcoin-sign" href="/firmware/bitcoin-signer">
+    Why the seed is never exposed, even here.
+  </Card>
+</CardGroup>

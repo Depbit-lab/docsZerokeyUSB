@@ -1,0 +1,218 @@
+---
+title: "Firmante Bitcoin (técnico / auditoría)"
+description: "Cómo está implementada la cartera Bitcoin airgapped — fuente de entropía, derivación BIP39/32/84, almacenamiento cifrado de la semilla, firma de PSBT y la frontera de confianza exacta — para que puedas auditarla contra el código fuente."
+---
+
+Esta página documenta la **implementación** del firmante Bitcoin para que pueda
+auditarse de forma independiente. Para la guía de usuario paso a paso, ve a
+[Cartera Bitcoin](/es/getting-started/bitcoin).
+
+Todo el código Bitcoin está en **`ZerokeyOS/zerokey-bitcoin.cpp`** y en la
+librería **uBitcoin** incluida (`ZerokeyOS/libraries/uBitcoin`, "Bitcoin" de
+Stepan Snigirev). Todo lo de abajo es verificable en ese código.
+
+<Note>
+**Restricción de diseño.** El **ATECC608A integrado es un chip secp256r1
+(NIST P‑256)** — *no puede* producir las firmas **secp256k1** de Bitcoin. Por
+eso, toda la operativa Bitcoin (derivación BIP32/39/84, ECDSA secp256k1, PSBT) se
+hace **por software** con uBitcoin. El ATECC se usa solo como **TRNG hardware** y,
+por separado, para proteger la clave maestra AES que cifra la semilla.
+</Note>
+
+## Frontera de confianza
+
+La propiedad más importante: **la semilla nunca sale del dispositivo por USB.**
+Solo cruzan el cable datos públicos y firmas.
+
+| Dato | ¿Sale por USB? | Notas |
+|------|----------------|-------|
+| Semilla de 12 palabras / entropía de 16 bytes | **Nunca** | Se muestra solo en el OLED (paginada, 3 palabras/página) |
+| Clave pública de cuenta `zpub` | Sí | Pública — seguro de exportar |
+| Fingerprint de la clave maestra | Sí | Público — necesario para que el firmante reconozca sus inputs |
+| Descriptor de salida `wpkh(...)` | Sí | Público |
+| Firmas (`PSBT_IN_PARTIAL_SIG`) | Sí | Solo tras una confirmación mantenida en el dispositivo |
+
+<Warning>
+**No existe ningún comando serie** que lea la semilla, la entropía o la clave
+privada. La única salida de la semilla es el visor de 12 palabras en pantalla
+(`btcDisplaySeed`), que dibuja en el OLED y nada más.
+</Warning>
+
+## 1 · Entropía y RNG
+
+El material de clave procede exclusivamente del **TRNG hardware del ATECC608A**
+(comando `RANDOM` vía `zerokeyAtecc.random`).
+
+- `btcGenEntropy()` extrae 16 bytes frescos con **hasta 5 reintentos** (el chip
+  puede rechazar el primer comando tras dormir), **descarta un resultado todo a
+  cero** y **se niega** (devuelve `false`, pone `g_btcRngHardwareOk = false`) en
+  lugar de recurrir jamás a una fuente débil. La generación de semilla aborta si
+  se niega.
+- El cripto Trezor de uBitcoin llama a los símbolos débiles
+  `random32()`/`random_buffer()`. El firmware los **sobrescribe** (`extern "C"`
+  en `zerokey-bitcoin.cpp`) con versiones respaldadas por el TRNG del ATECC a
+  través de una caché de 32 bytes.
+- Si el TRNG falla a mitad, la sobrescritura pone `g_btcRngHardwareOk = false` y
+  rellena desde una **mezcla NO fiable de `micros()` _solo_** para que los
+  caminos que no son de clave no se cuelguen — **nunca** para material de semilla
+  (ese camino ya se ha negado).
+
+```c
+// zerokey-bitcoin.cpp — la sobrescritura que reemplaza el PRNG débil de Trezor
+extern "C" void random_buffer(uint8_t *buf, size_t len);  // -> caché TRNG ATECC
+extern "C" uint32_t random32(void);                       // -> random_buffer()
+```
+
+<Tip>
+**Comprobación de auditoría:** que el firmware *enlace* correctamente prueba que
+la sobrescritura fuerte ganó — un símbolo fuerte duplicado sería un error de
+enlazado. Confirma que el dispositivo **se niega a crear una cartera** cuando el
+ATECC no está disponible.
+</Tip>
+
+## 2 · Semilla y almacenamiento cifrado
+
+Los 16 bytes de entropía se convierten en un **mnemónico BIP39 de 12 palabras**
+(`mnemonicFromEntropy(entropy, 16)`). El dispositivo guarda la **entropía**, no
+las palabras, en **una página EEPROM cifrada con AES** en `BITCOIN_WALLET_ADDR`.
+
+```text
+Página en claro (32 bytes), antes de cifrar:
+  [0..3]   magic "ZKBW"
+  [4]      versión = 1
+  [5]      longitud de entropía = 16
+  [6..21]  entropía BIP39 de 16 bytes
+  [22..31] reservado (cero)
+```
+
+- Cifrada con la **misma clave maestra AES‑128‑CBC protegida por el ATECC** que
+  tus credenciales — así la semilla queda ligada a tu **PIN** (ver
+  [Cifrado AES‑128](/es/firmware/security/aes-128-encryption)).
+- `BITCOIN_WALLET_ADDR` es el último slot de 128 bytes de la región de
+  credenciales (liberado al bajar `MAX_CREDENTIALS` 62→61 en
+  `zerokey-memorymap.h`); un `static_assert` lo fija.
+- Al leer, `btcReadWallet()` verifica magic/versión/longitud antes de usarla y
+  pone a cero el búfer en claro después.
+
+## 3 · Derivación de claves (BIP84, mainnet)
+
+```c
+HDPrivateKey hd(mnemonic, "");             // semilla BIP39, passphrase vacía
+HDPrivateKey account = hd.derive("m/84'/0'/0'/");
+String zpub  = account.xpub();             // clave de cuenta SegWit nativo
+String addr0 = account.derive("m/0/0/").address();   // bc1q... primera de recibo
+```
+
+- **BIP84 SegWit nativo**, ruta `m/84'/0'/0'`, direcciones `bc1q…`, watch‑only
+  `zpub`. **Solo mainnet.**
+- Sin passphrase (la passphrase BIP39 es vacía por diseño en esta versión).
+
+## 4 · Exportación watch‑only
+
+`bitcoinExportWatchOnly()` imprime datos **públicos** por serie (sin PIN — no es
+secreto):
+
+```text
+fingerprint: <8 hex>            # hd.fingerprint()
+zpub: <zpub...>                 # account.xpub()
+descriptor: wpkh([<fp>/84h/0h/0h]<zpub>/0/*)
+first addr: bc1q...
+```
+
+El **origen (fingerprint de la clave maestra)** en el descriptor es obligatorio:
+`PSBT::sign` de uBitcoin empareja inputs por
+`memcmp(root.fingerprint(), derivation.fingerprint, 4)` **y**
+`derivation.pubkey == pubkey derivada`. Sin el origen, una cartera (Sparrow,
+BlueWallet, Nunchuk…) construiría PSBTs que el dispositivo no reconoce. La webtool
+`bitcoin.html` añade el **checksum** de descriptor de Bitcoin Core en JS.
+
+## 5 · Firma de PSBT
+
+`bitcoinReviewPsbt(base64)` → revisión en pantalla → **mantén Centro** →
+`bitcoinConfirmSign()`.
+
+<Steps>
+  <Step title="Parsear y revisar">
+    `psbt.parseBase64()`; el OLED muestra dirección de destino, importe enviado y
+    comisión (`psbt.fee()`), detectando el cambio vía la derivación de cada
+    salida. Es una revisión **persistente** — el dispositivo nunca firma a ciegas.
+  </Step>
+  <Step title="Mantener para confirmar">
+    Una pulsación larga de Centro arma `bitcoinConfirmSign()`. Cualquier otro
+    botón cancela (`PSBT CANCEL`).
+  </Step>
+  <Step title="Firmar">
+    `psbt.sign(hd)` produce firmas ECDSA **deterministas RFC 6979 low‑s** sobre el
+    sighash **BIP143** de cada input que pertenezca a esta cartera. Si empareja
+    **0 inputs** el dispositivo responde `PSBT ERR NO_INPUTS` y no firma nada
+    (esperado para un PSBT de otra cartera).
+  </Step>
+  <Step title="Devolver">
+    El PSBT firmado (base64) se devuelve como `PSBT SIGNED`. Finalizar, extraer la
+    transacción cruda y difundirla ocurren fuera del dispositivo.
+  </Step>
+</Steps>
+
+## Modelo de amenaza
+
+- **Host comprometido:** puede mentir en el navegador, pero no puede falsificar
+  la **revisión del OLED** ni la **confirmación mantenida**. Verifica siempre
+  dirección/importe/comisión en la pantalla del dispositivo. Una firma se
+  compromete con las salidas exactas vía el sighash, así que una transacción
+  manipulada solo puede ser *rechazada* por la red, nunca redirigida.
+- **Extracción física de la EEPROM:** solo entrega la página `ZKBW` cifrada con
+  AES; sin la clave maestra ligada al PIN es ruido.
+- **Aleatoriedad débil:** descartada por el camino de entropía exclusivo del TRNG
+  que se niega ante fallo de hardware.
+
+## Cómo auditarlo tú mismo
+
+<Steps>
+  <Step title="Reproduce la cartera desde las palabras">
+    Lee las 12 palabras con **Tools → Bitcoin → Show seed**. Introdúcelas en
+    cualquier herramienta BIP84 independiente (Sparrow, una página Ian Coleman
+    offline, o un script Python `bip_utils`). Deriva `m/84'/0'/0'` y compara
+    **fingerprint, `zpub` y primera dirección de recibo** con la exportación
+    **Watch‑only** del dispositivo. Deben coincidir exactamente.
+  </Step>
+  <Step title="Verifica una firma">
+    Construye un PSBT para la cartera, fírmalo en el dispositivo, y comprueba que
+    el `PSBT_IN_PARTIAL_SIG` devuelto es una firma **ECDSA canónica low‑s** sobre
+    el sighash **BIP143** para la pubkey de ese input. Cualquier librería PSBT
+    (`python-bitcoinlib`, `bitcoinjs`, `analyzepsbt` de Bitcoin Core) puede
+    finalizarla y verificarla.
+  </Step>
+  <Step title="Confirma que la semilla no sale">
+    Observa la línea serie durante **Watch‑only** y durante la firma: solo
+    aparecen bytes de `zpub`/fingerprint/descriptor/firma — nunca las palabras ni
+    la entropía. Grepea el firmware: el único escritor de las palabras es
+    `btcDisplaySeed` (OLED), nunca `SerialUSB`.
+  </Step>
+</Steps>
+
+<Note>
+**Validación de referencia (2026‑06‑30).** Un verificador BIP84 independiente en
+Python puro reprodujo el `zpub` + primera dirección exactos del dispositivo a
+partir de las 12 palabras, y una prueba de PSBT sin fondos produjo una firma
+**byte a byte igual** a la firma RFC 6979 low‑s predicha de forma independiente
+sobre el sighash BIP143, verificando como ECDSA canónica válida.
+</Note>
+
+## Mapa de código
+
+| Aspecto | Dónde |
+|---------|-------|
+| Entropía, sobrescritura RNG, almacenamiento, derivación, PSBT | `ZerokeyOS/zerokey-bitcoin.cpp` |
+| secp256k1 / BIP32/39 / PSBT | `ZerokeyOS/libraries/uBitcoin` |
+| Clave maestra AES, cifrar/descifrar página | `ZerokeyOS/zerokey-security.cpp` |
+| E/S de página EEPROM, dirección del slot de cartera | `ZerokeyOS/zerokey-eeprom.cpp`, `zerokey-memorymap.h` |
+| Cableado de mantener‑para‑firmar | `ZerokeyOS/zerokey-io.cpp` |
+
+<CardGroup cols={2}>
+  <Card title="Guía de usuario" icon="bitcoin-sign" href="/es/getting-started/bitcoin">
+    Crear la cartera, exportar watch‑only, firmar un PSBT.
+  </Card>
+  <Card title="Cifrado AES‑128" icon="lock" href="/es/firmware/security/aes-128-encryption">
+    La clave maestra que protege la semilla almacenada.
+  </Card>
+</CardGroup>

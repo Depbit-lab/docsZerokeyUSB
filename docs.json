@@ -65,7 +65,8 @@
                   "firmware/display",
                   "firmware/io-touch-handling",
                   "firmware/eeprom-management",
-                  "firmware/usb-utilities"
+                  "firmware/usb-utilities",
+                  "firmware/screen-reader"
                 ]
               },
               {
@@ -75,6 +76,12 @@
                   "firmware/security/aes-128-encryption",
                   "firmware/security/pin-verification",
                   "firmware/security/iv-generation"
+                ]
+              },
+              {
+                "group": "Bitcoin Signer",
+                "pages": [
+                  "firmware/bitcoin-signer"
                 ]
               },
               {
@@ -158,7 +165,8 @@
                   "es/firmware/display",
                   "es/firmware/io-touch-handling",
                   "es/firmware/eeprom-management",
-                  "es/firmware/usb-utilities"
+                  "es/firmware/usb-utilities",
+                  "es/firmware/screen-reader"
                 ]
               },
               {
@@ -168,6 +176,12 @@
                   "es/firmware/security/aes-128-encryption",
                   "es/firmware/security/pin-verification",
                   "es/firmware/security/iv-generation"
+                ]
+              },
+              {
+                "group": "Firmante Bitcoin",
+                "pages": [
+                  "es/firmware/bitcoin-signer"
                 ]
               },
               {

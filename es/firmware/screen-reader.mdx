@@ -1,0 +1,121 @@
+---
+title: "Modo lector / sin pantalla (técnico / auditoría)"
+description: "Cómo está implementado el modo lector por HID (\"pantalla rota\") — el gesto de activación, la mecánica de la línea-eco, qué emite exactamente y qué no emite nunca — para que puedas auditar su exposición de datos."
+---
+
+Esta página documenta la **implementación** del lector por HID para que su
+exposición de datos pueda auditarse. Para la guía de recuperación de usuario, ve
+a [Modo sin pantalla](/es/getting-started/recovery-no-screen).
+
+El modo hace que el dispositivo **teclee el estado actual de la pantalla por USB
+HID (teclado)**, línea a línea, para que una unidad con el OLED muerto pueda
+igualmente desbloquearse y operarse a ciegas. La implementación está en
+**`ZerokeyOS/zerokey-utils.cpp`** (emisor), **`zerokey-io.cpp`** (gesto) y
+**`zerokey-menu.cpp`** (conmutador persistente).
+
+## Estado y activación
+
+- **Flag en tiempo de ejecución** `screenReaderMode` (`zerokey-globals.cpp`, por
+  defecto `false`).
+- **Flag persistente** en EEPROM en `EEPROM_SCREEN_READER_ADDR = 0x0003`
+  (`1` = arrancar directamente en modo lector). `initScreenReaderMode()` lo lee y
+  aplica en el arranque; **Ajustes → "Reader: On/Off"**
+  (`setScreenReaderPersistent`) lo escribe y voltea el flag de ejecución para que
+  el cambio surta efecto al instante.
+- **Gesto de sesión:** mantén **Centro 10 s** (`SCREEN_READER_HOLD_MS = 10000`)
+  **con la pantalla de PIN visible** (`PIN_SCREEN`/`EDITPIN`). Una animación de
+  borde se rellena durante los 10 s completos y voltea `screenReaderMode`
+  justo al completarse.
+
+<Note>
+El gesto se restringe deliberadamente a la **pantalla de PIN** para que sea
+accesible **antes de desbloquear** — el objetivo es rescatar un dispositivo cuya
+pantalla murió. Soltar antes de los 10 s no hace nada.
+</Note>
+
+## Qué emite (mecánica de la línea-eco)
+
+El dispositivo mantiene **una línea lógica** en el host. `announceCurrentScreen()`:
+
+- cachea el texto en `g_lastEcho` y la longitud en `g_hidEchoLen`;
+- ante un cambio de estado, **borra con retroceso** el eco anterior y teclea el
+  nuevo (los estados sin cambios **no** se reteclean → sin parpadeo);
+- pone `g_suppressNextAnnounce` para saltarse el anuncio automático que si no se
+  duplicaría justo después de teclear una credencial real.
+
+La salida HID usa una cadencia fija (`hidTapKey`): pulsar, `12 ms`, `releaseAll`,
+`18 ms`; `\n`→`KEY_RETURN`, `\t`→`KEY_TAB`.
+
+| Pantalla | Línea emitida |
+|----------|---------------|
+| Entrada de PIN | `PIN 125 >7` — dígitos introducidos, luego el dígito seleccionado (`>OK` = tic de confirmar) |
+| Credencial (sitio) | `3: google.com` |
+| Campos de credencial | `3: user`, `3: password`, `3: 2FA` |
+| Menú | `Menu: <elemento seleccionado>` |
+| Página de confirmación | `<título> Hold=OK Left=No` |
+
+**Entrada de PIN a ciegas:** Arriba/Abajo cambian el dígito seleccionado (mira
+`>n`), Derecha lo añade, Izquierda borra, luego selecciona `>OK` y Derecha/Centro
+para desbloquear — la línea tecleada refleja lo que mostraría el OLED.
+
+**Revelar un valor:** pulsar **Centro** en una credencial borra el eco
+(`typeCredential` retrocede `g_hidEchoLen`) y teclea el **valor real**
+(usuario/contraseña) exactamente como lo haría el tecleo HID normal — así puedes
+leer una contraseña a ciegas en un campo de texto enfocado.
+
+## Frontera de exposición de datos (lo relevante para auditar)
+
+<Warning>
+El lector teclea **dígitos del PIN** y, con un Centro explícito, **contraseñas**
+en el campo que esté enfocado. Úsalo solo en un campo de texto **privado** que
+controles, y bórralo después.
+</Warning>
+
+Dos propiedades importan para una auditoría:
+
+1. **Sin canal de salida nuevo.** El lector solo emite (a) la única línea de
+   estado que mostraría el OLED, o (b) — con un Centro explícito — el *mismo*
+   valor que `typeCredential` ya teclea en uso normal. No expone nada que un
+   usuario con vista no pudiera obtener ya por HID.
+2. **La semilla Bitcoin nunca se teclea.** El visor de semilla (`btcDisplaySeed`)
+   dibuja solo en el OLED y **no tiene ruta HID**; el lector no tiene ninguna
+   rama que emita palabras de semilla ni entropía. Una unidad con la pantalla
+   rota por tanto **sigue sin poder** filtrar la semilla Bitcoin por USB. (Ver
+   [Firmante Bitcoin](/es/firmware/bitcoin-signer).)
+
+## Cómo auditarlo tú mismo
+
+<Steps>
+  <Step title="Enumera los emisores">
+    Grepea `announceCurrentScreen` y `hidTypeText`/`hidTapKey` en
+    `zerokey-utils.cpp`. Confirma que cada punto de llamada corresponde a una
+    pantalla que el OLED ya muestra, y que ninguno lee la página de cartera
+    `ZKBW` ni las palabras de semilla.
+  </Step>
+  <Step title="Confirma el alcance del gesto">
+    En `zerokey-io.cpp`, verifica que el conmutador de 10 s está condicionado a
+    `programPosition == PIN_SCREEN || EDITPIN` y `SCREEN_READER_HOLD_MS`.
+  </Step>
+  <Step title="Confirma la persistencia">
+    Verifica que el flag persistente es un único byte en `EEPROM_SCREEN_READER_ADDR
+    (0x0003)` y que solo alterna el mismo comportamiento de ejecución.
+  </Step>
+</Steps>
+
+## Mapa de código
+
+| Aspecto | Dónde |
+|---------|-------|
+| Emisor, línea-eco, revelado de credencial | `ZerokeyOS/zerokey-utils.cpp` |
+| Gesto de activación de 10 s | `ZerokeyOS/zerokey-io.cpp` |
+| Conmutador persistente "Reader: On/Off" | `ZerokeyOS/zerokey-menu.cpp` |
+| Flag de ejecución y persistente, dirección EEPROM | `ZerokeyOS/zerokey-globals.{h,cpp}` |
+
+<CardGroup cols={2}>
+  <Card title="Guía de usuario" icon="eye-low-vision" href="/es/getting-started/recovery-no-screen">
+    Activa y usa el modo con la pantalla muerta.
+  </Card>
+  <Card title="Firmante Bitcoin" icon="bitcoin-sign" href="/es/firmware/bitcoin-signer">
+    Por qué la semilla nunca se expone, ni siquiera aquí.
+  </Card>
+</CardGroup>

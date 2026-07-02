@@ -1,0 +1,212 @@
+---
+title: "Bitcoin Signer (technical / audit)"
+description: "How the airgapped Bitcoin wallet is implemented — entropy source, BIP39/32/84 derivation, encrypted seed storage, PSBT signing and the exact trust boundary — so you can audit it against the source."
+---
+
+This page documents the **implementation** of the Bitcoin signer so it can be
+independently audited. For the step‑by‑step user guide see
+[Bitcoin Wallet](/getting-started/bitcoin).
+
+All Bitcoin code lives in **`ZerokeyOS/zerokey-bitcoin.cpp`** and the vendored
+**uBitcoin** library (`ZerokeyOS/libraries/uBitcoin`, "Bitcoin" by Stepan
+Snigirev). Everything below is verifiable in that source.
+
+<Note>
+**Design constraint.** The on‑board **ATECC608A is a secp256r1 (NIST P‑256)**
+chip — it *cannot* produce Bitcoin's **secp256k1** signatures. Therefore every
+Bitcoin operation (BIP32/39/84 derivation, secp256k1 ECDSA, PSBT) is done in
+**software** with uBitcoin. The ATECC is used only as a **hardware TRNG** and,
+separately, to protect the AES master key that encrypts the seed.
+</Note>
+
+## Trust boundary
+
+The single most important property: **the seed never leaves the device over
+USB.** Only public data and signatures cross the wire.
+
+| Data | Leaves over USB? | Notes |
+|------|------------------|-------|
+| 12‑word seed / 16‑byte entropy | **Never** | Shown only on the OLED (paginated, 3 words/page) |
+| Account public key `zpub` | Yes | Public — safe to export |
+| Master key fingerprint | Yes | Public — needed so the signer recognises its own inputs |
+| Output descriptor `wpkh(...)` | Yes | Public |
+| Signatures (`PSBT_IN_PARTIAL_SIG`) | Yes | Produced only after an on‑device hold‑to‑confirm |
+
+<Warning>
+There is **no serial command** that reads the seed, the entropy or the private
+key. The only seed egress path is the on‑screen 12‑word viewer (`btcDisplaySeed`),
+which draws to the OLED and nothing else.
+</Warning>
+
+## 1 · Entropy & RNG
+
+Key material comes exclusively from the **ATECC608A hardware TRNG** (`RANDOM`
+command via `zerokeyAtecc.random`).
+
+- `btcGenEntropy()` draws 16 fresh bytes with **up to 5 retries** (the chip can
+  NAK the first command after sleep), **rejects an all‑zero result**, and
+  **refuses** (returns `false`, sets `g_btcRngHardwareOk = false`) rather than
+  ever falling back to a weak source. Seed generation aborts on refusal.
+- uBitcoin's Trezor crypto calls the weak `random32()`/`random_buffer()` symbols.
+  The firmware **overrides** them (`extern "C"` in `zerokey-bitcoin.cpp`) with
+  versions backed by the ATECC TRNG through a 32‑byte cache.
+- If the TRNG ever fails mid‑run, the override sets `g_btcRngHardwareOk = false`
+  and fills from a **non‑trusted `micros()` mix _only_** to keep non‑key paths
+  from looping — **never** for seed material (that path has already refused).
+
+```c
+// zerokey-bitcoin.cpp — the override that replaces Trezor's weak PRNG
+extern "C" void random_buffer(uint8_t *buf, size_t len);  // -> ATECC TRNG cache
+extern "C" uint32_t random32(void);                       // -> random_buffer()
+```
+
+<Tip>
+**Audit check:** a successful firmware *link* proves the strong override won —
+a duplicate strong symbol would be a linker error. Confirm the device **refuses
+to create a wallet** when the ATECC is unavailable.
+</Tip>
+
+## 2 · Seed & encrypted storage
+
+The 16 bytes of entropy become a **BIP39 12‑word mnemonic**
+(`mnemonicFromEntropy(entropy, 16)`). The device stores the **entropy**, not the
+words, in **one AES‑encrypted EEPROM page** at `BITCOIN_WALLET_ADDR`.
+
+```text
+Plaintext page (32 bytes), before encryption:
+  [0..3]   magic "ZKBW"
+  [4]      version = 1
+  [5]      entropy length = 16
+  [6..21]  16-byte BIP39 entropy
+  [22..31] reserved (zero)
+```
+
+- Encrypted with the **same AES‑128‑CBC + ATECC‑protected master key** as your
+  credentials — so the seed is bound to your **PIN** (see
+  [AES‑128 encryption](/firmware/security/aes-128-encryption)).
+- `BITCOIN_WALLET_ADDR` is the last 128‑byte slot of the credential region
+  (freed by lowering `MAX_CREDENTIALS` 62→61 in `zerokey-memorymap.h`); a
+  `static_assert` pins it.
+- On read, `btcReadWallet()` verifies magic/version/length before use and zeroes
+  the plaintext buffer afterward.
+
+## 3 · Key derivation (BIP84, mainnet)
+
+```c
+HDPrivateKey hd(mnemonic, "");             // BIP39 seed, empty passphrase
+HDPrivateKey account = hd.derive("m/84'/0'/0'/");
+String zpub  = account.xpub();             // native SegWit account key
+String addr0 = account.derive("m/0/0/").address();   // bc1q... first receive
+```
+
+- **BIP84 native SegWit**, path `m/84'/0'/0'`, `bc1q…` addresses, `zpub`
+  watch‑only. **Mainnet only.**
+- No passphrase (BIP39 passphrase is empty by design in this build).
+
+## 4 · Watch‑only export
+
+`bitcoinExportWatchOnly()` prints **public** data over serial (no PIN gate — it
+is not secret):
+
+```text
+fingerprint: <8 hex>            # hd.fingerprint()
+zpub: <zpub...>                 # account.xpub()
+descriptor: wpkh([<fp>/84h/0h/0h]<zpub>/0/*)
+first addr: bc1q...
+```
+
+The **master‑key fingerprint origin** in the descriptor is mandatory: uBitcoin's
+`PSBT::sign` matches inputs by `memcmp(root.fingerprint(), derivation.fingerprint, 4)`
+**and** `derivation.pubkey == derived pubkey`. Without the origin, a wallet
+(Sparrow, BlueWallet, Nunchuk…) would build PSBTs the device won't recognise. The
+`bitcoin.html` webtool appends the Bitcoin Core descriptor **checksum** in JS.
+
+## 5 · PSBT signing
+
+`bitcoinReviewPsbt(base64)` → on‑screen review → **hold Center** →
+`bitcoinConfirmSign()`.
+
+<Steps>
+  <Step title="Parse & review">
+    `psbt.parseBase64()`; the OLED shows destination address, amount sent and fee
+    (`psbt.fee()`), with change detected via each output's derivation. This is a
+    **sticky** review — the device never blind‑signs.
+  </Step>
+  <Step title="Hold to confirm">
+    A center long‑press arms `bitcoinConfirmSign()`. Any other button cancels
+    (`PSBT CANCEL`).
+  </Step>
+  <Step title="Sign">
+    `psbt.sign(hd)` produces **deterministic RFC 6979 low‑s** ECDSA signatures
+    over the **BIP143** sighash for every input that matches this wallet. If it
+    matches **0 inputs** the device replies `PSBT ERR NO_INPUTS` and signs
+    nothing (expected for a PSBT from a different wallet).
+  </Step>
+  <Step title="Return">
+    The signed PSBT (base64) is sent back as `PSBT SIGNED`. Finalising,
+    extracting the raw transaction and broadcasting happen off‑device.
+  </Step>
+</Steps>
+
+## Threat model
+
+- **Compromised host:** it can lie in the browser, but it cannot forge the
+  **OLED review** or the **hold‑to‑confirm**. Always verify address/amount/fee on
+  the device screen. A signature commits to the exact outputs via the sighash, so
+  a tampered transaction can only be *rejected* by the network, never redirected.
+- **Physical extraction of EEPROM:** yields only the AES‑encrypted `ZKBW` page;
+  without the PIN‑bound master key it is meaningless.
+- **Weak randomness:** ruled out by the TRNG‑only entropy path that refuses on
+  hardware failure.
+
+## How to audit it yourself
+
+<Steps>
+  <Step title="Reproduce the wallet from the words">
+    Read the 12 words with **Tools → Bitcoin → Show seed**. Feed them into any
+    independent BIP84 tool (Sparrow, an offline Ian Coleman page, or a Python
+    `bip_utils` script). Derive `m/84'/0'/0'` and compare the **fingerprint,
+    `zpub` and first receive address** to the device's **Watch‑only** export.
+    They must match exactly.
+  </Step>
+  <Step title="Verify a signature">
+    Build a PSBT for the wallet, sign it on the device, and check the returned
+    `PSBT_IN_PARTIAL_SIG` is a **canonical low‑s ECDSA** signature over the
+    **BIP143** sighash for that input's pubkey. Any PSBT library
+    (`python-bitcoinlib`, `bitcoinjs`, Bitcoin Core `analyzepsbt`) can finalise
+    and verify it.
+  </Step>
+  <Step title="Confirm the seed never egresses">
+    Watch the serial line during **Watch‑only** and during signing: only
+    `zpub`/fingerprint/descriptor/signature bytes appear — never the words or
+    entropy. Grep the firmware: the only writer of the seed words is
+    `btcDisplaySeed` (OLED), never `SerialUSB`.
+  </Step>
+</Steps>
+
+<Note>
+**Reference validation (2026‑06‑30).** An independent pure‑Python BIP84 verifier
+reproduced the device's exact `zpub` + first address from the 12 words, and a
+fund‑free PSBT test produced a signature **byte‑for‑byte equal** to the
+independently predicted RFC 6979 low‑s signature over the BIP143 sighash,
+verifying as valid canonical ECDSA.
+</Note>
+
+## Source map
+
+| Concern | Where |
+|---------|-------|
+| Entropy, RNG override, storage, derivation, PSBT | `ZerokeyOS/zerokey-bitcoin.cpp` |
+| secp256k1 / BIP32/39 / PSBT | `ZerokeyOS/libraries/uBitcoin` |
+| AES master key, page encrypt/decrypt | `ZerokeyOS/zerokey-security.cpp` |
+| EEPROM page I/O, wallet slot address | `ZerokeyOS/zerokey-eeprom.cpp`, `zerokey-memorymap.h` |
+| Hold‑to‑sign wiring | `ZerokeyOS/zerokey-io.cpp` |
+
+<CardGroup cols={2}>
+  <Card title="User guide" icon="bitcoin-sign" href="/getting-started/bitcoin">
+    Create the wallet, export watch‑only, sign a PSBT.
+  </Card>
+  <Card title="AES‑128 encryption" icon="lock" href="/firmware/security/aes-128-encryption">
+    The master key that protects the stored seed.
+  </Card>
+</CardGroup>
