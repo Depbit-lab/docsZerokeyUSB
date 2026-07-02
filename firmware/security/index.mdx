@@ -35,7 +35,7 @@ graph LR
     subgraph MEM["M24C64 EEPROM"]
         IV["IV (16B)\n@ 0x0010"]
         HASH["PIN hash (32B)\n@ 0x0048"]
-        CRED["62 encrypted\ncredential slots"]
+        CRED["61 encrypted\ncredential slots"]
     end
 
     TRNG -->|"generates at provisioning"| KEY
@@ -105,8 +105,8 @@ Decryption is symmetric: the chip returns plaintext, the MCU XORs it with the pr
 | `0x003E` | 1 B | Keyboard layout selector |
 | `0x0040–0x0047` | 8 B | Last TOTP epoch (persisted across power cycles) |
 | `0x0048–0x0067` | 32 B | PIN hash = SHA-256(pinArray\[16\] ∥ chip_serial\[9\]) |
-| `0x0068+` | 124 B | TOTP metadata (algorithm + secret length, 2 B × 62 slots) |
-| `0x0100+` | — | Credential pages (4 × 32 B × 62 slots = 7936 B max) |
+| `0x0068+` | 124 B | TOTP metadata (algorithm + secret length, 2 B × 61 slots) |
+| `0x0100+` | — | Credential pages (4 × 32 B × 61 slots = 7808 B max) |
 
 > **Note on `0x0028`.** Older units (compiled before the AES move) used this region to hold the 16-byte AES master in plaintext. New units do not touch it; the bytes remain at whatever the EEPROM had previously. Treat the address as reserved.
 
@@ -216,7 +216,7 @@ The IV is generated **once** during provisioning by the ATECC608A's TRNG and sto
 On the first unlock after provisioning, `ZerokeySecurity::unlock()` checks whether credential slot 0, page 0 is still at the EEPROM factory default (`0xFF` across all 32 bytes). If so, it calls `silentEraseAll()`:
 
 1. Loads the device IV from EEPROM.
-2. For each of the 62 credential slots × 4 pages: encrypts a 32-byte `0xFF` blank under AES-128 CBC and writes it to EEPROM.
+2. For each of the 61 credential slots × 4 pages: encrypts a 32-byte `0xFF` blank under AES-128 CBC and writes it to EEPROM.
 3. Clears TOTP metadata for every slot.
 
 This ensures fresh units always have consistent, properly encrypted blank entries before any credential is written.
@@ -253,7 +253,7 @@ Splitting fields keeps recognisable plaintext patterns out of the ciphertext str
 
 Credentials can be exported and imported over the USB CDC serial interface:
 
-- **Export (`backupAllCredentials`):** decrypts all 62 slots in-device and sends them as comma-delimited plaintext lines over SerialUSB. The host receives credentials in clear — **ensure the USB connection is trusted**.
+- **Export (`backupAllCredentials`):** decrypts all 61 slots in-device and sends them as comma-delimited plaintext lines over SerialUSB. The host receives credentials in clear — **ensure the USB connection is trusted**.
 - **Import (`loadAllbackupCredentials`):** receives records from the host, re-encrypts them under the current device IV/master, and writes them to EEPROM. TOTP secrets are parsed and stored in page 3 of each slot.
 
 > **Security note:** backup transmits decrypted credentials in plaintext over USB. Only perform backup/restore on a trusted, air-gapped host.

@@ -138,7 +138,7 @@ ZeroKeyUSB no tiene mecanismo de recuperación de PIN. La única opción es un *
 
 1. Muestra una cuenta atrás de 3 segundos.
 2. Carga el IV del dispositivo.
-3. Sobrescribe los 62 slots de credenciales × 4 páginas con blancos cifrados.
+3. Sobrescribe los 61 slots de credenciales × 4 páginas con blancos cifrados.
 4. Limpia los metadatos TOTP.
 
 Tras el reset el dispositivo se para con un error "LOCKED — reflash". Hay que usar el bootloader para flashear firmware nuevo y re-aprovisionar el dispositivo desde cero.

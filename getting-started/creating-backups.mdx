@@ -31,9 +31,11 @@ From the first credential, press **Left**. (You can also get there by pressing *
 
 ---
 
-## Step 2 — Select "Backup"
+## Step 2 — Select "Tools"
 
-In the root menu, **Backup** is selected by default. Press **Center** to enter the submenu.
+<Note>On current firmware this menu is labelled **Tools** (it was **Backup** when these screenshots were taken, and it now also contains the Bitcoin wallet). The position and steps are identical — Export/Import live inside it.</Note>
+
+In the root menu, **Tools** is selected by default. Press **Center** to enter the submenu.
 
 <img src="/images/steps/creating-backups-02-backup-menu.svg" alt="Root menu with Backup selected" />
 
@@ -71,7 +73,7 @@ After authorizing, the device starts decrypting each slot (one by one with AES-1
 
 <img src="/images/steps/creating-backups-05-progress.svg" alt="Export progress" />
 
-*You don't have to press anything. The device walks through all 62 slots and on completion shows "Export complete" for 1 second before returning to the menu.*
+*You don't have to press anything. The device walks through all 61 slots and on completion shows "Export complete" for 1 second before returning to the menu.*
 
 ---
 
@@ -80,7 +82,7 @@ After authorizing, the device starts decrypting each slot (one by one with AES-1
 While the device sends, on your serial terminal you'll see lines appear:
 
 ```csv
-62
+61
 0,Google,user1,contrasena1,JBSWY3DPEHPK3PXP
 1,Apple,user2,password,
 2,Netflix,user3,Atalaya,
@@ -91,7 +93,7 @@ While the device sends, on your serial terminal you'll see lines appear:
 
 | Field | Meaning |
 |-------|---------|
-| Line 0 | Total number of slots (always `62`) |
+| Line 0 | Total number of slots (always `61`) |
 | `slotIndex` | 0–61 |
 | `site` | Site (≤16 chars) |
 | `username` | Username (≤16 chars) |

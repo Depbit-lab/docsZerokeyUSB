@@ -15,13 +15,14 @@ The menu becomes accessible **after entering your Master PIN** by scrolling past
 ```mermaid
 graph TD
     ROOT["Main Menu"]
-    ROOT --> BACKUP["Backup"]
+    ROOT --> TOOLS["Tools"]
     ROOT --> SETTINGS["Settings"]
     ROOT --> DANGER["Danger Zone"]
     ROOT --> INFO["Info"]
     
-    BACKUP --> IMP["Import"]
-    BACKUP --> EXP["Export"]
+    TOOLS --> IMP["Import"]
+    TOOLS --> EXP["Export"]
+    TOOLS --> BTC["Bitcoin"]
     
     SETTINGS --> ROT["Rotate Screen"]
     SETTINGS --> KB["Keyboard: XX-XX"]
@@ -55,12 +56,15 @@ When a menu has more items than fit on the 4-row display, a **scrollbar with thu
 
 ---
 
-### 🔁 Backup
+### 🧰 Tools
+
+<Note>This submenu was called **Backup** in older firmware; it was renamed **Tools** when the Bitcoin wallet was added.</Note>
 
 | Item | Action |
 |------|--------|
 | **Import** | Receives credentials from the host via USB serial (CDC). Device shows "Waiting for data from the web app." |
-| **Export** | Sends all 62 credential slots as plaintext CSV over USB serial. Requires long-press Center authorization. |
+| **Export** | Sends all 61 credential slots as plaintext CSV over USB serial. Requires long-press Center authorization. |
+| **Bitcoin** | Airgapped Bitcoin wallet: create wallet, show the 12-word seed (screen-only) and export a watch-only `zpub`. See [Bitcoin signer](/firmware/bitcoin-signer). |
 
 The export/import flow shows an authorization prompt before transferring any data:
 
@@ -114,7 +118,7 @@ Every action in this section shows a **confirmation page** that requires pressin
 | Item | Effect | Reversible? |
 |------|--------|-------------|
 | **Reset PIN** | Enters the PIN change screen (`EDITPIN`). New PIN + re-provisioning. | Partial — old credentials remain if same AES key |
-| **Delete Credentials** | Calls `eraseAll()`: 3-second countdown, then writes encrypted blanks to all 62 slots + clears TOTP metadata. | ❌ No |
+| **Delete Credentials** | Calls `eraseAll()`: 3-second countdown, then writes encrypted blanks to all 61 slots + clears TOTP metadata. | ❌ No |
 | **Factory Reset** | Resets config flag to `0x00` + erases all credentials. Next boot starts the setup wizard. | ❌ No |
 | **Bootloader Mode** | Sets double-reset magic word (`0xF01669EF` at `0x20007FFC`), then issues `NVIC_SystemReset()`. Device reboots into USB DFU bootloader for firmware flashing. | ✅ Yes (reflash) |
 

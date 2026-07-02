@@ -28,7 +28,7 @@ block-beta
         K["0x0068–0x00E3: TOTP meta (124B)"]
     end
     block:creds["Credential Zone (0x0100–0x1FFF)"]
-        L["62 credential slots × 128 bytes each"]
+        L["61 credential slots × 128 bytes each"]
     end
 
     style config fill:#dbeafe,stroke:#2563eb
@@ -47,14 +47,15 @@ block-beta
 | `0x003E` | 1 B | Keyboard layout selector (0–8) | `EEPROM_LAYOUT_ADDR` |
 | `0x0040–0x0047` | 8 B | Last TOTP epoch (big-endian) | `EEPROM_LAST_TOTP_EPOCH_ADDR` |
 | `0x0048–0x0067` | 32 B | PIN hash: SHA-256(PIN ∥ serial) | `EEPROM_PIN_HASH` |
-| `0x0068–0x00E3` | 124 B | TOTP metadata: 2 B × 62 slots (algorithm + secret_len) | `CONFIG_TOTP_META_START` |
-| `0x0100–0x1FFF` | 7 936 B | 62 credential slots (128 B each = 4 pages × 32 B) | `EEPROM_CREDENTIAL_BASE` |
+| `0x0068–0x00E3` | 124 B | TOTP metadata: 2 B × 61 slots (algorithm + secret_len) | `CONFIG_TOTP_META_START` |
+| `0x0100–0x1F7F` | 7 808 B | 61 credential slots (128 B each = 4 pages × 32 B) | `EEPROM_CREDENTIAL_BASE` |
+| `0x1F80–0x1FFF` | 128 B | Bitcoin wallet — AES-encrypted seed page ([audit](/firmware/bitcoin-signer)) | `BITCOIN_WALLET_ADDR` |
 
 ---
 
 ## Credential slot structure
 
-Each of the **62 credential slots** occupies **4 consecutive 32-byte EEPROM pages** (128 bytes total):
+Each of the **61 credential slots** occupies **4 consecutive 32-byte EEPROM pages** (128 bytes total):
 
 ```mermaid
 graph LR

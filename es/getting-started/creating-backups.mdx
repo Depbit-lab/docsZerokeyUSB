@@ -31,9 +31,11 @@ Desde la primera credencial, pulsa **Izquierda**. (También puedes llegar pulsan
 
 ---
 
-## Paso 2 — Seleccionar "Backup"
+## Paso 2 — Seleccionar "Tools"
 
-En el menú raíz, **Backup** ya está seleccionado por defecto. Pulsa **Centro** para entrar al submenú.
+<Note>En el firmware actual este menú se llama **Tools** (se llamaba **Backup** cuando se hicieron estas capturas, y ahora contiene también la cartera Bitcoin). La posición y los pasos son idénticos — Export/Import están dentro de él.</Note>
+
+En el menú raíz, **Tools** ya está seleccionado por defecto. Pulsa **Centro** para entrar al submenú.
 
 <img src="/images/steps/creating-backups-02-backup-menu.svg" alt="Menú raíz con Backup seleccionado" />
 
@@ -71,7 +73,7 @@ Tras autorizar, el dispositivo empieza a descifrar cada hueco (uno por uno con A
 
 <img src="/images/steps/creating-backups-05-progress.svg" alt="Progreso de exportación" />
 
-*No tienes que pulsar nada. El dispositivo recorre los 62 huecos y al terminar muestra "Exportacion completa" durante 1 segundo antes de volver al menú.*
+*No tienes que pulsar nada. El dispositivo recorre los 61 huecos y al terminar muestra "Exportacion completa" durante 1 segundo antes de volver al menú.*
 
 ---
 
@@ -80,7 +82,7 @@ Tras autorizar, el dispositivo empieza a descifrar cada hueco (uno por uno con A
 Mientras el dispositivo envía, en tu terminal serie verás aparecer línea a línea:
 
 ```csv
-62
+61
 0,Google,user1,contrasena1,JBSWY3DPEHPK3PXP
 1,Apple,user2,password,
 2,Netflix,user3,Atalaya,
@@ -91,7 +93,7 @@ Mientras el dispositivo envía, en tu terminal serie verás aparecer línea a l�
 
 | Campo | Significado |
 |-------|-------------|
-| Línea 0 | Número total de huecos (siempre `62`) |
+| Línea 0 | Número total de huecos (siempre `61`) |
 | `slotIndex` | 0–61 |
 | `site` | Sitio (≤16 chars) |
 | `username` | Usuario (≤16 chars) |

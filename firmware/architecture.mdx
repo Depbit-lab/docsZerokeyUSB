@@ -214,7 +214,7 @@ Both interfaces are active simultaneously after boot. The CDC channel requires P
 |--------|------|-------|
 | **Flash** | 256 KB total, ~64 KB used | Firmware code, fonts, PROGMEM icons, keyboard maps, constant data |
 | **SRAM** | 32 KB total, ~16 KB used | UI buffers, `currentSite/User/Pass[16]`, `pinArray[16]`, TOTP workspace |
-| **EEPROM** | 8 KB (M24C64) | Encrypted credentials (62 slots × 128 B), IV, PIN hash, config, TOTP metadata |
+| **EEPROM** | 8 KB (M24C64) | Encrypted credentials (61 slots × 128 B), IV, PIN hash, config, TOTP metadata |
 
 No dynamic memory allocation (`malloc`/`new`) is used anywhere. All buffers are stack-allocated or static.
 

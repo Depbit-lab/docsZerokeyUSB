@@ -35,7 +35,7 @@ graph LR
     subgraph MEM["EEPROM M24C64"]
         IV["IV (16B)\n@ 0x0010"]
         HASH["Hash del PIN (32B)\n@ 0x0048"]
-        CRED["62 slots de credenciales\ncifrados"]
+        CRED["61 slots de credenciales\ncifrados"]
     end
 
     TRNG -->|"genera al aprovisionar"| KEY
@@ -105,8 +105,8 @@ El descifrado es simétrico: el chip devuelve plaintext, el MCU lo XOR con el ci
 | `0x003E` | 1 B | Selector de layout de teclado |
 | `0x0040–0x0047` | 8 B | Último epoch TOTP (persistente entre apagados) |
 | `0x0048–0x0067` | 32 B | Hash del PIN = SHA-256(pinArray\[16\] ∥ chip_serial\[9\]) |
-| `0x0068+` | 124 B | Metadatos TOTP (algoritmo + longitud del secreto, 2 B × 62 slots) |
-| `0x0100+` | — | Páginas de credenciales (4 × 32 B × 62 slots = 7936 B máx.) |
+| `0x0068+` | 124 B | Metadatos TOTP (algoritmo + longitud del secreto, 2 B × 61 slots) |
+| `0x0100+` | — | Páginas de credenciales (4 × 32 B × 61 slots = 7808 B máx.) |
 
 > **Nota sobre `0x0028`.** Unidades antiguas (compiladas antes del cambio de AES) usaban esta región para guardar la clave maestra AES de 16 bytes en plaintext. Las unidades nuevas no la tocan; los bytes permanecen con lo que tuviera la EEPROM. Trata la dirección como reservada.
 
@@ -216,7 +216,7 @@ El IV se genera **una vez** durante el aprovisionamiento por el TRNG del ATECC60
 En el primer unlock tras el aprovisionamiento, `ZerokeySecurity::unlock()` comprueba si el slot 0 página 0 de credenciales sigue en el valor por defecto de fábrica de EEPROM (`0xFF` en los 32 bytes). Si es así, llama a `silentEraseAll()`:
 
 1. Carga el IV del dispositivo desde EEPROM.
-2. Para cada uno de los 62 slots × 4 páginas: cifra un blanco de 32 bytes `0xFF` bajo AES-128 CBC y lo escribe en EEPROM.
+2. Para cada uno de los 61 slots × 4 páginas: cifra un blanco de 32 bytes `0xFF` bajo AES-128 CBC y lo escribe en EEPROM.
 3. Limpia los metadatos TOTP de cada slot.
 
 Esto garantiza que las unidades nuevas siempre tengan entradas en blanco consistentes y correctamente cifradas antes de que se escriba ninguna credencial.
@@ -253,7 +253,7 @@ Dividir los campos mantiene patrones reconocibles de plaintext fuera del stream 
 
 Las credenciales se pueden exportar e importar por la interfaz serie USB CDC:
 
-- **Export (`backupAllCredentials`):** descifra los 62 slots dentro del dispositivo y los envía como líneas plaintext separadas por comas por SerialUSB. El host recibe las credenciales en claro — **asegúrate de que la conexión USB es de confianza**.
+- **Export (`backupAllCredentials`):** descifra los 61 slots dentro del dispositivo y los envía como líneas plaintext separadas por comas por SerialUSB. El host recibe las credenciales en claro — **asegúrate de que la conexión USB es de confianza**.
 - **Import (`loadAllbackupCredentials`):** recibe registros desde el host, los re-cifra bajo el IV/clave maestra actual del dispositivo y los escribe en EEPROM. Los secretos TOTP se parsean y guardan en la página 3 de cada slot.
 
 > **Nota de seguridad:** el backup transmite credenciales descifradas en plaintext por USB. Solo realiza backup/restore en un host de confianza, air-gapped.

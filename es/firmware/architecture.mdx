@@ -214,7 +214,7 @@ Ambas interfaces están activas simultáneamente tras el arranque. El canal CDC 
 |--------|------|-------|
 | **Flash** | 256 KB total, ~64 KB usados | Código de firmware, fuentes, iconos PROGMEM, mapas de teclado, datos constantes |
 | **SRAM** | 32 KB total, ~16 KB usados | Buffers UI, `currentSite/User/Pass[16]`, `pinArray[16]`, workspace TOTP |
-| **EEPROM** | 8 KB (M24C64) | Credenciales cifradas (62 slots × 128 B), IV, hash de PIN, config, metadatos TOTP |
+| **EEPROM** | 8 KB (M24C64) | Credenciales cifradas (61 slots × 128 B), IV, hash de PIN, config, metadatos TOTP |
 
 No se usa asignación dinámica de memoria (`malloc`/`new`) en ningún sitio. Todos los buffers son asignados en pila o estáticos.
 
