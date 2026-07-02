@@ -26,10 +26,9 @@ graph TD
     
     SETTINGS --> ROT["Rotate Screen"]
     SETTINGS --> KB["Keyboard: XX-XX"]
-    SETTINGS --> ABOUT["About"]
+    SETTINGS --> UILANG["UI Language"]
+    SETTINGS --> READER["Reader: On/Off"]
     
-    DANGER --> RPIN["Reset PIN"]
-    DANGER --> DEL["Delete Credentials"]
     DANGER --> FACTORY["Factory Reset"]
     DANGER --> BOOT["Bootloader Mode"]
     
@@ -97,7 +96,8 @@ Export sends **plaintext credentials** over USB serial. Only perform this on a t
 |------|--------|
 | **Rotate Screen** | Flips the display 180° for left/right-handed use. Also inverts touch controls. Saved in EEPROM. |
 | **Keyboard: XX-XX** | Cycles through 9 keyboard layouts (EN-US → DA-DK → DE-DE → ES-ES → FR-FR → HU-HU → IT-IT → PT-PT → SV-SE → EN-US). Saved in EEPROM. |
-| **About** | Shows device info: SW version, serial number, and `zerokeyusb.com`. |
+| **UI Language** | Cycles the on-screen interface language (English ↔ Spanish). Saved in EEPROM. |
+| **Reader: On/Off** | Toggles the persistent HID [screen-reader mode](/firmware/screen-reader) — types the screen over USB so a unit with a dead display is still usable. Saved in EEPROM. |
 
 ---
 
@@ -117,9 +117,7 @@ Every action in this section shows a **confirmation page** that requires pressin
 
 | Item | Effect | Reversible? |
 |------|--------|-------------|
-| **Reset PIN** | Enters the PIN change screen (`EDITPIN`). New PIN + re-provisioning. | Partial — old credentials remain if same AES key |
-| **Delete Credentials** | Calls `eraseAll()`: 3-second countdown, then writes encrypted blanks to all 61 slots + clears TOTP metadata. | ❌ No |
-| **Factory Reset** | Resets config flag to `0x00` + erases all credentials. Next boot starts the setup wizard. | ❌ No |
+| **Factory Reset** | Runs `eraseAll()` (3-second countdown, encrypted blanks over all 61 slots + clears TOTP metadata) and resets the provisioning flag to `0x00`, so the next boot starts the setup wizard. | ❌ No |
 | **Bootloader Mode** | Sets double-reset magic word (`0xF01669EF` at `0x20007FFC`), then issues `NVIC_SystemReset()`. Device reboots into USB DFU bootloader for firmware flashing. | ✅ Yes (reflash) |
 
 ---

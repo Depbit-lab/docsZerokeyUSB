@@ -26,10 +26,9 @@ graph TD
     
     SETTINGS --> ROT["Rotate Screen"]
     SETTINGS --> KB["Keyboard: XX-XX"]
-    SETTINGS --> ABOUT["About"]
+    SETTINGS --> UILANG["UI Language"]
+    SETTINGS --> READER["Reader: On/Off"]
     
-    DANGER --> RPIN["Reset PIN"]
-    DANGER --> DEL["Delete Credentials"]
     DANGER --> FACTORY["Factory Reset"]
     DANGER --> BOOT["Bootloader Mode"]
     
@@ -97,7 +96,8 @@ Export envía **credenciales en texto plano** por USB serie. Solo realiza esto e
 |------|--------|
 | **Rotate Screen** | Voltea la pantalla 180° para uso a izquierda/derecha. También invierte los controles táctiles. Guardado en EEPROM. |
 | **Keyboard: XX-XX** | Cicla por los 9 layouts de teclado (EN-US → DA-DK → DE-DE → ES-ES → FR-FR → HU-HU → IT-IT → PT-PT → SV-SE → EN-US). Guardado en EEPROM. |
-| **About** | Muestra info del dispositivo: versión SW, número de serie y `zerokeyusb.com`. |
+| **UI Language** | Cicla el idioma de la interfaz en pantalla (Inglés ↔ Español). Guardado en EEPROM. |
+| **Reader: On/Off** | Alterna el [modo lector de pantalla](/es/firmware/screen-reader) HID persistente — teclea la pantalla por USB para que una unidad con el display muerto siga siendo usable. Guardado en EEPROM. |
 
 ---
 
@@ -117,9 +117,7 @@ Toda acción en esta sección muestra una **página de confirmación** que requi
 
 | Ítem | Efecto | ¿Reversible? |
 |------|--------|-------------|
-| **Reset PIN** | Entra en la pantalla de cambio de PIN (`EDITPIN`). Nuevo PIN + re-aprovisionamiento. | Parcial — las credenciales antiguas permanecen si la clave AES es la misma |
-| **Delete Credentials** | Llama a `eraseAll()`: cuenta atrás de 3 segundos, luego escribe blancos cifrados en los 61 slots + limpia metadatos TOTP. | ❌ No |
-| **Factory Reset** | Resetea el flag de config a `0x00` + borra todas las credenciales. El próximo arranque inicia el asistente de setup. | ❌ No |
+| **Factory Reset** | Ejecuta `eraseAll()` (cuenta atrás de 3 segundos, blancos cifrados en los 61 slots + limpia metadatos TOTP) y resetea el flag de aprovisionamiento a `0x00`, así el próximo arranque inicia el asistente de setup. | ❌ No |
 | **Bootloader Mode** | Pone la palabra mágica de doble reset (`0xF01669EF` en `0x20007FFC`) y luego ejecuta `NVIC_SystemReset()`. El dispositivo se reinicia en el bootloader USB DFU para flashear firmware. | ✅ Sí (reflasheo) |
 
 ---
