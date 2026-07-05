@@ -23,6 +23,7 @@ graph TD
     TOOLS --> IMP["Import"]
     TOOLS --> EXP["Export"]
     TOOLS --> BTC["Bitcoin"]
+    TOOLS --> CHR["Chrome: On/Off"]
     
     SETTINGS --> ROT["Rotate Screen"]
     SETTINGS --> KB["Keyboard: XX-XX"]
@@ -65,6 +66,7 @@ Cuando un menú tiene más ítems de los que caben en las 4 filas, aparece una *
 | **Import** | Recibe credenciales desde el host vía USB serie (CDC). El dispositivo muestra "Waiting for data from the web app". |
 | **Export** | Envía los 61 slots de credenciales como CSV en texto plano por USB serie. Requiere autorización con pulsación larga Centro. |
 | **Bitcoin** | Cartera Bitcoin airgapped: crear cartera, mostrar la semilla de 12 palabras (solo pantalla) y exportar un `zpub` watch-only. Ver [Firmante Bitcoin](/es/firmware/bitcoin-signer). |
+| **Chrome: On/Off** | Habilita el comando host `FIND` que usa la [extensión de navegador](/es/getting-started/browser-extension) para saltar la búsqueda del dispositivo. Por defecto **On**; en Off el firmware ignora el comando. Guardado en EEPROM (`0x000D`). |
 
 El flujo de export/import muestra un prompt de autorización antes de transferir cualquier dato:
 

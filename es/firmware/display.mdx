@@ -132,7 +132,7 @@ Hay dos tipos de scroll implementados:
 | Tipo de feedback | Implementación |
 |--------------|----------------|
 | **Resaltado de selección** | Colores invertidos (texto negro sobre fondo blanco) |
-| **Progreso de pulsación larga** | Rectángulo que se llena vía `drawLongPressProgress()` |
+| **Progreso de pulsación larga** | Dos plumas blancas se llenan por el borde de la pantalla vía `drawLongPressProgress()`, con un cabezal negro por delante de cada una para seguir el avance con claridad |
 | **Spinner de actividad** | Animación basada en frames vía `renderActivityScreen()` |
 | **Barra de progreso** | `renderProgress()` con título, subtítulo, hecho/total |
 | **Indicador de tecleo** | `renderTypingActivity()` muestra caracteres tecleados vs. total |
@@ -140,10 +140,29 @@ Hay dos tipos de scroll implementados:
 
 ---
 
+## Apagado por inactividad
+
+Tras **1 minuto sin ninguna pulsación táctil**, el firmware apaga el OLED
+(`SSD1306_DISPLAYOFF`) desde `handleButtonChecker()`. Es un apagado **solo de la
+pantalla**:
+
+- La bóveda **no** se bloquea y `programPosition` no cambia — al despertar
+  aparece exactamente la misma pantalla.
+- **Cualquier toque** enciende el panel (`SSD1306_DISPLAYON`); ese primer toque
+  se consume, así que solo despierta y no navega además.
+- Un `FIND` del host desde la [extensión de navegador](/es/getting-started/browser-extension)
+  también enciende el panel para que el salto sea visible.
+
+El MCU sigue funcionando mientras está apagado (temporizadores, pasos TOTP,
+serie). Los redibujados periódicos automáticos (p. ej. la cuenta atrás del TOTP)
+**no** cuentan como actividad — solo el táctil y los comandos del host.
+
+---
+
 ## Seguridad del display
 
 - Los campos sensibles (contraseñas, códigos TOTP) se **muestran brevemente y se borran** — el frame buffer se sobrescribe en la siguiente transición.
-- El display **no se autobloquea por inactividad** — hay que quitar la alimentación (desconexión USB) para bloquear el dispositivo.
+- El display **se apaga tras 1 minuto de inactividad pero no se bloquea** (ver arriba); bloquear la bóveda sigue requiriendo quitar la alimentación (desconexión USB).
 - Mientras se teclea al host, `renderTypingActivity()` muestra progreso sin mostrar el contenido de la credencial.
 - Ninguna credencial descifrada se guarda en la GDDRAM del controlador OLED más allá del frame actual.
 

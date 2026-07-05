@@ -29,7 +29,8 @@
                   "getting-started/creating-backups",
                   "getting-started/importing-credentials",
                   "getting-started/bitcoin",
-                  "getting-started/recovery-no-screen"
+                  "getting-started/recovery-no-screen",
+                  "getting-started/browser-extension"
                 ]
               }
             ]
@@ -129,7 +130,8 @@
                   "es/getting-started/creating-backups",
                   "es/getting-started/importing-credentials",
                   "es/getting-started/bitcoin",
-                  "es/getting-started/recovery-no-screen"
+                  "es/getting-started/recovery-no-screen",
+                  "es/getting-started/browser-extension"
                 ]
               }
             ]

@@ -132,7 +132,7 @@ Two types of scrolling are implemented:
 | Feedback type | Implementation |
 |--------------|----------------|
 | **Selection highlight** | Inverted colors (black text on white background) |
-| **Long-press progress** | Filling rectangle via `drawLongPressProgress()` |
+| **Long-press progress** | Two white pens fill along the screen edge via `drawLongPressProgress()`, with a short black lead ahead of each pen so the advance is easy to follow |
 | **Activity spinner** | Frame-based animation via `renderActivityScreen()` |
 | **Progress bar** | `renderProgress()` with title, subtitle, done/total |
 | **Typing indicator** | `renderTypingActivity()` shows characters typed vs. total |
@@ -140,10 +140,29 @@ Two types of scrolling are implemented:
 
 ---
 
+## Inactivity blanking
+
+After **1 minute with no touch input**, the firmware powers the OLED off
+(`SSD1306_DISPLAYOFF`) from `handleButtonChecker()`. This is a **display-only**
+sleep:
+
+- The vault is **not** locked and `programPosition` does not change — waking
+  lands on the exact same screen.
+- **Any touch** wakes the panel (`SSD1306_DISPLAYON`); that first touch is
+  consumed, so it only wakes and does not also navigate.
+- A host `FIND` from the [browser extension](/getting-started/browser-extension)
+  also wakes the panel so the jump is visible.
+
+The MCU keeps running while blanked (timers, TOTP steps, serial). Automatic
+periodic redraws (e.g. the TOTP countdown) do **not** count as activity — only
+touch and host commands do.
+
+---
+
 ## Display security
 
 - Sensitive fields (passwords, TOTP codes) are **displayed briefly and cleared** — the frame buffer is overwritten on the next screen transition.
-- The display does **not auto-lock on inactivity** — power must be removed (USB disconnection) to lock the device.
+- The display **blanks after 1 minute of inactivity but does not lock** (see above); locking the vault still requires power removal (USB disconnection).
 - While typing to host, `renderTypingActivity()` shows progress without displaying the credential content.
 - No decrypted credential is ever stored in the OLED controller's GDDRAM beyond the current frame.
 
