@@ -28,6 +28,7 @@ graph TD
     SETTINGS --> KB["Keyboard: XX-XX"]
     SETTINGS --> UILANG["UI Language"]
     SETTINGS --> READER["Reader: On/Off"]
+    SETTINGS --> PWD["Pwd: XX"]
     
     DANGER --> FACTORY["Factory Reset"]
     DANGER --> BOOT["Bootloader Mode"]
@@ -98,6 +99,7 @@ Export sends **plaintext credentials** over USB serial. Only perform this on a t
 | **Keyboard: XX-XX** | Cycles through 9 keyboard layouts (EN-US → DA-DK → DE-DE → ES-ES → FR-FR → HU-HU → IT-IT → PT-PT → SV-SE → EN-US). Saved in EEPROM. |
 | **UI Language** | Cycles the on-screen interface language (English ↔ Spanish). Saved in EEPROM. |
 | **Reader: On/Off** | Toggles the persistent HID [screen-reader mode](/firmware/screen-reader) — types the screen over USB so a unit with a dead display is still usable. Saved in EEPROM. |
+| **Pwd: XX** | Cycles the format used by `Rand` when generating a password: `Symbols` → `Numeric` → `a-z 0-9` → `Aa-z 0-9` → `Words` → `Words+Num`. All formats draw from the ATECC608A TRNG and cap at 16 characters. Saved in EEPROM (`0x0004`). See [Edit a credential](/getting-started/edit-credential). |
 
 ---
 

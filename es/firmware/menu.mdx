@@ -28,6 +28,7 @@ graph TD
     SETTINGS --> KB["Keyboard: XX-XX"]
     SETTINGS --> UILANG["UI Language"]
     SETTINGS --> READER["Reader: On/Off"]
+    SETTINGS --> PWD["Pwd: XX"]
     
     DANGER --> FACTORY["Factory Reset"]
     DANGER --> BOOT["Bootloader Mode"]
@@ -98,6 +99,7 @@ Export envía **credenciales en texto plano** por USB serie. Solo realiza esto e
 | **Keyboard: XX-XX** | Cicla por los 9 layouts de teclado (EN-US → DA-DK → DE-DE → ES-ES → FR-FR → HU-HU → IT-IT → PT-PT → SV-SE → EN-US). Guardado en EEPROM. |
 | **UI Language** | Cicla el idioma de la interfaz en pantalla (Inglés ↔ Español). Guardado en EEPROM. |
 | **Reader: On/Off** | Alterna el [modo lector de pantalla](/es/firmware/screen-reader) HID persistente — teclea la pantalla por USB para que una unidad con el display muerto siga siendo usable. Guardado en EEPROM. |
+| **Pwd: XX** | Cicla el formato que usa `Rand` al generar una contraseña: `Symbols` → `Numeric` → `a-z 0-9` → `Aa-z 0-9` → `Words` → `Words+Num`. Todos los formatos salen del TRNG del ATECC608A y topan en 16 caracteres. Guardado en EEPROM (`0x0004`). Ver [Editar una credencial](/es/getting-started/edit-credential). |
 
 ---
 
