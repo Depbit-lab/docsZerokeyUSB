@@ -21,8 +21,14 @@ When you click the toolbar icon on a login page:
 
 <Steps>
 <Step title="Reads the tab">
-It takes the current URL, strips the scheme and a leading `www.`, and uses the
-**first letter** of the domain.
+It takes the current URL and uses the **first letter of the main domain** —
+subdomains are ignored, so `ss.revolut.com` and `doc.zerokeyusb.com` resolve to
+**R** and **Z** (not S or D). Common two-level suffixes like `co.uk` are handled.
+</Step>
+<Step title="Syncs the clock">
+It sends `TIME <epoch>` (UTC) so the device clock stays set and TOTP codes are
+accurate — the same value the [time-sync tool](/firmware/totp/web-time-sync-tool)
+sends, pushed automatically on every use.
 </Step>
 <Step title="Jumps the device search">
 It sends `FIND <letter>` over the USB CDC serial port; the device switches to

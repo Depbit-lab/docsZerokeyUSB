@@ -21,8 +21,15 @@ Al pulsar el icono de la barra en una página de login:
 
 <Steps>
 <Step title="Lee la pestaña">
-Toma la URL actual, quita el esquema y un `www.` inicial, y usa la **primera
-letra** del dominio.
+Toma la URL actual y usa la **primera letra del dominio principal** — los
+subdominios se ignoran, así que `ss.revolut.com` y `doc.zerokeyusb.com` dan
+**R** y **Z** (no S ni D). Los sufijos de dos niveles tipo `co.uk` se manejan.
+</Step>
+<Step title="Sincroniza el reloj">
+Envía `TIME <epoch>` (UTC) para que el reloj del dispositivo quede ajustado y los
+TOTP sean exactos — el mismo valor que envía la [herramienta de
+sincronización](/es/firmware/totp/web-time-sync-tool), empujado automáticamente
+en cada uso.
 </Step>
 <Step title="Salta la búsqueda del dispositivo">
 Envía `FIND <letra>` por el puerto serie USB CDC; el dispositivo cambia a su

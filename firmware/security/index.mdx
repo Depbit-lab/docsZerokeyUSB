@@ -73,7 +73,7 @@ All sensitive data is stored in the external **EEPROM M24C64-WMN6TP**, encrypted
 | **AES master key** | 16 random bytes produced by the ATECC608A TRNG at first boot and written to **slot 8** of the chip. `IsSecret=1` means it can never be read out via the I²C bus. |
 | **IV (Initialization Vector)** | 16 random bytes produced by the ATECC608A TRNG at provisioning. Stored in EEPROM at `0x0010–0x001F`. |
 | **PIN binding** | The AES master key is **not** derived from the PIN. The PIN is verified separately via an EEPROM-stored hash and gates access to the unlock routine. |
-| **Credential layout** | Each slot holds up to four 32-byte encrypted EEPROM pages: site (p0), username (p1), password (p2), TOTP secret (p3). Each 32-byte page encrypts 16 bytes of plaintext padded to 32 bytes with `0xFF`. |
+| **Credential layout** | Each slot holds up to four 32-byte encrypted EEPROM pages: site (p0), username (p1), password (p2), TOTP secret / note (p3). Each page holds **up to 32 bytes** of plaintext (site/user/password up to 32 chars); any unused tail is padded with `0xFF`. |
 
 ### CBC chaining detail
 
@@ -215,7 +215,7 @@ This ensures fresh units always have consistent, properly encrypted blank entrie
 
 Each credential slot occupies 4 consecutive EEPROM pages (128 bytes total):
 
-| Page | Content (plaintext, 16 B + 16 B padding) | EEPROM bytes |
+| Page | Content (plaintext, up to 32 B; unused tail `0xFF`) | EEPROM bytes |
 |------|----------------------------------------|--------------|
 | 0 | Site / domain | 32 B ciphertext |
 | 1 | Username | 32 B ciphertext |

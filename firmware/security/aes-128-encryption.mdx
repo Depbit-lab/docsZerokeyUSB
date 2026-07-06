@@ -105,10 +105,10 @@ Each call takes ~10 ms including I²C overhead.
 
 ## Padding
 
-Each credential field (site, username, password) is 16 bytes in RAM. Before encryption:
+Each credential field (site, username, password) is **up to 32 bytes** in RAM. Before encryption:
 
 1. Trailing **space characters (`0x20`)** are replaced with `0xFF` from the end inward.
-2. The 16-byte field is placed in a 32-byte buffer; the upper 16 bytes are filled with `0xFF`.
+2. The field fills the 32-byte page buffer directly; any unused tail is `0xFF`.
 
 On decryption, `bufferToString()` strips `0xFF` bytes and reads until `\0` or `0xFF`.
 
@@ -121,7 +121,7 @@ On decryption, `bufferToString()` strips `0xFF` bytes and reads until `\0` or `0
 1. Replace trailing spaces in `currentSite`, `currentUser`, `currentPass` with `0xFF`.
 2. Load IV from EEPROM (`loadIVfromEEPROM()`).
 3. For each of the 3 fields:
-   - Copy 16 bytes into a 32-byte buffer, pad upper half with `0xFF`.
+   - Copy up to 32 bytes into the 32-byte buffer, padding any unused tail with `0xFF`.
    - Call `cbcEncrypt32(iv, plain, encrypted)` — two ATECC AES calls under the hood.
    - Write the 32-byte ciphertext to the correct EEPROM page.
 
@@ -132,7 +132,7 @@ On decryption, `bufferToString()` strips `0xFF` bytes and reads until `\0` or `0
 3. For each of the 3 fields:
    - Read the 32-byte ciphertext from EEPROM.
    - Call `cbcDecrypt32(iv, encrypted, decrypted)` — two ATECC AES calls.
-   - Copy the first 16 bytes into `currentSite` / `currentUser` / `currentPass`.
+   - Copy the 32 bytes into `currentSite` / `currentUser` / `currentPass`.
 
 ---
 

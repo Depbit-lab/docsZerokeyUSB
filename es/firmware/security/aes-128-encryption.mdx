@@ -105,10 +105,10 @@ Cada llamada tarda ~10 ms incluyendo el overhead I²C.
 
 ## Padding
 
-Cada campo de credencial (sitio, usuario, contraseña) son 16 bytes en RAM. Antes del cifrado:
+Cada campo de credencial (sitio, usuario, contraseña) son **hasta 32 bytes** en RAM. Antes del cifrado:
 
 1. Los **caracteres espacio (`0x20`)** finales se reemplazan con `0xFF` desde el final hacia dentro.
-2. El campo de 16 bytes se coloca en un buffer de 32 bytes; los 16 bytes superiores se rellenan con `0xFF`.
+2. El campo llena directamente el buffer de página de 32 bytes; cualquier cola sin usar queda en `0xFF`.
 
 Al descifrar, `bufferToString()` quita los bytes `0xFF` y lee hasta `\0` o `0xFF`.
 
@@ -121,7 +121,7 @@ Al descifrar, `bufferToString()` quita los bytes `0xFF` y lee hasta `\0` o `0xFF
 1. Reemplazar espacios finales en `currentSite`, `currentUser`, `currentPass` con `0xFF`.
 2. Cargar el IV desde EEPROM (`loadIVfromEEPROM()`).
 3. Para cada uno de los 3 campos:
-   - Copiar 16 bytes a un buffer de 32 bytes, rellenar la mitad superior con `0xFF`.
+   - Copiar hasta 32 bytes al buffer de 32 bytes, rellenando cualquier cola sin usar con `0xFF`.
    - Llamar a `cbcEncrypt32(iv, plain, encrypted)` — dos llamadas AES al ATECC por debajo.
    - Escribir el ciphertext de 32 bytes a la página correcta de EEPROM.
 
@@ -132,7 +132,7 @@ Al descifrar, `bufferToString()` quita los bytes `0xFF` y lee hasta `\0` o `0xFF
 3. Para cada uno de los 3 campos:
    - Leer el ciphertext de 32 bytes desde EEPROM.
    - Llamar a `cbcDecrypt32(iv, encrypted, decrypted)` — dos llamadas AES al ATECC.
-   - Copiar los primeros 16 bytes a `currentSite` / `currentUser` / `currentPass`.
+   - Copiar los 32 bytes a `currentSite` / `currentUser` / `currentPass`.
 
 ---
 

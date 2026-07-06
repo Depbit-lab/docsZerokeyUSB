@@ -73,7 +73,7 @@ Todos los datos sensibles se almacenan en la **EEPROM externa M24C64-WMN6TP**, c
 | **Clave maestra AES** | 16 bytes aleatorios producidos por el TRNG del ATECC608A al primer arranque y escritos al **slot 8** del chip. `IsSecret=1` significa que nunca se puede leer vía el bus I²C. |
 | **IV (Vector de Inicialización)** | 16 bytes aleatorios producidos por el TRNG del ATECC608A al aprovisionar. Guardados en EEPROM en `0x0010–0x001F`. |
 | **Vinculación con el PIN** | La clave maestra AES **no** se deriva del PIN. El PIN se verifica por separado mediante un hash guardado en EEPROM que gobierna el acceso a la rutina de unlock. |
-| **Layout de credenciales** | Cada slot contiene hasta cuatro páginas EEPROM cifradas de 32 bytes: sitio (p0), usuario (p1), contraseña (p2), secreto TOTP (p3). Cada página de 32 bytes cifra 16 bytes de plaintext rellenados a 32 bytes con `0xFF`. |
+| **Layout de credenciales** | Cada slot contiene hasta cuatro páginas EEPROM cifradas de 32 bytes: sitio (p0), usuario (p1), contraseña (p2), secreto TOTP / nota (p3). Cada página guarda **hasta 32 bytes** de plaintext (sitio/usuario/contraseña hasta 32 chars); cualquier cola sin usar se rellena con `0xFF`. |
 
 ### Detalle del encadenamiento CBC
 
@@ -215,7 +215,7 @@ Esto garantiza que las unidades nuevas siempre tengan entradas en blanco consist
 
 Cada slot de credencial ocupa 4 páginas EEPROM consecutivas (128 bytes en total):
 
-| Página | Contenido (plaintext, 16 B + 16 B padding) | Bytes EEPROM |
+| Página | Contenido (plaintext, hasta 32 B; cola sin usar `0xFF`) | Bytes EEPROM |
 |------|----------------------------------------|--------------|
 | 0 | Sitio / dominio | 32 B ciphertext |
 | 1 | Usuario | 32 B ciphertext |

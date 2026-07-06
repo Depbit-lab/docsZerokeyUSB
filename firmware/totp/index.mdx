@@ -63,6 +63,25 @@ Future firmware releases can extend the hash options without changing hardware.
 
 ---
 
+## Text notes instead of a code
+
+The same per-credential field can hold a **plaintext note** — a recovery code,
+a hint, anything worth jotting down — instead of a TOTP secret. You choose per
+credential in the webtool: a selector marks the field as **2FA code** or **Note**.
+
+- A note is **hidden when empty**, exactly like the 2FA field.
+- When present it is **shown on the device** (scrolling if long) with a document
+  icon, so you can read it.
+- It is **never typed over USB and never editable on-device** — notes are set
+  only from the webtool.
+- Limit: **32 characters** (the field's storage capacity).
+
+The field's type lives in its metadata byte (a `NOTE` marker), so the data needs
+no special marker on-device; backups round-trip the type via a `note:` prefix, so
+importing needs no manual re-marking.
+
+---
+
 ## Best practices
 
 - Resync time after long storage or travel across time zones.

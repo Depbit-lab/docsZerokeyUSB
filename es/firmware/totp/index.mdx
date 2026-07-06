@@ -63,6 +63,26 @@ Futuras versiones del firmware pueden ampliar las opciones de hash sin cambiar h
 
 ---
 
+## Nota de texto en vez de un código
+
+El mismo campo por credencial puede guardar una **nota de texto** —un código de
+recuperación, una pista, cualquier cosa que quieras apuntar— en lugar de un
+secreto TOTP. Se elige por credencial en el webtool: un selector marca el campo
+como **2FA code** o **Note**.
+
+- Una nota está **oculta si está vacía**, igual que el campo 2FA.
+- Si existe, **se muestra en el dispositivo** (con scroll si es larga) con un
+  icono de documento, para que puedas leerla.
+- **Nunca se teclea por USB ni se edita desde el dispositivo** — las notas solo
+  se crean desde el webtool.
+- Límite: **32 caracteres** (la capacidad del campo).
+
+El tipo del campo vive en su byte de metadatos (un marcador `NOTE`), así que el
+dato no necesita ningún marcador en el dispositivo; los backups conservan el tipo
+mediante un prefijo `note:`, de modo que importar no requiere re-marcar nada.
+
+---
+
 ## Buenas prácticas
 
 - Re-sincroniza la hora tras periodos largos de almacenamiento o viajes a través de zonas horarias.

@@ -75,6 +75,7 @@ El canal CDC se comunica a **115200 bps** usando líneas ASCII simples. Los coma
 | `<epoch>` | Host → Dispositivo | Dispositivo mostrando `REQTIME` | Envía timestamp Unix epoch para sincronización TOTP. |
 | `ZK PING` | Host → Dispositivo | — (siempre) | Sonda de identidad. Responde `ZK PONG ON` / `ZK PONG OFF`. La usa la [extensión de navegador](/es/getting-started/browser-extension) para detectar el dispositivo y leer el estado del link. |
 | `FIND <letra>` | Host → Dispositivo | `Chrome: On`, desbloqueado, navegando | Salta la búsqueda alfabética a `<letra>`. Responde `OK FIND <letra>`, o `ERR OFF` / `ERR BUSY` / `ERR EMPTY`. Solo navega — nunca teclea ni revela una credencial. |
+| `TIME <epoch>` | Host → Dispositivo | `Chrome: On` | Ajusta el reloj del dispositivo desde el host (segundos Unix UTC) — el mismo valor que envía la [herramienta de sincronización](/es/firmware/totp/web-time-sync-tool) vía `REQTIME`, pero empujado en vez de pedido. Responde `OK TIME`. La [extensión de navegador](/es/getting-started/browser-extension) lo envía en cada uso para que los TOTP sean exactos. |
 
 <Note>
 `FIND` solo *navega* la búsqueda del dispositivo. Deliberadamente no hay ningún
