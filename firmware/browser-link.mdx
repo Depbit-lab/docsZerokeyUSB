@@ -1,0 +1,66 @@
+---
+title: "Browser link"
+description: "How the host FIND / ZK PING / TIME serial commands and the Chrome extension drive the on-device search — navigation only, never typing."
+---
+
+The **browser link** lets a host — the Chrome/Edge
+[extension](/getting-started/browser-extension) — drive the device's alphabet
+search over the USB CDC serial port. It is **navigation only**: the host can
+suggest *where to look*, but a credential is always typed by the device over USB
+HID after a physical press.
+
+## Serial commands
+
+Parsed by `handleIncomingHostRequests()` in `zerokey-io.cpp`. Full protocol table
+in [USB utilities](/firmware/usb-utilities).
+
+| Command | Reply | Purpose |
+|---------|-------|---------|
+| `ZK PING` | `ZK PONG ON` / `OFF` | Identity probe + link state (lets the extension grey its icon). Always answered. |
+| `FIND <letter>` | `OK FIND <letter>` / `ERR OFF` / `ERR BUSY` / `ERR EMPTY` | Jump the on-device alphabet search to `<letter>`. |
+| `TIME <epoch>` | `OK TIME` / `ERR OFF` | Set the device clock (UTC Unix seconds) so TOTP codes stay accurate. |
+
+## The Tools toggle
+
+`Menu → Tools → Chrome: On/Off` gates the link. The flag is persisted in EEPROM
+(`0x000D`) and read at boot into `chromeLinkEnabled`; it defaults **On** (blank
+EEPROM reads as enabled). When off, `FIND` and `TIME` are ignored with `ERR OFF`
+and nothing beyond the identity ping runs — minimal attack surface for anyone
+who doesn't use the extension.
+
+## Security model
+
+- **Navigation only.** There is deliberately no serial command that types or
+  reveals a credential. Typing always requires a physical press on the device.
+- `FIND` is accepted only while the vault is **unlocked and browsing** the
+  credential list (`MAIN_SITE/USER/PASS/2FA` or the search) — never during PIN
+  entry, an edit, the menu or TOTP, so it cannot clobber in-progress input.
+- The worst a malicious page or host can do is move the on-device search cursor.
+- `TIME` only sets the clock (affects TOTP), which is not secret; it is still
+  gated behind the toggle.
+
+## Extension architecture
+
+- **Web Serial** (`navigator.serial`) — the extension opens the CDC port after a
+  one-time, **per-origin** user grant (done on a normal tab, not the popup, which
+  the OS port chooser would dismiss). It identifies the device with `ZK PING`, so
+  it does not depend on a specific USB VID/PID.
+- **Main-domain letter** — it uses the first letter of the registrable domain,
+  ignoring subdomains (`ss.revolut.com` → `R`), with a small list of two-level
+  suffixes (`co.uk`, `com.br`, …).
+- **Clock sync** — it pushes `TIME <epoch>` on every use so TOTP stays accurate
+  without opening the separate [time-sync tool](/firmware/totp/web-time-sync-tool).
+- **Field focus** via `chrome.scripting`: heuristics (`autocomplete=username`,
+  `type=email`, name/id containing user/email/login, or the text input in a form
+  that has a password field), injected into all frames and deferred so the caret
+  lands after the popup closes and the page regains focus.
+
+## Limitations
+
+- Field detection misses some single-page apps, shadow DOM and cross-origin
+  iframes.
+- Split username/password flows (some Google/Microsoft logins) don't fit the
+  device's *user → TAB → password* output.
+- Live icon greying without opening the popup would need an MV3 offscreen
+  document holding the serial connection; the current build updates the badge on
+  each popup run.

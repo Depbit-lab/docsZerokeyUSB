@@ -67,6 +67,7 @@
                   "firmware/io-touch-handling",
                   "firmware/eeprom-management",
                   "firmware/usb-utilities",
+                  "firmware/browser-link",
                   "firmware/screen-reader"
                 ]
               },
@@ -168,6 +169,7 @@
                   "es/firmware/io-touch-handling",
                   "es/firmware/eeprom-management",
                   "es/firmware/usb-utilities",
+                  "es/firmware/browser-link",
                   "es/firmware/screen-reader"
                 ]
               },

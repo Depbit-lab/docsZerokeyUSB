@@ -1,106 +1,58 @@
 ---
 title: "Browser extension"
-description: "Jump the on-device search to the site of the current tab and focus the login field, straight from the Chrome/Edge toolbar."
+description: "Install the ZeroKeyUSB Web Link and fill logins with one click."
 ---
 
-The optional **ZeroKeyUSB Web Link** browser extension speeds up logins: one
-click reads the current tab's domain, tells the device to jump its search to
-that letter, and focuses the page's login field — so you just pick the site on
-the device and it types the credential.
+The optional **ZeroKeyUSB Web Link** extension for Chrome/Edge speeds up logins:
+click the toolbar icon on a login page and the device jumps to the matching
+site and focuses the login field — you just pick the site on the device and it
+types the credential.
 
 <Note>
-The extension **never sees your password**. It only sends a *navigation hint*
-(one letter) over USB serial and focuses an input field. The credential is
-typed by the device over USB HID, only after you physically select the site and
-press. See [Security model](#security-model) below.
+The extension never sees your password. It only tells the device which letter to
+look for and focuses a field; the credential is typed by the device after you
+physically pick it. How it works under the hood: [Browser link](/firmware/browser-link).
 </Note>
-
-## What it does
-
-When you click the toolbar icon on a login page:
-
-<Steps>
-<Step title="Reads the tab">
-It takes the current URL and uses the **first letter of the main domain** —
-subdomains are ignored, so `ss.revolut.com` and `doc.zerokeyusb.com` resolve to
-**R** and **Z** (not S or D). Common two-level suffixes like `co.uk` are handled.
-</Step>
-<Step title="Syncs the clock">
-It sends `TIME <epoch>` (UTC) so the device clock stays set and TOTP codes are
-accurate — the same value the [time-sync tool](/firmware/totp/web-time-sync-tool)
-sends, pushed automatically on every use.
-</Step>
-<Step title="Jumps the device search">
-It sends `FIND <letter>` over the USB CDC serial port; the device switches to
-its [alphabet search](/getting-started/menu-navigation) at that letter.
-</Step>
-<Step title="Focuses the login field">
-It focuses the page's username/email field so the device's *user → TAB →
-password* output lands in the right place.
-</Step>
-</Steps>
-
-You then pick the matching site on the device and press to type it.
-
-## Requirements
-
-- A **Chromium browser** (Chrome, Edge, Brave…) — the extension uses the
-  **Web Serial** API.
-- The device must be running firmware with the link feature, and
-  **Tools → `Chrome: On`** (enabled by default).
-- The device must be **unlocked** (past the PIN) and on the credentials list
-  when you use it — the firmware ignores the command otherwise.
 
 ## Install
 
 <Steps>
 <Step title="Load the extension">
-Open `chrome://extensions`, enable **Developer mode**, choose **Load unpacked**
-and select the `chrome-extension/` folder from the project.
+Open `chrome://extensions`, turn on **Developer mode**, choose **Load unpacked**
+and select the `chrome-extension/` folder.
 </Step>
-<Step title="Link the device (one time)">
-Click the toolbar icon → **Connect ZeroKeyUSB…**. A setup tab opens; click
-**Choose ZeroKeyUSB port…** and pick the device's serial port. It is remembered
-afterwards.
-
-<Warning>
-The port must be granted on the setup tab, not the popup: opening the OS serial
-chooser dismisses the popup, which cancels the request. Web Serial permissions
-are also **per-origin** — the grant you gave the webtool does not carry over.
-</Warning>
+<Step title="Link your device (once)">
+Click the toolbar icon → **Connect ZeroKeyUSB…**, then pick the device's port on
+the page that opens. It is remembered afterwards.
 </Step>
 </Steps>
 
-The toolbar badge shows a **green dot** when the device is linked and enabled,
-and a **grey dot** when it is not linked or the link is disabled.
+The toolbar icon shows a **green dot** when the device is linked and a **grey
+dot** when it isn't.
+
+## Using it
+
+<Steps>
+<Step title="Open the site">
+Go to a website where you have an account, and make sure the ZeroKeyUSB is
+plugged in and **unlocked**.
+</Step>
+<Step title="Click the icon">
+The device jumps to the site's first letter and the page's login field gets
+focused.
+</Step>
+<Step title="Pick and type">
+Choose the matching site on the device and press — it types your username and
+password.
+</Step>
+</Steps>
 
 ## Turning it off
 
-If you don't want the device to accept the browser command at all, set
-**Menu → Tools → `Chrome: Off`**. With it off, the firmware does not parse the
-`FIND` command, removing that path entirely. Default is **On**.
+Don't want it? On the device, set **Menu → Tools → `Chrome: Off`** and it will
+ignore the extension entirely. It ships **On**.
 
-## Security model
-
-The extension only: reads the tab URL, sends one letter to the device, and
-focuses a field. That is the whole attack surface. The firmware guarantees:
-
-- The command **only navigates** — there is deliberately no serial command that
-  types or reveals a credential.
-- It is ignored unless the vault is **unlocked and on the credentials list**
-  (never during PIN entry, an edit, the menu or TOTP).
-- It is ignored entirely when **Tools → Chrome** is off.
-
-So a malicious page or host can, at most, move the on-device search cursor — it
-cannot extract or inject a credential. Typing always requires a physical press
-on the device.
-
-## Limitations
-
-- **Field detection** uses heuristics (`autocomplete=username`, `type=email`,
-  name/id contains user/email/login, or the text input in a form with a
-  password field). Some single-page apps, shadow DOM and cross-origin iframes
-  won't match.
-- Sites that split username and password across separate screens (some
-  Google/Microsoft flows) don't fit the device's *user → TAB → password*
-  output.
+<Note>
+It works on most login pages. Sites that split the username and password across
+separate screens (some Google/Microsoft flows) may not fill correctly.
+</Note>

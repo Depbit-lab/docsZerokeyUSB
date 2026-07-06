@@ -1,0 +1,66 @@
+---
+title: "Enlace de navegador"
+description: "Cómo los comandos serie del host FIND / ZK PING / TIME y la extensión de Chrome gobiernan la búsqueda del dispositivo — solo navegación, nunca teclea."
+---
+
+El **enlace de navegador** permite a un host —la
+[extensión](/es/getting-started/browser-extension) de Chrome/Edge— gobernar la
+búsqueda alfabética del dispositivo por el puerto serie USB CDC. Es **solo
+navegación**: el host puede sugerir *dónde mirar*, pero una credencial siempre la
+teclea el dispositivo por USB HID tras una pulsación física.
+
+## Comandos serie
+
+Parseados por `handleIncomingHostRequests()` en `zerokey-io.cpp`. Tabla completa
+del protocolo en [Utilidades USB](/es/firmware/usb-utilities).
+
+| Comando | Respuesta | Propósito |
+|---------|-----------|-----------|
+| `ZK PING` | `ZK PONG ON` / `OFF` | Sonda de identidad + estado del link (deja que la extensión ponga su icono en gris). Siempre responde. |
+| `FIND <letra>` | `OK FIND <letra>` / `ERR OFF` / `ERR BUSY` / `ERR EMPTY` | Salta la búsqueda alfabética del dispositivo a `<letra>`. |
+| `TIME <epoch>` | `OK TIME` / `ERR OFF` | Ajusta el reloj del dispositivo (segundos Unix UTC) para que los TOTP sean exactos. |
+
+## El toggle de Herramientas
+
+`Menú → Herramientas → Chrome: On/Off` controla el link. El flag se persiste en
+EEPROM (`0x000D`) y se lee al arrancar en `chromeLinkEnabled`; viene **On** por
+defecto (EEPROM en blanco se lee como habilitado). En off, `FIND` y `TIME` se
+ignoran con `ERR OFF` y no corre nada más allá del ping de identidad — superficie
+de ataque mínima para quien no use la extensión.
+
+## Modelo de seguridad
+
+- **Solo navegación.** Deliberadamente no hay ningún comando serie que teclee o
+  revele una credencial. Teclear siempre requiere una pulsación física.
+- `FIND` solo se acepta con la bóveda **desbloqueada y navegando** la lista de
+  credenciales (`MAIN_SITE/USER/PASS/2FA` o la búsqueda) — nunca durante el PIN,
+  una edición, el menú o TOTP, así que no puede pisar entrada en curso.
+- Lo peor que puede hacer una página o host malicioso es mover el cursor de
+  búsqueda del dispositivo.
+- `TIME` solo ajusta el reloj (afecta a TOTP), que no es secreto; aun así va
+  detrás del toggle.
+
+## Arquitectura de la extensión
+
+- **Web Serial** (`navigator.serial`) — la extensión abre el puerto CDC tras un
+  permiso de usuario único y **por origen** (en una pestaña normal, no en el
+  popup, que el selector de puertos cerraría). Identifica el dispositivo con
+  `ZK PING`, así que no depende de un VID/PID USB concreto.
+- **Letra del dominio principal** — usa la primera letra del dominio registrable,
+  ignorando subdominios (`ss.revolut.com` → `R`), con una pequeña lista de
+  sufijos de dos niveles (`co.uk`, `com.br`, …).
+- **Sync de reloj** — envía `TIME <epoch>` en cada uso para que los TOTP sean
+  exactos sin abrir la [herramienta de sincronización](/es/firmware/totp/web-time-sync-tool).
+- **Enfoque del campo** vía `chrome.scripting`: heurísticas (`autocomplete=username`,
+  `type=email`, name/id que contenga user/email/login, o el input de texto de un
+  formulario con campo de contraseña), inyectadas en todos los frames y diferidas
+  para que el cursor caiga tras cerrarse el popup y recuperar el foco la página.
+
+## Limitaciones
+
+- La detección de campo falla en algunas SPA, shadow DOM e iframes de otro origen.
+- Los flujos que separan usuario y contraseña (algunos logins de Google/Microsoft)
+  no encajan con la salida *usuario → TAB → contraseña* del dispositivo.
+- El greyado del icono en vivo sin abrir el popup necesitaría un documento
+  offscreen (MV3) manteniendo la conexión serie; el build actual actualiza el
+  badge en cada apertura del popup.

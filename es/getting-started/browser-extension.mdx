@@ -1,109 +1,59 @@
 ---
 title: "Extensión de navegador"
-description: "Salta la búsqueda del dispositivo al sitio de la pestaña actual y enfoca el campo de login, desde la barra de Chrome/Edge."
+description: "Instala el ZeroKeyUSB Web Link y rellena inicios de sesión con un clic."
 ---
 
-La extensión opcional **ZeroKeyUSB Web Link** agiliza los inicios de sesión: con
-un clic lee el dominio de la pestaña actual, le dice al dispositivo que salte su
-búsqueda a esa letra, y enfoca el campo de login de la página — así solo eliges
-el sitio en el dispositivo y él teclea la credencial.
+La extensión opcional **ZeroKeyUSB Web Link** para Chrome/Edge agiliza los
+inicios de sesión: pulsa el icono de la barra en una página de login y el
+dispositivo salta al sitio correspondiente y enfoca el campo de login — solo
+eliges el sitio en el dispositivo y él teclea la credencial.
 
 <Note>
-La extensión **nunca ve tu contraseña**. Solo envía una *pista de navegación*
-(una letra) por el serie USB y enfoca un campo. La credencial la teclea el
-dispositivo por USB HID, y solo después de que tú selecciones físicamente el
-sitio y pulses. Ver [Modelo de seguridad](#modelo-de-seguridad) abajo.
+La extensión nunca ve tu contraseña. Solo le dice al dispositivo qué letra
+buscar y enfoca un campo; la credencial la teclea el dispositivo después de que
+tú la elijas físicamente. Cómo funciona por dentro: [Enlace de navegador](/es/firmware/browser-link).
 </Note>
-
-## Qué hace
-
-Al pulsar el icono de la barra en una página de login:
-
-<Steps>
-<Step title="Lee la pestaña">
-Toma la URL actual y usa la **primera letra del dominio principal** — los
-subdominios se ignoran, así que `ss.revolut.com` y `doc.zerokeyusb.com` dan
-**R** y **Z** (no S ni D). Los sufijos de dos niveles tipo `co.uk` se manejan.
-</Step>
-<Step title="Sincroniza el reloj">
-Envía `TIME <epoch>` (UTC) para que el reloj del dispositivo quede ajustado y los
-TOTP sean exactos — el mismo valor que envía la [herramienta de
-sincronización](/es/firmware/totp/web-time-sync-tool), empujado automáticamente
-en cada uso.
-</Step>
-<Step title="Salta la búsqueda del dispositivo">
-Envía `FIND <letra>` por el puerto serie USB CDC; el dispositivo cambia a su
-[búsqueda alfabética](/es/getting-started/menu-navigation) en esa letra.
-</Step>
-<Step title="Enfoca el campo de login">
-Enfoca el campo de usuario/email de la página para que la salida *usuario → TAB
-→ contraseña* del dispositivo caiga en el sitio correcto.
-</Step>
-</Steps>
-
-Luego eliges el sitio correspondiente en el dispositivo y pulsas para teclearlo.
-
-## Requisitos
-
-- Un **navegador Chromium** (Chrome, Edge, Brave…) — la extensión usa la API
-  **Web Serial**.
-- El dispositivo con el firmware que incluye la función, y
-  **Herramientas → `Chrome: On`** (activado por defecto).
-- El dispositivo **desbloqueado** (pasado el PIN) y en la lista de credenciales
-  al usarlo — el firmware ignora el comando en caso contrario.
 
 ## Instalación
 
 <Steps>
 <Step title="Carga la extensión">
 Abre `chrome://extensions`, activa **Modo desarrollador**, elige **Cargar
-descomprimida** y selecciona la carpeta `chrome-extension/` del proyecto.
+descomprimida** y selecciona la carpeta `chrome-extension/`.
 </Step>
-<Step title="Enlaza el dispositivo (una vez)">
-Pulsa el icono → **Connect ZeroKeyUSB…**. Se abre una pestaña de setup; pulsa
-**Choose ZeroKeyUSB port…** y elige el puerto serie del dispositivo. Se recuerda
-después.
-
-<Warning>
-El permiso del puerto hay que darlo en la pestaña de setup, no en el popup:
-abrir el selector de puertos del sistema cierra el popup, lo que cancela la
-petición. Además los permisos de Web Serial son **por origen** — el que diste al
-webtool no vale para la extensión.
-</Warning>
+<Step title="Enlaza tu dispositivo (una vez)">
+Pulsa el icono → **Connect ZeroKeyUSB…**, y elige el puerto del dispositivo en
+la página que se abre. Se recuerda después.
 </Step>
 </Steps>
 
-El badge del icono muestra un **punto verde** cuando el dispositivo está enlazado
-y activo, y un **punto gris** cuando no está enlazado o el link está desactivado.
+El icono de la barra muestra un **punto verde** cuando el dispositivo está
+enlazado y un **punto gris** cuando no lo está.
 
-## Desactivarlo
+## Cómo usarla
 
-Si no quieres que el dispositivo acepte el comando del navegador en absoluto,
-pon **Menú → Herramientas → `Chrome: Off`**. Con él apagado, el firmware ni
-siquiera parsea el comando `FIND`, eliminando esa vía por completo. Por defecto
-está **On**.
+<Steps>
+<Step title="Abre el sitio">
+Ve a una web donde tengas cuenta, y asegúrate de que el ZeroKeyUSB está conectado
+y **desbloqueado**.
+</Step>
+<Step title="Pulsa el icono">
+El dispositivo salta a la primera letra del sitio y el campo de login de la
+página queda enfocado.
+</Step>
+<Step title="Elige y teclea">
+Elige el sitio correspondiente en el dispositivo y pulsa — teclea tu usuario y
+contraseña.
+</Step>
+</Steps>
 
-## Modelo de seguridad
+## Desactivarla
 
-La extensión solo: lee la URL de la pestaña, envía una letra al dispositivo y
-enfoca un campo. Esa es toda la superficie de ataque. El firmware garantiza:
+¿No la quieres? En el dispositivo, pon **Menú → Herramientas → `Chrome: Off`** e
+ignorará la extensión por completo. Viene **On** de fábrica.
 
-- El comando **solo navega** — deliberadamente no hay ningún comando serie que
-  teclee o revele una credencial.
-- Se ignora salvo que la bóveda esté **desbloqueada y en la lista de
-  credenciales** (nunca durante el PIN, una edición, el menú o TOTP).
-- Se ignora del todo cuando **Herramientas → Chrome** está en off.
-
-Así, una página o host malicioso puede, como mucho, mover el cursor de búsqueda
-del dispositivo — no puede extraer ni inyectar una credencial. Teclear siempre
-requiere una pulsación física en el dispositivo.
-
-## Limitaciones
-
-- La **detección del campo** usa heurísticas (`autocomplete=username`,
-  `type=email`, name/id que contenga user/email/login, o el input de texto en un
-  formulario con campo de contraseña). Algunas SPA, shadow DOM e iframes de otro
-  origen no coinciden.
-- Los sitios que separan usuario y contraseña en pantallas distintas (algunos
-  flujos de Google/Microsoft) no encajan con la salida *usuario → TAB →
-  contraseña* del dispositivo.
+<Note>
+Funciona en la mayoría de páginas de login. Los sitios que separan usuario y
+contraseña en pantallas distintas (algunos flujos de Google/Microsoft) pueden no
+rellenarse correctamente.
+</Note>
