@@ -3,7 +3,10 @@ title: "Bitcoin Wallet"
 description: "Create an airgapped Bitcoin wallet on the device, export a watch-only key to your phone, and sign transactions (PSBT) — the private key never leaves the device."
 ---
 
-ZeroKeyUSB can act as an **airgapped Bitcoin signer**. The wallet is a standard **BIP84 native SegWit** wallet (`m/84'/0'/0'`, `bc1q…` addresses). The 12-word seed is generated **on the device** from the ATECC608A hardware TRNG, stored AES-encrypted, and shown **only on the OLED** — it never leaves over USB. You watch balances and build transactions on a separate wallet (phone/desktop); the device only ever reveals **public** data (the `zpub`) and **signatures**.
+ZeroKeyUSB can work as an **airgapped Bitcoin wallet**. It creates a standard
+12-word Bitcoin wallet **on the device**; the seed is shown only on the screen
+and **never leaves over USB**. You watch balances and build payments in a normal
+wallet app (phone or desktop), and only the **signing** happens on ZeroKeyUSB.
 
 <Note>
 Find the Bitcoin menu under **Tools → Bitcoin**. Mainnet only.
@@ -12,7 +15,7 @@ Find the Bitcoin menu under **Tools → Bitcoin**. Mainnet only.
 | Menu item | What it does |
 |-----------|--------------|
 | **Show seed** | Re-displays the 12 words on the OLED (screen only) |
-| **Watch-only** | Prints the `zpub`, master fingerprint and `wpkh` descriptor over USB |
+| **Watch-only** | Sends your **public** account key to a wallet app so it can watch balances |
 | **Create wallet** | Generates a new 12-word seed (overwrites any existing one) |
 
 ---
@@ -41,14 +44,14 @@ You can re-check the words any time with **Show seed**.
 
 ## 2 · Set up a watch-only wallet (phone/desktop)
 
-To see balances and build transactions you import the **public** account key into a normal wallet (BlueWallet, Nunchuk, Sparrow, Bitcoin Core…). The device exposes it as a `zpub` and a `wpkh` descriptor with the master-key origin — the origin is required so the transactions you build are recognised by the signer.
+To see balances and build payments you import the **public** account key into a normal wallet (BlueWallet, Nunchuk, Sparrow, Bitcoin Core…). This key can only *watch* your wallet — it can never spend.
 
 <Steps>
   <Step title="Open the Bitcoin webtool">
     Open `bitcoin.html` in Chrome or Edge (Web Serial), **Connect device**, and unlock the device with your PIN.
   </Step>
   <Step title="Get watch-only from device">
-    Press **Get watch-only**. The page shows the fingerprint, `zpub` and the full descriptor `wpkh([FP/84h/0h/0h]zpub…/0/*)#checksum`, plus a **QR code**.
+    Press **Get watch-only**. The page shows a **QR code** with your public account key.
   </Step>
   <Step title="Scan into your wallet">
     Scan the **descriptor QR** (or the `zpub` QR) into your mobile wallet. It can now show balances and create transactions, but it cannot spend — it has no private key.
@@ -91,13 +94,13 @@ If the PSBT has no inputs belonging to this wallet, the device replies **"No inp
 
 ---
 
-## Security model
+## Your keys stay safe
 
-- The **seed never leaves** the device over USB. It is shown only on the OLED, and stored AES-encrypted (same key as your credentials, protected by your PIN).
-- Only **public** data (`zpub`, descriptor) and **signatures** are sent over USB.
-- Signing requires a deliberate **Center hold** after on-screen review — never blind-signs.
-- Entropy comes from the **ATECC608A hardware TRNG**; the device refuses to generate a seed if the hardware RNG check fails.
-- The wallet is **BIP84 mainnet** (`m/84'/0'/0'`).
+- The 12-word seed **never leaves the device** — it is shown only on the screen and kept encrypted with your PIN.
+- Only **public** data and **signatures** ever go over USB — never the seed.
+- Every signature needs a deliberate **Center hold** after you check the address and amount **on the device's own screen**. It never signs blindly.
+
+Want the technical details — how the wallet is derived, where the randomness comes from, and how to verify it yourself? See **[Bitcoin signer](/firmware/bitcoin-signer)** in the Software section.
 
 <CardGroup cols={2}>
   <Card title="How it works (audit)" icon="magnifying-glass" href="/firmware/bitcoin-signer">

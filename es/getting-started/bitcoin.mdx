@@ -3,7 +3,10 @@ title: "Cartera Bitcoin"
 description: "Crea una cartera Bitcoin airgapped en el dispositivo, exporta una clave watch-only a tu móvil y firma transacciones (PSBT) — la clave privada nunca sale del dispositivo."
 ---
 
-ZeroKeyUSB puede actuar como **firmador Bitcoin airgapped**. La cartera es una cartera estándar **BIP84 native SegWit** (`m/84'/0'/0'`, direcciones `bc1q…`). La seed de 12 palabras se genera **en el dispositivo** a partir del TRNG por hardware del ATECC608A, se guarda cifrada con AES y se muestra **solo en la OLED** — nunca sale por USB. Ves saldos y construyes transacciones en otra cartera (móvil/escritorio); el dispositivo solo revela datos **públicos** (el `zpub`) y **firmas**.
+ZeroKeyUSB puede funcionar como **cartera Bitcoin airgapped**. Crea una cartera
+Bitcoin estándar de 12 palabras **en el dispositivo**; la semilla se muestra solo
+en la pantalla y **nunca sale por USB**. Ves saldos y construyes pagos en una app
+de cartera normal (móvil o escritorio), y en ZeroKeyUSB solo ocurre la **firma**.
 
 <Note>
 El menú Bitcoin está en **Tools → Bitcoin**. Solo mainnet.
@@ -12,7 +15,7 @@ El menú Bitcoin está en **Tools → Bitcoin**. Solo mainnet.
 | Item del menú | Qué hace |
 |---------------|----------|
 | **Show seed** | Vuelve a mostrar las 12 palabras en la OLED (solo pantalla) |
-| **Watch-only** | Imprime el `zpub`, el fingerprint del master y el descriptor `wpkh` por USB |
+| **Watch-only** | Envía tu clave de cuenta **pública** a una app de cartera para que vea saldos |
 | **Create wallet** | Genera una nueva seed de 12 palabras (sobrescribe la existente) |
 
 ---
@@ -41,17 +44,17 @@ Puedes volver a comprobar las palabras cuando quieras con **Show seed**.
 
 ## 2 · Configurar una cartera watch-only (móvil/escritorio)
 
-Para ver saldos y construir transacciones importas la clave de cuenta **pública** en una cartera normal (BlueWallet, Nunchuk, Sparrow, Bitcoin Core…). El dispositivo la expone como `zpub` y como descriptor `wpkh` con el origen de la clave maestra — el origen es necesario para que las transacciones que construyas las reconozca el firmador.
+Para ver saldos y construir pagos importas la clave de cuenta **pública** en una cartera normal (BlueWallet, Nunchuk, Sparrow, Bitcoin Core…). Esta clave solo puede *ver* tu cartera — nunca puede gastar.
 
 <Steps>
   <Step title="Abre el webtool de Bitcoin">
     Abre `bitcoin.html` en Chrome o Edge (Web Serial), pulsa **Connect device** y desbloquea el dispositivo con tu PIN.
   </Step>
   <Step title="Get watch-only from device">
-    Pulsa **Get watch-only**. La página muestra el fingerprint, el `zpub` y el descriptor completo `wpkh([FP/84h/0h/0h]zpub…/0/*)#checksum`, además de un **código QR**.
+    Pulsa **Get watch-only**. La página muestra un **código QR** con tu clave de cuenta pública.
   </Step>
   <Step title="Escanea en tu cartera">
-    Escanea el **QR del descriptor** (o el QR del `zpub`) en tu cartera móvil. Ya puede mostrar saldos y crear transacciones, pero no puede gastar — no tiene clave privada.
+    Escanea el **QR** en tu cartera móvil. Ya puede mostrar saldos y crear pagos, pero no puede gastar — no tiene clave privada.
   </Step>
 </Steps>
 
@@ -91,13 +94,13 @@ Si el PSBT no tiene entradas que pertenezcan a esta cartera, el dispositivo resp
 
 ---
 
-## Modelo de seguridad
+## Tus claves están a salvo
 
-- La **seed nunca sale** del dispositivo por USB. Se muestra solo en la OLED y se guarda cifrada con AES (la misma clave que tus credenciales, protegida por tu PIN).
-- Por USB solo viajan datos **públicos** (`zpub`, descriptor) y **firmas**.
-- Firmar requiere un **hold de Centro** deliberado tras la revisión en pantalla — nunca firma a ciegas.
-- La entropía viene del **TRNG por hardware del ATECC608A**; el dispositivo se niega a generar una seed si el chequeo del RNG por hardware falla.
-- La cartera es **BIP84 mainnet** (`m/84'/0'/0'`).
+- La semilla de 12 palabras **nunca sale del dispositivo** — se muestra solo en la pantalla y se guarda cifrada con tu PIN.
+- Por USB solo viajan datos **públicos** y **firmas** — nunca la semilla.
+- Cada firma requiere un **hold de Centro** deliberado tras comprobar la dirección y el importe **en la propia pantalla del dispositivo**. Nunca firma a ciegas.
+
+¿Quieres el detalle técnico —cómo se deriva la cartera, de dónde sale la aleatoriedad y cómo verificarlo tú mismo? Ver **[Firmante Bitcoin](/es/firmware/bitcoin-signer)** en la sección de Software.
 
 <CardGroup cols={2}>
   <Card title="Cómo funciona (auditoría)" icon="magnifying-glass" href="/es/firmware/bitcoin-signer">
