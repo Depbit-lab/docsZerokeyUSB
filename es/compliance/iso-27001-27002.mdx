@@ -1,0 +1,49 @@
+---
+title: "Mapeo ISO/IEC 27001 y 27002"
+description: "Cómo ZeroKeyUSB está diseñado para apoyar los controles de ISO/IEC 27002:2022 de información de autenticación, control de acceso y criptografía — una declaración de apoyo, no una certificación."
+---
+
+<Note>
+ISO/IEC 27001 certifica el **sistema de gestión de seguridad de la información**
+de una organización, no un dispositivo. ZeroKeyUSB **no** está "certificado ISO
+27001". Esta página indica cómo el dispositivo está **diseñado para apoyar**
+controles concretos de ISO/IEC 27002:2022, para que pueda formar parte de la
+evidencia de *tu* SGSI.
+</Note>
+
+## Control principal: 5.17 Información de autenticación
+
+El **control 5.17** de ISO/IEC 27002:2022 cubre el manejo seguro de la información
+de autenticación — contraseñas, PINs y claves.
+
+> ZeroKeyUSB ayuda a las organizaciones a proteger la información de autenticación
+> guardando las credenciales offline, cifradas y fuera del ordenador, reduciendo la
+> exposición a fugas de contraseñas del navegador, malware, sesiones compartidas y
+> compromiso de la nube.
+
+## Apoyo control a control
+
+| Control (27002:2022) | Tema | Cómo lo apoya ZeroKeyUSB |
+|----------------------|------|--------------------------|
+| **5.15** | Control de acceso | La posesión física + el PIN maestro controlan todo acceso a credenciales; nada es alcanzable sin el dispositivo y el PIN. |
+| **5.16** | Gestión de identidad | Cada credencial es una identidad guardada distinta; el propio dispositivo lleva un serial único del elemento seguro. |
+| **5.17** | Información de autenticación | Las credenciales están cifradas en reposo (AES-128, clave en el elemento seguro), nunca en poder del host ni de una nube; el PIN se guarda solo como hash con sal. |
+| **5.18** | Derechos de acceso | El acceso es todo-o-nada por dispositivo+PIN y se concede por credencial solo ante una acción física deliberada. |
+| **8.5** | Autenticación segura | PIN con límite de ritmo (backoff persistente), comparación a tiempo constante y soporte para contraseñas fuertes, únicas y aleatorias y segundos factores TOTP. |
+| **8.24** | Uso de criptografía | AES-128 para datos en reposo, ECDSA P-256 para autenticidad del firmware, SHA-256 para el hash del PIN y un TRNG hardware para todo el material de claves. |
+
+## Evidencia que un auditor puede verificar
+
+- **Firmware open-source** — la lógica de cifrado, PIN y arranque es inspeccionable
+  (ver [Software](/es/firmware/architecture)).
+- **Custodia de clave** — la clave AES se genera en y nunca sale del ATECC608A.
+- **Sin salida de datos** — no existe interfaz de red; no se transmite nada.
+- **Límites documentados** — el [Modelo de amenazas](/es/compliance/threat-model)
+  indica las fronteras, lo que apoya una evaluación de riesgos honesta.
+
+## Declaración sugerida para un SGSI
+
+> ZeroKeyUSB está diseñado para apoyar controles de ISO/IEC 27001 e ISO/IEC 27002
+> de información de autenticación (5.17), control de acceso (5.15/5.18),
+> autenticación segura (8.5) y uso de criptografía (8.24). Se usa como control
+> técnico dentro del SGSI de la organización; no está certificado en sí mismo.

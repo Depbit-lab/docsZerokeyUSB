@@ -1,0 +1,62 @@
+---
+title: "Marcos de seguridad"
+description: "Cómo ZeroKeyUSB está diseñado para apoyar marcos de seguridad reconocidos —ISO/IEC 27001 y 27002, NIST SP 800-63B y el ENS español— sin afirmar certificaciones que no tiene."
+---
+
+ZeroKeyUSB es un **dispositivo de credenciales offline**: guarda los inicios de
+sesión cifrados, fuera del ordenador y fuera de la nube, y los teclea por USB solo
+tras una acción física en el dispositivo.
+
+<Note>
+**Posicionamiento, no certificación.** ZeroKeyUSB **no** está certificado contra
+los marcos de esta página. Un dispositivo hardware sin interfaz de red no puede
+tener directamente la mayoría de estas certificaciones. En su lugar, su
+arquitectura está **diseñada para apoyar** los controles relevantes, de modo que
+una organización pueda usarlo como parte de *su* cumplimiento. Evitamos
+deliberadamente decir "dispositivo certificado ISO 27001" o similar.
+</Note>
+
+## De un vistazo
+
+| Marco | Relevancia para ZeroKeyUSB | Cómo lo expresamos |
+|-------|----------------------------|--------------------|
+| [ISO/IEC 27001 y 27002](/es/compliance/iso-27001-27002) | Controles de información de autenticación, control de acceso y criptografía | *Diseñado para apoyar* los controles 5.15–5.18, 8.5, 8.24 |
+| [NIST SP 800-63B](/es/compliance/nist-800-63b) | Buenas prácticas para secretos de autenticación y su almacenamiento | *Alineado con* su guía sobre secretos fuertes, únicos y protegidos |
+| [ENS — Esquema Nacional de Seguridad](/es/compliance/ens-ccn-stic) | Marco de seguridad del sector público español (RD 311/2022) | Ayuda a cumplir dimensiones de control de acceso y autenticación; CPSTIC es objetivo a medio plazo |
+| FIPS 140-3 / Common Criteria / LINCE | Evaluaciones formales de módulo criptográfico / producto | Fase futura, solo cuando un cliente lo exija y lo financie |
+| CE · RoHS · FCC · EMC | Cumplimiento eléctrico y de materiales para vender hardware | Ver [Certificaciones](/es/certifications) |
+
+## Redacción aprobada
+
+Para web, dossier o respuesta a un pliego:
+
+> ZeroKeyUSB está diseñado para apoyar los requisitos de seguridad del sector
+> público y empresarial protegiendo la información de autenticación offline, fuera
+> del ordenador y fuera de la nube. Su arquitectura está alineada con marcos de
+> seguridad reconocidos como ISO/IEC 27001, ISO/IEC 27002, NIST SP 800-63B y los
+> principios del Esquema Nacional de Seguridad (ENS).
+
+Más directa:
+
+> ZeroKeyUSB no es un gestor de contraseñas en la nube. Es un dispositivo de
+> credenciales offline diseñado para reducir la exposición de contraseñas en
+> ordenadores compartidos, infectados o no gestionados, ayudando a las
+> organizaciones a reforzar el control de acceso y la gestión de la información de
+> autenticación.
+
+## Seguir leyendo
+
+<CardGroup cols={2}>
+  <Card title="Whitepaper de seguridad" icon="file-shield" href="/es/compliance/security-whitepaper">
+    La arquitectura y las propiedades de seguridad en un documento.
+  </Card>
+  <Card title="Modelo de amenazas" icon="crosshairs" href="/es/compliance/threat-model">
+    Contra qué protege — y, con honestidad, contra qué no.
+  </Card>
+  <Card title="Mapeo ISO 27001 / 27002" icon="list-check" href="/es/compliance/iso-27001-27002">
+    Declaración de apoyo control a control.
+  </Card>
+  <Card title="NIST SP 800-63B" icon="shield-halved" href="/es/compliance/nist-800-63b">
+    Alineamiento con la guía de secretos de autenticación.
+  </Card>
+</CardGroup>

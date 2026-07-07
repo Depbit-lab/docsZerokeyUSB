@@ -1,0 +1,71 @@
+---
+title: "Modelo de amenazas"
+description: "Contra qué protege ZeroKeyUSB y contra qué no — por activo, adversario y escenario. Escrito para ser defendible en una auditoría, no para vender de más."
+---
+
+Un producto de seguridad es tan fiable como honesto sea sobre sus límites. Este
+modelo de amenazas indica qué defiende ZeroKeyUSB, contra quién, y dónde están las
+fronteras. Está anclado en el firmware real, que es open-source y verificable.
+
+## Activos
+
+| Activo | Dónde vive |
+|--------|-----------|
+| Credenciales (sitio / usuario / contraseña) | Cifradas con AES en EEPROM externa |
+| Secretos TOTP y notas | Igual, por credencial |
+| Clave maestra AES | Dentro del ATECC608A (nunca sale del chip) |
+| PIN maestro | Nunca se guarda; solo `SHA-256(PIN ‖ serial)` |
+| Integridad del firmware | Garantizada por arranque seguro firmado ECDSA |
+| Semilla Bitcoin (opcional) | Cifrada con AES; se muestra solo en pantalla |
+
+## Adversarios y resultados
+
+| Adversario | Capacidad | Resultado |
+|------------|-----------|-----------|
+| **Atacante remoto** | Internet, malware, infraestructura de phishing | **Bloqueado.** Sin interfaz de red; nada que alcanzar. |
+| **Host malicioso/no confiable** | Controla el ordenador donde se conecta | **Limitado.** Puede capturar credenciales *mientras se teclean* y leer un *backup en claro* si el usuario lo ejecuta; no puede leer la bóveda en reposo ni extraer la clave AES. |
+| **Ladrón oportunista (dispositivo perdido/robado)** | Posesión física, uso normal | **Bloqueado en la práctica.** Necesita el PIN; el backoff persistente hace inviable el adivinado online sin borrar datos. |
+| **Atacante físico/de laboratorio** | Decapa la resina, sondea el bus I²C | **Parcialmente mitigado.** Puede leer el hash del PIN e intentar un crackeo **offline**; la fuerza depende entonces de la calidad del epoxy y de la longitud del PIN. |
+| **Cadena de suministro / manipulación de firmware** | Intenta ejecutar firmware modificado | **Bloqueado.** El bootloader solo corre imágenes firmadas ECDSA; el bootloader está bloqueado con `BOOTPROT`. |
+
+## Contra qué protege
+
+- **Fugas de contraseñas de navegador y nube** — las credenciales nunca viven en
+  un navegador ni en una bóveda en la nube.
+- **Malware que roba contraseñas guardadas** — la bóveda está fuera del host y
+  cifrada con una clave que el host nunca ve.
+- **Robo de credenciales en reposo** — volcar la EEPROM solo da ciphertext.
+- **Clonado** — la clave AES está ligada al dispositivo dentro del elemento seguro.
+- **Firmware no firmado/pirata** — rechazado en el arranque.
+- **Fuerza bruta online del PIN** — backoff exponencial, reaplicado en cada
+  arranque para que no se salte apagando y encendiendo; la bóveda nunca se destruye
+  por PINs incorrectos.
+
+## Contra qué NO protege
+
+- **Un host comprometido durante el uso.** Las pulsaciones tecleadas a un ordenador
+  infectado se pueden capturar ahí. ZeroKeyUSB reduce la exposición del
+  almacenamiento, no el riesgo de teclear en una máquina ya controlada por un
+  atacante.
+- **Backup USB en claro en una máquina no confiable.** El export envía las
+  credenciales en texto claro al host. Haz los backups solo en un ordenador de
+  confianza y offline.
+- **Crackeo offline del PIN tras acceso físico al bus.** El hash del PIN es legible
+  por I²C (un trade-off conocido del SKU del elemento seguro). Un atacante que
+  quite el epoxy y alcance el bus puede intentar una búsqueda offline de
+  `SHA-256(PIN ‖ serial)`. Mitigaciones: la encapsulación de epoxy y usar un PIN
+  largo. No hay autoborrado destructivo.
+- **Coacción / mirar por encima del hombro al PIN.** Aplican las preocupaciones de
+  seguridad operacional habituales.
+
+## Consecuencias de diseño para los compradores
+
+- Usa ZeroKeyUSB en máquinas **gestionadas o personales** en las que confíes en el
+  momento de teclear; es más fuerte justo donde los gestores que guardan
+  contraseñas son más débiles (hosts compartidos, infectados, no gestionados).
+- Trata el **fichero de backup** como sensible y genéralo offline.
+- Elige un **PIN largo** para despliegues de alto valor; es la última línea contra
+  un ataque físico de nivel laboratorio.
+
+Este análisis mapea directamente sobre las declaraciones de control de
+[ISO 27001/27002](/es/compliance/iso-27001-27002) y [NIST SP 800-63B](/es/compliance/nist-800-63b).

@@ -1,0 +1,69 @@
+---
+title: "Threat model"
+description: "What ZeroKeyUSB protects against and what it does not — by asset, adversary and scenario. Written to be defensible in an audit, not to oversell."
+---
+
+A security product is only as trustworthy as its honesty about limits. This
+threat model states what ZeroKeyUSB defends, against whom, and where the
+boundaries are. It is grounded in the actual firmware, which is open-source and
+verifiable.
+
+## Assets
+
+| Asset | Where it lives |
+|-------|----------------|
+| Credentials (site / user / password) | AES-encrypted in external EEPROM |
+| TOTP secrets and notes | Same, per credential |
+| AES master key | Inside the ATECC608A (never leaves the chip) |
+| Master PIN | Never stored; only `SHA-256(PIN ‖ serial)` is kept |
+| Firmware integrity | Enforced by ECDSA-signed secure boot |
+| Bitcoin seed (optional) | AES-encrypted; shown only on screen |
+
+## Adversaries and outcomes
+
+| Adversary | Capability | Result |
+|-----------|-----------|--------|
+| **Remote attacker** | Internet, malware pull, phishing infrastructure | **Blocked.** No network interface; nothing to reach. |
+| **Malicious/untrusted host** | Controls the computer the device is plugged into | **Limited.** Can capture credentials *as they are typed* and read a *plaintext backup* if the user runs one; cannot read the vault at rest or extract the AES key. |
+| **Opportunistic thief (lost/stolen device)** | Physical possession, normal use | **Blocked in practice.** Needs the PIN; the persistent backoff makes online guessing impractical without wiping data. |
+| **Physical/lab attacker** | Decapsulates the resin, probes the I²C bus | **Partially mitigated.** Can read the PIN hash and attempt an **offline** crack; strength then depends on epoxy quality and PIN length. |
+| **Supply-chain / firmware tamper** | Tries to run modified firmware | **Blocked.** The bootloader runs only ECDSA-signed images; the bootloader is `BOOTPROT`-locked. |
+
+## What it protects against
+
+- **Browser and cloud password leaks** — credentials never live in a browser or
+  a cloud vault.
+- **Malware that scrapes stored passwords** — the vault is off-host and encrypted
+  with a key the host never sees.
+- **Credential theft at rest** — dumping the EEPROM yields only ciphertext.
+- **Cloning** — the AES key is device-bound inside the secure element.
+- **Unsigned/rogue firmware** — rejected at boot.
+- **Online PIN brute force** — exponential backoff, re-applied at every boot so it
+  cannot be skipped by power-cycling; the vault is never destroyed by wrong PINs.
+
+## What it does not protect against
+
+- **A compromised host during use.** Keystrokes typed to an infected computer can
+  be captured there. ZeroKeyUSB reduces storage exposure, not the risk of typing
+  into a machine that is already owned by an attacker.
+- **Plaintext USB backup on an untrusted machine.** The export sends credentials
+  in clear text to the host. Perform backups only on a trusted, offline computer.
+- **Offline PIN cracking after physical bus access.** The PIN hash is readable
+  over I²C (a known trade-off of the secure-element SKU). An attacker who removes
+  the epoxy and reaches the bus can attempt an offline `SHA-256(PIN ‖ serial)`
+  search. Mitigations: the epoxy encapsulation and using a long PIN. There is no
+  destructive self-wipe.
+- **Coercion / shoulder-surfing of the PIN.** Standard operational-security
+  concerns apply.
+
+## Design consequences for buyers
+
+- Use ZeroKeyUSB on **managed or personal** machines you trust for the moment of
+  typing; it is strongest exactly where stored-password managers are weakest
+  (shared, infected, unmanaged hosts).
+- Treat the **backup file** as sensitive and generate it offline.
+- Choose a **long PIN** for high-value deployments; it is the last line against a
+  lab-grade physical attack.
+
+This analysis maps directly onto the control statements in
+[ISO 27001/27002](/compliance/iso-27001-27002) and [NIST SP 800-63B](/compliance/nist-800-63b).

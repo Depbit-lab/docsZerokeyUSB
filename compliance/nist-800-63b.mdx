@@ -1,0 +1,41 @@
+---
+title: "NIST SP 800-63B alignment"
+description: "How ZeroKeyUSB aligns with NIST SP 800-63B guidance on authentication secrets and their protection — an alignment statement, not an Authenticator Assurance Level certification."
+---
+
+<Note>
+**Alignment, not accreditation.** NIST SP 800-63B specifies requirements for
+*authenticators* in a federal digital-identity context and defines Authenticator
+Assurance Levels (AAL). ZeroKeyUSB is a credential store, not an accredited
+authenticator, and makes **no AAL claim**. This page shows how it helps
+subscribers and organizations follow 800-63B's good practices.
+</Note>
+
+## Where ZeroKeyUSB helps
+
+| 800-63B theme | Guidance (paraphrased) | How ZeroKeyUSB supports it |
+|---------------|------------------------|----------------------------|
+| **Strong secrets** | Encourage long, high-entropy secrets; do not force composition rules that weaken them | Generates up to 32-character passwords from a hardware TRNG; supports memorable multi-word passphrases |
+| **No reuse** | Discourage reuse across services | Each stored credential is independent; unique random passwords are one tap away |
+| **Secret storage** | Verifiers must store secrets protected (hashed/encrypted), not in the clear | Credentials are AES-encrypted off-host; the Master PIN is stored only as `SHA-256(PIN ‖ serial)` — never in the clear |
+| **Rate limiting** | Limit failed authentication attempts to resist online guessing | Persistent exponential backoff on the PIN, re-applied on every boot so it cannot be reset by power-cycling |
+| **Verifier compromise resistance** | Reduce impact of a compromised endpoint | Credentials never reside on the host and the AES key never leaves the secure element |
+| **Memorized-secret handling** | Salt and hash memorized secrets; compare safely | The PIN uses the device serial as salt and a constant-time comparison |
+
+## Honest gaps versus a formal 800-63B authenticator
+
+- ZeroKeyUSB is not a phishing-resistant cryptographic authenticator (e.g. a
+  FIDO2 key); it types passwords, which are a "memorized secret / look-up secret"
+  style factor.
+- It does not perform online proof-of-possession with a relying party; it
+  augments password-based auth rather than replacing it.
+- The PIN hash is single-pass `SHA-256` (not a heavy KDF) and is readable over
+  I²C, so its offline-resistance depends on the physical encapsulation and PIN
+  length — see the [Threat model](/compliance/threat-model).
+
+## Suggested statement
+
+> ZeroKeyUSB's design aligns with NIST SP 800-63B guidance on strong, unique
+> authentication secrets, protected secret storage and rate-limited verification.
+> It is a credential-protection device, not an accredited authenticator, and
+> makes no Authenticator Assurance Level claim.

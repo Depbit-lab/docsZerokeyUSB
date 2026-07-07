@@ -1,0 +1,62 @@
+---
+title: "ENS & CCN-STIC positioning"
+description: "How ZeroKeyUSB fits Spain's Esquema Nacional de Seguridad (RD 311/2022) for public-sector buyers, and the CPSTIC / CCN-STIC path as a medium-term goal."
+---
+
+For sales to Spanish public administration — ministries, public universities,
+town councils, public hospitals — the key framework is the **Esquema Nacional de
+Seguridad (ENS)**, regulated by **Real Decreto 311/2022**. The ENS applies to
+public-sector information systems and to the providers that supply them
+technology or services.
+
+<Note>
+ZeroKeyUSB is not itself "ENS certified" — ENS conformity applies to systems and
+organizations. The device is positioned as a **technical control that helps an
+ENS-scoped system meet its requirements**, particularly around identity,
+access control and authentication.
+</Note>
+
+## ENS dimensions ZeroKeyUSB supports
+
+The ENS organizes safeguards across operational and protection measures. A
+credential device contributes mainly to **access control** and **information
+protection**:
+
+| ENS area | Contribution |
+|----------|--------------|
+| Identification & authentication | Strong, unique passwords and TOTP second factors, gated by a Master PIN on a physical device |
+| Access control | Credentials are unreachable without the device and PIN; access is granted only on a deliberate action |
+| Protection of information | Credentials encrypted at rest with a key held in a secure element; no cloud storage |
+| Protection against malware | The vault is off-host and encrypted, reducing the value of an infected endpoint |
+| Operation without local software | No agent or driver to install, reducing the managed-system attack surface |
+| Traceability of design | Open-source firmware, signed images, and documented [threat model](/compliance/threat-model) support risk documentation |
+
+## The CPSTIC / CCN-STIC path (medium term)
+
+For a security product used by Spanish administration, the reference catalogue is
+the **CPSTIC** of the **CCN** (Centro Criptológico Nacional) — the list of
+qualified/approved ICT security products for use under the ENS. Inclusion in
+CPSTIC typically relies on an evaluation recognized by the CCN, such as **LINCE**
+or **Common Criteria**, following the relevant **CCN-STIC** guides.
+
+This is a deliberate, later phase. The groundwork already in place helps:
+
+- **Signed firmware and a hardware-protected bootloader** (secure boot).
+- **A defined product category** — "offline secure credential storage device."
+- **Architecture and threat documentation** that an evaluation would build on.
+- **A secure provisioning process** and permanently locked secure element.
+
+A realistic sequence, when a large public buyer requires it:
+
+1. Scope the product as an evaluable target of evaluation.
+2. Prepare architecture, threat model and secure-manufacturing documentation.
+3. Engage an accredited lab for **LINCE** (or Common Criteria) as CPSTIC requires.
+4. Apply for **CPSTIC** listing.
+
+## Suggested statement
+
+> ZeroKeyUSB is designed to support the access-control and authentication
+> requirements of the Spanish National Security Framework (ENS, RD 311/2022) as a
+> technical control within a public-sector system. Formal product evaluation
+> (LINCE / Common Criteria) and CPSTIC listing are planned for when a qualifying
+> public buyer requires them.

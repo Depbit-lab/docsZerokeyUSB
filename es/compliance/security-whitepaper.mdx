@@ -1,0 +1,57 @@
+---
+title: "Whitepaper de seguridad"
+description: "La arquitectura de seguridad de ZeroKeyUSB en un documento: diseño offline, firmware firmado, cifrado respaldado por hardware y protección por PIN — con una declaración honesta de alcance."
+---
+
+Este whitepaper resume cómo ZeroKeyUSB protege las credenciales, para equipos de
+seguridad, auditores y compras. Describe qué hace el dispositivo y, de forma
+explícita, los límites de lo que protege. Para el detalle técnico profundo, cada
+sección enlaza con la documentación de [Software](/es/firmware/architecture), que
+es totalmente open-source y verificable.
+
+## Qué es ZeroKeyUSB
+
+Un dispositivo de credenciales **offline** de mano, basado en un microcontrolador
+ATSAMD21 y un elemento seguro ATECC608A, encapsulado en resina epoxy. Guarda
+inicios de sesión, secretos TOTP y notas cortas, y los teclea a un host por **USB
+HID** tras una pulsación física. **No tiene Wi-Fi, Bluetooth, NFC, batería ni
+cuenta en la nube.**
+
+## Arquitectura de seguridad
+
+| Capa | Mecanismo |
+|------|-----------|
+| **Arranque seguro** | El bootloader verifica una firma **ECDSA P-256** sobre el firmware de aplicación (vía el ATECC608A) antes de ejecutarlo. La región del bootloader está protegida contra escritura por hardware (`BOOTPROT`). |
+| **Cifrado de credenciales** | Las credenciales se guardan cifradas con **AES-128-CBC** en una EEPROM externa. La clave AES la genera el TRNG hardware del ATECC608A y se **guarda dentro del chip** (`IsSecret=1`) — nunca cruza el bus I²C ni llega al software del host. |
+| **PIN** | Un PIN maestro de 1–16 dígitos se verifica como `SHA-256(PIN ‖ serial-chip)` con comparación a tiempo constante, y se limita el ritmo con un **backoff exponencial persistente** reaplicado en cada arranque (ver [Verificación del PIN](/es/firmware/security/pin-verification)). |
+| **Aleatoriedad** | Todo el material de claves, IVs y contraseñas generadas viene del **TRNG hardware** del ATECC608A. |
+| **Físico** | El PCB está **encapsulado en epoxy**; no hay ruta de depuración a la aplicación tras el aprovisionamiento, y las zonas Config/Data del elemento seguro quedan bloqueadas permanentemente. |
+| **Airgap** | Las credenciales se introducen/exportan solo por USB, por acción del usuario. No existe pila de red. |
+
+## Propiedades de seguridad
+
+- **Sin nube, sin cuenta, sin telemetría.** No se transmite nada a ningún servidor.
+- **Los secretos no tocan el host.** El host recibe pulsaciones de teclado, nunca la bóveda.
+- **Custodia de clave resistente a manipulación.** La clave AES y el dispositivo están ligados; el ciphertext de una unidad no lo descifra otra.
+- **Firmware verificable.** Solo corren imágenes firmadas con ECDSA; el código está abierto para auditoría.
+
+## Alcance y limitaciones
+
+Una declaración de seguridad creíble nombra sus límites. ZeroKeyUSB **no** afirma
+proteger contra:
+
+- **Un compromiso del host de confianza durante el uso.** Cuando tecleas una
+  credencial, aterriza en el host; si esa máquina ya está comprometida, puede
+  capturar lo tecleado. El dispositivo reduce la exposición del *almacenamiento*,
+  no la del *uso*.
+- **Backup en claro en un host no confiable.** El backup por USB exporta las
+  credenciales en texto claro al ordenador conectado; hazlo solo en un host de
+  confianza y offline.
+- **Un atacante físico/de laboratorio determinado.** El hash del PIN es legible
+  por el bus I²C, así que un atacante que venza la encapsulación de epoxy y alcance
+  el bus puede intentar un crackeo offline del PIN. La resina y un PIN largo son
+  las mitigaciones; no hay autoborrado destructivo.
+
+Ver el [Modelo de amenazas](/es/compliance/threat-model) para el análisis completo,
+y [Marcos de seguridad](/es/compliance/frameworks) para cómo mapea a controles
+ISO, NIST y ENS.

@@ -1,0 +1,43 @@
+---
+title: "Alineamiento con NIST SP 800-63B"
+description: "Cómo ZeroKeyUSB se alinea con la guía de NIST SP 800-63B sobre secretos de autenticación y su protección — una declaración de alineamiento, no una acreditación de nivel de garantía (AAL)."
+---
+
+<Note>
+**Alineamiento, no acreditación.** NIST SP 800-63B especifica requisitos para
+*autenticadores* en un contexto federal de identidad digital y define niveles de
+garantía de autenticación (AAL). ZeroKeyUSB es un almacén de credenciales, no un
+autenticador acreditado, y **no hace ninguna afirmación de AAL**. Esta página
+muestra cómo ayuda a suscriptores y organizaciones a seguir las buenas prácticas
+de 800-63B.
+</Note>
+
+## Dónde ayuda ZeroKeyUSB
+
+| Tema de 800-63B | Guía (parafraseada) | Cómo lo apoya ZeroKeyUSB |
+|-----------------|---------------------|--------------------------|
+| **Secretos fuertes** | Fomentar secretos largos y de alta entropía; no imponer reglas de composición que los debiliten | Genera contraseñas de hasta 32 caracteres desde un TRNG hardware; soporta passphrases memorables de varias palabras |
+| **Sin reutilización** | Desalentar la reutilización entre servicios | Cada credencial guardada es independiente; una contraseña aleatoria única está a un toque |
+| **Almacenamiento del secreto** | Los verificadores deben guardar los secretos protegidos (hash/cifrado), no en claro | Las credenciales están cifradas con AES fuera del host; el PIN maestro se guarda solo como `SHA-256(PIN ‖ serial)` — nunca en claro |
+| **Límite de intentos** | Limitar los intentos de autenticación fallidos para resistir el adivinado online | Backoff exponencial persistente en el PIN, reaplicado en cada arranque para que no se reinicie apagando y encendiendo |
+| **Resistencia al compromiso del verificador** | Reducir el impacto de un endpoint comprometido | Las credenciales nunca residen en el host y la clave AES nunca sale del elemento seguro |
+| **Manejo del secreto memorizado** | Salar y hashear los secretos memorizados; comparar de forma segura | El PIN usa el serial del dispositivo como sal y una comparación a tiempo constante |
+
+## Carencias honestas frente a un autenticador formal 800-63B
+
+- ZeroKeyUSB no es un autenticador criptográfico resistente al phishing (p. ej. una
+  llave FIDO2); teclea contraseñas, que son un factor tipo "secreto memorizado /
+  secreto de consulta".
+- No realiza prueba de posesión online con una parte confiante; complementa la
+  autenticación basada en contraseña en lugar de sustituirla.
+- El hash del PIN es `SHA-256` de una sola pasada (no un KDF pesado) y es legible
+  por I²C, así que su resistencia offline depende de la encapsulación física y de
+  la longitud del PIN — ver el [Modelo de amenazas](/es/compliance/threat-model).
+
+## Declaración sugerida
+
+> El diseño de ZeroKeyUSB se alinea con la guía de NIST SP 800-63B sobre secretos
+> de autenticación fuertes y únicos, almacenamiento protegido del secreto y
+> verificación con límite de intentos. Es un dispositivo de protección de
+> credenciales, no un autenticador acreditado, y no hace ninguna afirmación de
+> nivel de garantía de autenticación.

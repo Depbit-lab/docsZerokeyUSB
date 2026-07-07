@@ -1,0 +1,48 @@
+---
+title: "ISO/IEC 27001 & 27002 mapping"
+description: "How ZeroKeyUSB is designed to support ISO/IEC 27002:2022 controls for authentication information, access control and cryptography — a support statement, not a certification."
+---
+
+<Note>
+ISO/IEC 27001 certifies an organization's **information security management
+system**, not a device. ZeroKeyUSB is **not** "ISO 27001 certified." This page
+states how the device is **designed to support** specific ISO/IEC 27002:2022
+controls, so it can be part of *your* ISMS evidence.
+</Note>
+
+## Primary control: 5.17 Authentication information
+
+ISO/IEC 27002:2022 **control 5.17** covers the secure handling of authentication
+information — passwords, PINs and keys.
+
+> ZeroKeyUSB helps organizations protect authentication information by storing
+> credentials offline, encrypted, and outside the host computer, reducing
+> exposure to browser password leaks, malware, shared sessions, and cloud
+> compromise.
+
+## Control-by-control support
+
+| Control (27002:2022) | Theme | How ZeroKeyUSB supports it |
+|----------------------|-------|----------------------------|
+| **5.15** | Access control | Physical possession + Master PIN gate all credential access; nothing is reachable without the device and PIN. |
+| **5.16** | Identity management | Each credential is a distinct stored identity; the device itself carries a unique secure-element serial. |
+| **5.17** | Authentication information | Credentials are encrypted at rest (AES-128, key in the secure element), never held by the host or a cloud; the PIN is stored only as a salted hash. |
+| **5.18** | Access rights | Access is all-or-nothing per device+PIN and is granted per credential only on a deliberate physical action. |
+| **8.5** | Secure authentication | Rate-limited PIN (persistent backoff), constant-time comparison, and support for strong, unique, randomly generated passwords and TOTP second factors. |
+| **8.24** | Use of cryptography | AES-128 for data at rest, ECDSA P-256 for firmware authenticity, SHA-256 for PIN hashing, and a hardware TRNG for all key material. |
+
+## Evidence an auditor can verify
+
+- **Open-source firmware** — the encryption, PIN and boot logic are inspectable
+  (see [Software](/firmware/architecture)).
+- **Key custody** — the AES key is generated in and never leaves the ATECC608A.
+- **No data egress** — no network interface exists; nothing is transmitted.
+- **Documented limits** — the [Threat model](/compliance/threat-model) states the
+  boundaries, which supports an honest risk assessment.
+
+## Suggested statement for an ISMS
+
+> ZeroKeyUSB is designed to support ISO/IEC 27001 and ISO/IEC 27002 controls for
+> authentication information (5.17), access control (5.15/5.18), secure
+> authentication (8.5) and use of cryptography (8.24). It is used as a technical
+> control within the organization's ISMS; it is not itself certified.

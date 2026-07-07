@@ -99,6 +99,12 @@
           {
             "group": "Compliance",
             "pages": [
+              "compliance/frameworks",
+              "compliance/security-whitepaper",
+              "compliance/threat-model",
+              "compliance/iso-27001-27002",
+              "compliance/nist-800-63b",
+              "compliance/ens-ccn-stic",
               "certifications",
               "open-source"
             ]
@@ -201,6 +207,12 @@
           {
             "group": "Cumplimiento",
             "pages": [
+              "es/compliance/frameworks",
+              "es/compliance/security-whitepaper",
+              "es/compliance/threat-model",
+              "es/compliance/iso-27001-27002",
+              "es/compliance/nist-800-63b",
+              "es/compliance/ens-ccn-stic",
               "es/certifications",
               "es/open-source"
             ]

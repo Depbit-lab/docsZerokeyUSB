@@ -1,0 +1,66 @@
+---
+title: "Posicionamiento ENS y CCN-STIC"
+description: "Cómo encaja ZeroKeyUSB en el Esquema Nacional de Seguridad (RD 311/2022) para compradores del sector público español, y la vía CPSTIC / CCN-STIC como objetivo a medio plazo."
+---
+
+Para vender a la administración pública española —ministerios, universidades
+públicas, ayuntamientos, hospitales públicos— el marco clave es el **Esquema
+Nacional de Seguridad (ENS)**, regulado por el **Real Decreto 311/2022**. El ENS
+aplica a los sistemas de información del sector público y a los proveedores que les
+suministran tecnología o servicios.
+
+<Note>
+ZeroKeyUSB no está "certificado ENS" en sí mismo — la conformidad con el ENS
+aplica a sistemas y organizaciones. El dispositivo se posiciona como un **control
+técnico que ayuda a un sistema en ámbito ENS a cumplir sus requisitos**, en
+particular en identidad, control de acceso y autenticación.
+</Note>
+
+## Dimensiones del ENS que ZeroKeyUSB apoya
+
+El ENS organiza las salvaguardas en medidas operativas y de protección. Un
+dispositivo de credenciales contribuye sobre todo al **control de acceso** y a la
+**protección de la información**:
+
+| Área del ENS | Contribución |
+|--------------|--------------|
+| Identificación y autenticación | Contraseñas fuertes y únicas y segundos factores TOTP, controlados por un PIN maestro en un dispositivo físico |
+| Control de acceso | Las credenciales son inalcanzables sin el dispositivo y el PIN; el acceso se concede solo ante una acción deliberada |
+| Protección de la información | Credenciales cifradas en reposo con una clave alojada en un elemento seguro; sin almacenamiento en la nube |
+| Protección frente a malware | La bóveda está fuera del host y cifrada, reduciendo el valor de un endpoint infectado |
+| Operación sin software local | Sin agente ni driver que instalar, reduciendo la superficie de ataque del sistema gestionado |
+| Trazabilidad del diseño | Firmware open-source, imágenes firmadas y un [modelo de amenazas](/es/compliance/threat-model) documentado apoyan la documentación de riesgos |
+
+## La vía CPSTIC / CCN-STIC (medio plazo)
+
+Para un producto de seguridad usado por la administración española, el catálogo de
+referencia es el **CPSTIC** del **CCN** (Centro Criptológico Nacional) — la lista de
+productos de seguridad TIC cualificados/aprobados para uso en el marco del ENS. La
+inclusión en CPSTIC suele apoyarse en una evaluación reconocida por el CCN, como
+**LINCE** o **Common Criteria**, siguiendo las guías **CCN-STIC** pertinentes.
+
+Es una fase posterior y deliberada. La base ya existente ayuda:
+
+- **Firmware firmado y bootloader protegido por hardware** (arranque seguro).
+- **Una categoría de producto definida** — "dispositivo de almacenamiento seguro
+  offline de credenciales".
+- **Documentación de arquitectura y amenazas** sobre la que construiría una
+  evaluación.
+- **Un proceso de aprovisionamiento seguro** y un elemento seguro bloqueado
+  permanentemente.
+
+Una secuencia realista, cuando un gran comprador público lo requiera:
+
+1. Definir el producto como objeto de evaluación (TOE) evaluable.
+2. Preparar documentación de arquitectura, modelo de amenazas y fabricación segura.
+3. Contratar un laboratorio acreditado para **LINCE** (o Common Criteria) según
+   exija el CPSTIC.
+4. Solicitar el listado en **CPSTIC**.
+
+## Declaración sugerida
+
+> ZeroKeyUSB está diseñado para apoyar los requisitos de control de acceso y
+> autenticación del Esquema Nacional de Seguridad (ENS, RD 311/2022) como control
+> técnico dentro de un sistema del sector público. La evaluación formal de producto
+> (LINCE / Common Criteria) y el listado en CPSTIC están previstos para cuando un
+> comprador público cualificado los requiera.
