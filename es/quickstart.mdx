@@ -11,27 +11,32 @@ Esta sección te guía pantalla a pantalla, con ilustraciones del dispositivo y 
 
 ---
 
-## Los cinco botones
+## Los cinco puntos dorados
 
-Todo se controla con cinco pads dorados dispuestos en cruz, a la derecha de la pantalla:
+Todo se controla con cinco puntos táctiles dorados dispuestos en cruz junto a la pantalla. Desde el firmware **1.1.0** se **desliza** el dedo por ellos (Gestos, lo predeterminado); también puedes pulsarlos uno a uno como botones (**Menú → Ajustes → Control**). Los dos modos hacen las mismas cinco acciones:
 
-| Pad | Símbolo | Toque corto | Pulsación larga (~800 ms) |
-|-----|---------|-------------|---------------------------|
-| **Arriba** | ⬆ | Mover/scroll arriba, subir dígito | — |
-| **Abajo** | ⬇ | Mover/scroll abajo, bajar dígito | — |
-| **Izquierda** | ⬅ | Volver, retroceder dígito | Saltar 10 credenciales atrás |
-| **Derecha** | ➡ | Avanzar, añadir dígito | Saltar 10 credenciales adelante |
-| **Centro** | ● | Confirmar, seleccionar, teclear al ordenador | Editar el campo actual |
+| Acción | Gestos | Botones | Qué hace |
+|--------|--------|---------|----------|
+| **Arriba / Abajo** | Deslizar hacia abajo / arriba | Punto Arriba / Abajo | Cambiar lo que hay en la banda: campo, opción o valor anterior / siguiente |
+| **Izquierda** | Deslizar de izquierda a derecha | Punto Izquierda | Volver: cuenta anterior, paso anterior; desde la cuenta 1, el menú |
+| **Derecha** | Deslizar de derecha a izquierda | Punto Derecha | Avanzar: cuenta siguiente, paso siguiente; en el PIN, añadir el número |
+| **Centro** | Tocar el centro | Punto Centro | Actuar: escribir el campo en el ordenador, abrir, aplicar |
+| **Mantener Centro** | Mantener el centro (~0,8 s) | Mantener el punto Centro | Editar el campo actual |
 
-A lo largo de las guías verás el botón resaltado en **cian** sobre las ilustraciones. Eso indica el botón que tienes que pulsar para pasar al siguiente paso.
+En tus cuentas, en el menú y en la configuración, deslizar arrastra la pantalla como en un móvil, así que deslizar hacia arriba muestra lo que hay **debajo**. En las pantallas con cursor (el editor del dispositivo, la fecha y hora del 2FA, la búsqueda) el cursor simplemente sigue al dedo. Ver [Gestos](/es/getting-started/gestures) para todos los movimientos, la rueda del PIN y el tutorial.
+
+Las guías paso a paso nombran las **acciones** (Arriba, Abajo, Izquierda, Derecha, Centro). En modo Gestos, haz el deslizamiento de esta tabla. Algunas ilustraciones aún muestran las pantallas de la 1.0; los pasos son los mismos.
 
 ---
 
 ## Índice de escenarios
 
 <CardGroup cols={2}>
-  <Card title="Tutorial inicial" icon="rocket" href="/es/getting-started/setup-wizard">
-    Recorrido completo del asistente que aparece la primera vez que enchufas el dispositivo: orientación, layout del teclado y creación del PIN maestro.
+  <Card title="Configuración inicial" icon="rocket" href="/es/getting-started/setup-wizard">
+    Los 7 pasos que aparecen la primera vez que enchufas el dispositivo: idioma, mano, tutorial, teclado y PIN maestro.
+  </Card>
+  <Card title="Gestos" icon="hand-pointer" href="/es/getting-started/gestures">
+    Cómo moverte deslizando por los puntos, igual en todas las pantallas.
   </Card>
   <Card title="Crear tu primera credencial" icon="key" href="/es/getting-started/first-credential">
     Desde desbloquear el PIN hasta guardar tu primera contraseña usando la pantalla "Anadir Nuevo" y el editor del dispositivo.
@@ -62,7 +67,7 @@ A lo largo de las guías verás el botón resaltado en **cian** sobre las ilustr
     Enchufa ZeroKeyUSB en cualquier puerto USB-C de tu ordenador, tablet o móvil. El dispositivo consume unos 20 mA — menos que un ratón inalámbrico — y no necesita batería.
   </Step>
   <Step title="Comprueba la orientación">
-    Si los puntos dorados quedan a tu izquierda en lugar de a la derecha, simplemente dale la vuelta al dispositivo. Durante el tutorial inicial podrás girar también la pantalla por software.
+    Sujeta el dispositivo como te resulte natural. En la configuración inicial eliges **Diestro** o **Zurdo** y la pantalla gira para adaptarse.
   </Step>
   <Step title="Decide tu PIN">
     Antes de empezar el tutorial inicial conviene tener pensado un PIN de 4 a 16 dígitos. Si lo olvidas, **no hay forma de recuperarlo** — solo borrar y volver a empezar.
@@ -82,5 +87,5 @@ A lo largo de las guías verás el botón resaltado en **cian** sobre las ilustr
 | `texto monoespaciado` | Texto que aparece literalmente en la pantalla OLED |
 
 <Note>
-¿Quieres probar antes de tener el dispositivo en la mano? Abre [`Animaciones/simulador.html`](https://github.com/Depbit-lab/zerokeyusb) en cualquier navegador moderno: emula la pantalla y los botones con el teclado (W/A/S/D/flechas/Espacio).
+¿Quieres probar antes de tener el dispositivo en la mano? Abre el [simulador online](https://zerokeyusb.com/simulador.html): reproduce las pantallas de la 1.1.0. Arrastra el ratón (o el dedo) por los puntos para deslizar, o usa las flechas del teclado y Espacio.
 </Note>

@@ -11,27 +11,32 @@ This section walks you through the device screen by screen, with illustrations a
 
 ---
 
-## The five buttons
+## The five gold dots
 
-Everything is controlled with five golden touch pads arranged in a cross on the right of the screen:
+Everything is controlled with five gold touch dots arranged in a cross beside the screen. Since firmware **1.1.0** you **swipe** across them (Gestures, the default); you can also press them one by one as buttons (**Menu → Settings → Control**). Both modes do the same five actions:
 
-| Pad | Symbol | Short tap | Long press (~800 ms) |
-|-----|--------|-----------|----------------------|
-| **Up** | ⬆ | Move/scroll up, increment digit | — |
-| **Down** | ⬇ | Move/scroll down, decrement digit | — |
-| **Left** | ⬅ | Go back, previous digit | Jump 10 credentials back |
-| **Right** | ➡ | Go forward, add digit | Jump 10 credentials forward |
-| **Center** | ● | Confirm, select, type to host | Edit the current field |
+| Action | Gestures | Buttons | What it does |
+|--------|----------|---------|--------------|
+| **Up / Down** | Swipe down / up | Up / Down dot | Change what is in the band: previous / next field, option or value |
+| **Left** | Swipe left to right | Left dot | Go back: previous account, previous step; from account 1, the menu |
+| **Right** | Swipe right to left | Right dot | Go on: next account, next step; on the PIN, add the number |
+| **Center** | Tap the centre | Centre dot | Act: type the field on the computer, open, apply |
+| **Hold Center** | Hold the centre (~0.8 s) | Hold the centre dot | Edit the current field |
 
-Throughout these guides you will see the button highlighted in **cyan** on the illustrations. That indicates the button to press to move to the next step.
+On your accounts, in the menu and in the setup, a swipe drags the screen like on a phone, so swiping up shows what is **below**. On the screens with a cursor (the on-device editor, the 2FA date and time, the search) the cursor simply follows your finger. See [Gestures](/getting-started/gestures) for all the moves, the PIN wheel and the tutorial.
+
+The step-by-step guides below name the **actions** (Up, Down, Left, Right, Center). In Gestures mode, make the swipe from this table. Some of their illustrations still show the 1.0 screens; the steps are the same.
 
 ---
 
 ## Scenario index
 
 <CardGroup cols={2}>
-  <Card title="Initial tutorial" icon="rocket" href="/getting-started/setup-wizard">
-    Full walkthrough of the wizard that appears the first time you plug the device in: orientation, keyboard layout and master PIN creation.
+  <Card title="Initial setup" icon="rocket" href="/getting-started/setup-wizard">
+    The 7 steps that appear the first time you plug the device in: language, hand, tutorial, keyboard and master PIN.
+  </Card>
+  <Card title="Gestures" icon="hand-pointer" href="/getting-started/gestures">
+    How to move by swiping across the dots, the same on every screen.
   </Card>
   <Card title="Create your first credential" icon="key" href="/getting-started/first-credential">
     From unlocking with the PIN to saving your first password using the "Add New" screen and the on-device editor.
@@ -62,7 +67,7 @@ Throughout these guides you will see the button highlighted in **cyan** on the i
     Plug ZeroKeyUSB into any USB-C port on your computer, tablet, or phone. The device draws about 20 mA — less than a wireless mouse — and needs no battery.
   </Step>
   <Step title="Check the orientation">
-    If the golden dots end up on your left instead of on the right, simply flip the device. During the initial tutorial you can also rotate the screen in software.
+    Hold the device the way that feels natural. During the initial setup you choose **Right-handed** or **Left-handed** and the screen turns round to match.
   </Step>
   <Step title="Choose your PIN">
     Before starting the initial tutorial it helps to have a 4–16 digit PIN in mind. If you forget it, **there is no recovery** — only wiping and starting over.
@@ -82,5 +87,5 @@ Throughout these guides you will see the button highlighted in **cyan** on the i
 | `monospaced text` | Text that appears literally on the OLED screen |
 
 <Note>
-Want to try before you have the device in hand? Open [`Animaciones/simulador.html`](https://github.com/Depbit-lab/zerokeyusb) in any modern browser: it emulates the screen and buttons with the keyboard (W/A/S/D/arrows/Space).
+Want to try before you have the device in hand? Open the [online simulator](https://zerokeyusb.com/simulador.html): it reproduces the 1.1.0 screens. Drag the mouse (or your finger) across the dots to swipe, or use the arrow keys and Space.
 </Note>

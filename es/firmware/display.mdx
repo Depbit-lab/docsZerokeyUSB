@@ -15,11 +15,11 @@ El firmware mantiene la interfaz intencionadamente minimalista: tipografía gran
 ```mermaid
 graph TD
     SPLASH["Pantalla de bienvenida<br/>Logo ZeroKeyUSB"]
-    SETUP["Asistente de setup<br/>10 páginas con scroll"]
-    PIN["Entrada de PIN<br/>selector de dígito + puntos"]
+    SETUP["Asistente inicial<br/>7 tarjetas solo con deslizamientos + tutorial"]
+    PIN["Entrada de PIN<br/>rueda (rodillo)"]
     MAIN["Pantalla principal<br/>Sitio / Usuario / Pass / 2FA"]
     EDIT["Editor<br/>3 páginas de teclado"]
-    MENU["Menú<br/>lista con scroll"]
+    MENU["Menú<br/>una opción en texto grande"]
     TOTP["Vista TOTP<br/>código de 6 dígitos + cuenta atrás"]
     TEXT["Página de texto<br/>confirmaciones, info"]
     
@@ -56,20 +56,34 @@ flowchart LR
 
 ---
 
+## Anatomía de una pantalla (1.1.0)
+
+Desde el firmware 1.1.0 el menú, las cuentas y el asistente comparten una misma disposición, así que se aprende una vez:
+
+| Zona | Filas | Contenido | Fuente |
+|------|-------|-----------|--------|
+| **Contexto** | 0–6 | Dónde estás: `#3 Gmail > Usuario`, `AJUSTES > Mano`, `2/7 MANO` | 5×7 |
+| **Banda** | 7–24 | El valor elegido, negro sobre blanco | FreeSans **Bold** 9 pt; FreeSans 9 pt si no cabe; 5×7 como último recurso (`drawBigText()`) |
+| **Pista** | 25–31 | Lo que hay debajo (`↓ Clave`) o una pista de gesto animada | 5×7 / animación |
+| **Posición** | x 125–127 | Lugar en la lista (menús) | — |
+
+Reglas que cumple cada pantalla: una idea por pantalla, pistas con símbolos animados en vez de palabras, dos instrucciones nunca comparten fila, y nada cambia sin deslizarse en la dirección del gesto.
+
+---
+
 ## Tipos de pantalla
 
-### Pantalla de entrada de PIN
-- Muestra el selector de dígito actual (0–9) con navegación Arriba/Abajo.
-- Los dígitos introducidos se muestran como puntos rellenos (●) por seguridad.
-- La longitud del PIN se muestra como indicador de cuenta.
+### Pantalla de entrada de PIN ("rodillo")
+- Una **rueda** en x 98–117: el valor elegido iluminado en una ventana de 20×16 (FreeSans Bold), el anterior encima y el siguiente debajo (5×7). Tras el primer dígito la rueda tiene `0, ✓, 1 … 9`.
+- Los dígitos ya introducidos se dibujan en grande a la izquierda de la rueda, separados 20 px, el más nuevo junto a ella; los antiguos salen por el borde izquierdo.
+- Una flecha junto a la rueda late hacia la fila (o, en modo Botones, hacia el pad Derecha).
+- Arriba/Abajo hace rodar el valor dentro de su ventana (un deslizamiento vertical limitado a ese recuadro). Al añadir un dígito, este viaja de la ventana a la fila mientras la fila se desplaza un paso a la izquierda (6 fotogramas, ~110 ms); al borrar, lo contrario. La animación se reconstruye a partir del estado en pantalla: no se guarda ninguna copia extra del PIN.
 
 ### Pantalla principal de credenciales
-- **Cuatro líneas** mostrando el slot actual:
-  - Línea 0: Indicador de índice de slot
-  - Línea 1: Nombre del sitio (scroll si > ~20 caracteres)
-  - Línea 2: Usuario
-  - Línea 3: Contraseña (oculta por defecto)
-- Un indicador de contexto (`SITE`, `USER`, `PASS`, `2FA`) aparece arriba.
+- Fila de contexto: `#N > Sitio` en el campo sitio, `#N <sitio> > <campo>` en los demás.
+- Banda: el campo elegido en grande: sitio, usuario, **contraseña** o `2FA (OK)` / nota. Los valores más anchos que la banda se desplazan dentro de ella (FreeSans 9 pt, ~40 px/s, pausa de 1,2 s en cada extremo) mediante `refreshMainScrollIfNeeded()`.
+- Fila de pista: `↓ <usuario>` bajo el sitio, `↓ Clave` bajo el usuario (el nombre, nunca el valor), `↓ 2FA` bajo la contraseña si el hueco tiene.
+- El hueco virtual tras la última cuenta muestra `NUEVA CUENTA` / `+ Nueva`.
 
 ### Pantalla de editor
 - **Tres páginas de teclado** seleccionables con Arriba/Abajo:
@@ -80,14 +94,19 @@ flowchart LR
 - Carácter seleccionado resaltado con colores invertidos
 
 ### Pantalla de menú
-- Lista con scroll y resaltado invertido sobre el ítem seleccionado.
-- Cuando los ítems superan las 4 filas, aparece una **barra de scroll con thumb** en el borde derecho (3 px de ancho).
-- La posición del thumb se actualiza proporcionalmente a la posición de scroll.
+- Una opción cada vez: la ruta (`AJUSTES > Mano`) en la fila de contexto, el valor (`Diestro`) en grande en la banda, la opción siguiente debajo y una barra de posición de 3 px a la derecha.
+- Las opciones con forma `Nombre: valor` muestran el nombre en la ruta y el valor en la banda.
 
-### Páginas del asistente de setup
-- 10 páginas de texto con scroll y navegación Arriba/Abajo.
-- Aparecen en pantalla un indicador de paso (`1/9`, `2/9`, etc.) y pistas en el footer.
-- Las páginas con > 4 líneas muestran un thumb de scroll.
+### Tarjetas del asistente
+- Siete tarjetas con la misma disposición: idioma, mano, (tutorial), teclado, crear PIN, PIN guardado, listo.
+- Las tarjetas con elección reservan una columna de 7 px a la derecha para una doble flecha animada que crece desde el centro hacia los dos extremos (`drawGrowArrowVertical()`: desliza arriba o abajo para cambiar). Todas tienen una flecha que se desliza de derecha a izquierda por la fila de abajo (`drawGlideArrow()`: desliza así para seguir). Las dos pistas se turnan (~1 s cada una, fotogramas de 90 ms) para que solo se mueva una cosa a la vez.
+
+### Tutorial
+- Seis lecciones interactivas (`zerokey-tutorial.cpp`): una cruz de pads a la izquierda anima el movimiento, el panel derecho nombra la acción, y el usuario tiene que hacerla. Una tarjeta resumen se cierra con la misma flecha deslizante.
+
+### Avisos y pantallas finales
+- `renderBigNotice()`: barra de título pequeña y el valor en grande (p. ej. `Orientacion` / `Zurdo` tras un cambio).
+- Tras un reset de fábrica el dispositivo muestra una tarjeta fija `RESET COMPLETADO` / `Desconectalo` y deja de responder a los pads hasta que se desconecta.
 
 ### Pantalla de código TOTP
 - **Texto a doble tamaño** para el código de 6 dígitos.
@@ -101,8 +120,9 @@ flowchart LR
 
 | Asset | Formato | Tamaño | Uso |
 |-------|--------|------|-------|
-| **Fuente por defecto** | Adafruit GFX incluida | 6×8 px | Menús, etiquetas, texto de info |
-| **Tamaño de texto 2** | escalado 2× | 12×16 px | Códigos TOTP, prompts grandes |
+| **Fuente por defecto** | Adafruit GFX incluida | 6×8 px | Filas de contexto y de pista, páginas de texto |
+| **FreeSans 9 pt Bold / Regular** | Fuentes Adafruit GFX | altura de mayúscula 12 px, ~1,9 KB cada una | La banda, los dígitos del PIN (1.1.0) |
+| **Tamaño de texto 2** | escalado 2× | 12×16 px | Códigos TOTP, pantalla de inicio |
 | **Iconos** | bitmaps PROGMEM | 16×16 px | Ítems del menú (backup, settings, danger, info) |
 | **SVGs del dispositivo** | Vector en `/images/` | Varios | Ilustraciones de pads táctiles en la documentación |
 
@@ -110,20 +130,28 @@ Todas las fuentes e iconos se almacenan en **Flash (PROGMEM)** — sin carga en 
 
 ---
 
+## Transiciones deslizantes (1.1.0)
+
+Las pantallas están dispuestas como una tira (el menú a la izquierda de la cuenta 1, las cuentas de izquierda a derecha, los submenús a la derecha de su menú, la búsqueda encima de la cuenta) y moverse por ella hace entrar la pantalla nueva por ese lado.
+
+1. Antes de atender una pulsación, `requestTransition()` copia el fotograma en pantalla (`slideFor()` en `zerokey-io.cpp` elige la dirección).
+2. Cuando el manejador redibuja, `zerokeydisplay()` envía **5 fotogramas intermedios** que desplazan el fotograma viejo y el nuevo (columnas en los deslizamientos horizontales, bits de cada columna en los verticales) y después el definitivo. Cada envío tarda ~13 ms (el driver sube el bus a 400 kHz para los fotogramas), así que un deslizamiento cuesta ~80 ms.
+3. Se tiene en cuenta la orientación: en Diestro, la opción predeterminada, el panel está girado 180°, así que "por la derecha" para el usuario es "por la izquierda" en el búfer.
+
+| Movimiento | Deslizamiento |
+|------------|---------------|
+| Cuenta siguiente / anterior | Horizontal, pantalla completa |
+| Opción del menú o campo de la cuenta siguiente / anterior | Vertical, filas 7–31 (la fila de contexto queda quieta) |
+| Entrar en un submenú / volver | Horizontal |
+| Abrir la búsqueda / volver a la cuenta | Vertical, pantalla completa |
+| Rueda del PIN | Vertical, solo dentro de la ventana del valor (`requestBoxTransition()`) |
+
+Si el manejador no cambió nada, no hay animación. La repetición automática (deslizar y mantener) no anima, para que las listas vayan a toda velocidad, salvo la rueda del PIN, cuyo rodar cabe de sobra en los 180 ms entre repeticiones.
+
 ## Scroll
 
-Hay dos tipos de scroll implementados:
-
-### Auto-scroll (nombres de credenciales)
-- Los nombres más largos que el ancho de pantalla (~20 caracteres) hacen scroll **horizontal** a ritmo constante.
-- Gestionado por `refreshMainScrollIfNeeded()` en el bucle principal.
-- El scroll se pausa brevemente en cada extremo antes de invertirse.
-
-### Scroll vertical (menús y asistente)
-- Los ítems de menú y páginas del asistente hacen scroll vertical con Arriba/Abajo.
-- `menuScrollTop` rastrea la primera fila visible.
-- `ensureMenuSelectedVisible()` mantiene el ítem resaltado a la vista.
-- Aparece un thumb de scroll relleno proporcional a la longitud del contenido en el borde derecho.
+- **Marquesina en la banda**: los valores más anchos que la banda se desplazan en horizontal (ver la pantalla principal).
+- **Páginas de texto**: las páginas de confirmación e info se desplazan en vertical con Arriba/Abajo y muestran una barra de scroll.
 
 ---
 
@@ -136,7 +164,8 @@ Hay dos tipos de scroll implementados:
 | **Spinner de actividad** | Animación basada en frames vía `renderActivityScreen()` |
 | **Barra de progreso** | `renderProgress()` con título, subtítulo, hecho/total |
 | **Indicador de tecleo** | `renderTypingActivity()` muestra caracteres tecleados vs. total |
-| **Indicador de contexto** | La barra superior muestra el contexto actual (`MENU`, `SITE`, `TOTP`, `SETUP`) |
+| **Fila de contexto** | La fila superior muestra dónde estás (`#3 Gmail > Usuario`, `AJUSTES > Mano`) |
+| **Aviso de gesto** | `renderGestureHint()`: una cruz de pads con el deslizamiento que hay que hacer, visible 1,2 s al tocar un pad exterior solo en modo Gestos |
 
 ---
 

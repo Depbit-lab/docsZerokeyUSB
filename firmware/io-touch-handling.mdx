@@ -1,114 +1,143 @@
 ---
 title: "Touch Input Handling"
-description: "How the capacitive keys are scanned, debounced, and mapped to menu navigation."
+description: "How the five gold pads are read: TS06 set-up, the two input modes (gestures and buttons), the gesture recogniser and how gestures map to actions."
 ---
 
-ZeroKeyUSB replaces mechanical buttons with **five copper touch pads** connected to a dedicated **TS06 capacitive controller**. The firmware polls this controller over I²C and translates touches into navigation events.
+ZeroKeyUSB has no mechanical buttons. Five copper pads are wired to a **TS06 capacitive touch controller**, which the firmware polls over I²C. Since firmware **1.1.0** the same pads can be used in two ways, chosen in **Settings → Control** and stored in EEPROM:
 
----
+| Mode | How it reads the pads | Default |
+|------|-----------------------|---------|
+| **Gestures** | Swipes across the pads, recognised from the set of pads under the finger over time | Yes — the setup wizard always switches to it |
+| **Buttons** | Each pad is a button: first pad to settle wins, short or long press | Units that predate 1.1.0 keep it until changed |
 
-## Hardware overview
-
-| Component | Detail |
-|-----------|--------|
-| **Controller** | TS06 — 6-channel capacitive touch IC |
-| **I²C address** | `0xD2 >> 1 = 0x69` |
-| **Pads used** | 5 of 6 channels: Left, Right, Up, Down, Center |
-| **Status register** | `0x25` — bitmask of currently touched channels |
-| **Sensitivity** | Set to `0x3F` (minimum) on channels 0–2 at boot to avoid false triggers |
-
-The controller handles baseline calibration internally and reports which channels are active via the status register.
+Both modes end in the same per-screen handlers (`dispatchPress()` / `dispatchLongPress()` in `zerokey-io.cpp`), so every screen behaves the same whichever mode is active. User-facing description: [Gestures](/getting-started/gestures).
 
 ---
 
-## Touch initialization
+## Hardware
 
-At startup (`zerokey-setup.cpp`), the firmware:
+| Item | Detail |
+|------|--------|
+| **Controller** | ADSemiconductor TS06, 6 channels (spec v2.2) |
+| **Output register** | `0x25` — bit 0..5 = CH1..CH6 touched, bit 6 = ND (noise flag) |
+| **Pads** | 5 of the 6 channels. CH1 (bit 0) is not wired |
+| **Channel → pad** | bit 1 Right · bit 2 Centre · bit 3 Down · bit 4 Left · bit 5 Up |
+| **Mode** | Multi-output: every pad under the finger is reported independently |
 
-1. Probes the TS06 at `0x69` with up to **5 retries** (20 ms apart).
-2. If detected, writes minimum sensitivity (`0x3F`) to registers `0x00–0x02`.
-3. Configures operation mode via registers `0x05–0x06`.
-4. Sets `ts06_ok = true` — if the controller isn't found, touch is disabled and the serial log shows `"TS06 not found on I2C"`.
-
----
-
-## Polling cycle
-
-```mermaid
-flowchart TD
-    A["Read status register 0x25"] --> B{"Any channel active?"}
-    B -->|No| C["Clear all press timers"]
-    B -->|Yes| D{"Same channel as locked?"}
-    D -->|No| E["Ignore — lockout active"]
-    D -->|Yes / None locked| F{"Press duration?"}
-    F -->|"< 80 ms"| G["Still debouncing"]
-    F -->|"80–800 ms"| H["Short press event"]
-    F -->|"> 800 ms"| I["Long press event"]
-    
-    H --> J["Dispatch to current screen"]
-    I --> J
-    C --> A
-    G --> A
-    
-    style A fill:#dbeafe,stroke:#2563eb,color:#000
-    style H fill:#bbf7d0,stroke:#16a34a,color:#000
-    style I fill:#fef3c7,stroke:#d97706,color:#000
-```
-
-The `handleButtonChecker()` method runs in the main loop:
-
-1. Reads `STATUS_REGISTER` (0x25) via `readRegister()` over I²C.
-2. For each channel bit:
-   - Records `pressStartTime` when a channel first becomes active.
-   - Applies a **80 ms debounce** (`DEBOUNCE_MS`) — releases shorter than this are ignored.
-   - Enforces a **150 ms channel lockout** (`CHANNEL_LOCKOUT_MS`) — touching a different pad while one is active is ignored.
-3. On release:
-   - If held > `LONG_PRESS_THRESHOLD` (800 ms) → dispatches long-press handler.
-   - Otherwise → dispatches short-press handler.
+The firmware masks the output with `0x3E` for the pads (`0x3F` when reading, so the ND bit is never taken as a touch).
 
 ---
 
-## Gesture mapping
+## TS06 initialisation
 
-| Gesture | Trigger | Main screen | Editor | Menu |
-|---------|---------|-------------|--------|------|
-| Tap Left | < 800 ms | Previous slot | Move cursor left | Go back / Exit submenu |
-| Tap Right | < 800 ms | Next slot | Move cursor right / Enter keyboard | Enter submenu / Exit to credentials |
-| Tap Up | < 800 ms | Cycle to Site view | Change character | Navigate up |
-| Tap Down | < 800 ms | Cycle to 2FA view | Switch keyboard page | Navigate down |
-| Tap Center | < 800 ms | Type credential to host | Insert character | Select / Confirm |
-| Hold Left | ≥ 800 ms | Jump 10 slots back | — | — |
-| Hold Right | ≥ 800 ms | Jump 10 slots forward | — | — |
-| Hold Center | ≥ 800 ms | Enter edit mode | Save and exit editor | Authorize import/export |
+The TS06 keeps no configuration across a power cycle, so `configureTouchController()` (`zerokey-setup.cpp`) runs on every boot, in the order of the datasheet power-up flow, and **reads every register back**; if anything did not stick it retries once.
+
+| Register | Value | Why |
+|----------|-------|-----|
+| `0x00`–`0x02` Sensitivity | `0x3F` each | What every shipped unit runs. The low nibble (CH1, Centre, Left) is at the least sensitive setting, the high nibble (Right, Down, Up) at the chip default |
+| `0x04` CTRL2 | `0x13` | Multi-output mode (S/M_SEL = 0, the recogniser needs it), LED off, no sleep, bits 1:0 = `11` as the datasheet requires. Verified bits: LED_EN, S/M_SEL, IMP_SEL |
+| `0x06` Ch_hold | `0x00` | At reset CH4–CH6 (Down, Left, Up) are *held*; this releases every channel |
+| `0x05` Ref_rst | `0x00` | Stops renewing the reference of CH4–CH6 so they can detect |
+
+<Note>
+Before 1.1.0 the firmware wrote only the sensitivity, Ch_hold and Ref_rst registers; CTRL2 was never written. Because the chip is also physically less sensitive on CH4–CH6, the **Left** pad is the least sensitive one and **Right** the most. Any sensitivity change has to be checked on hardware first.
+</Note>
+
+If the controller does not answer at boot, touch input stays disabled and the serial log reports it.
 
 ---
 
-## Long-press visual feedback
+## Polling
 
-When a long press is in progress, `drawLongPressProgress()` renders a filling progress bar on the OLED screen. This gives the user visual confirmation that they should keep holding. Releasing before 800 ms cancels the action.
+`handleButtonChecker()` runs from the Arduino loop. The loop delay depends on the mode (`loopDelayMs()`): **10 ms** in Gestures (the recogniser needs fine timing), **30 ms** in Buttons.
+
+### Buttons mode
+
+| Constant | Value | Meaning |
+|----------|-------|---------|
+| `DEBOUNCE_MS` | 80 ms | Minimum press to register |
+| `LONG_PRESS_THRESHOLD` | 800 ms | Long press |
+| Channel lockout | first pad wins | Other pads touched meanwhile are ignored |
+
+A long press shows a border that fills around the screen (`drawLongPressProgress()`); releasing early cancels it.
+
+### Gestures mode — the recogniser
+
+The recogniser (`zerokey-gesture.cpp`, namespace `zkgesture`) is pure logic with no hardware access, fed one *logical* pad mask per poll (already remapped for a left-handed, 180° screen, so "up" is always the pad the user sees at the top).
+
+A fingertip is wider than the gap between pads, so two or three bits are often set at once. Instead of "first pad wins", a touch is a **session** from the first pad until every pad has been off for `releaseMs`, judged by where it **started** and where it **ended**. Pads are treated as points — Up (0,+1), Down (0,−1), Left (−1,0), Right (+1,0), Centre (0,0) — and the centroid of each set is compared:
+
+- **Swipe** — the centroid moved at least one pad along one axis (and twice as much as along the other), the finger reached a pad that was not under it at the start, on the side it moved to, and, if the pad on the far side of the travel was touched at all, it was touched first. Pressing everything at once is therefore never a swipe, whatever order the pads let go in.
+- **Tap / Long** — no swipe and the centre was part of the touch: alone, with neighbours, or all five pads. Long if the centre was held ≥ `holdMs`.
+- **Stray** — no swipe and only outer pads: not a command. The screen shows a hint with the swipe that does what that pad would have done.
+
+Once the centre has been held for `commitMs` without moving, the touch is committed as a centre press and can no longer become a swipe.
+
+| Timing (`kDefaultTiming`) | Value | Purpose |
+|---------------------------|-------|---------|
+| `padOnMs` | 20 ms | Noise filter: a pad must read touched this long |
+| `startWindowMs` | 30 ms | Pads joining this soon after the first form the start set |
+| `endWindowMs` | 70 ms | Pads on this close to the release form the end set |
+| `releaseMs` | 90 ms | All pads off this long = finger lifted (bridges the gaps between pads) |
+| `releaseAfterSwipeMs` | 40 ms | Shorter release after a swipe, so quick swipes chain |
+| `stableMs` / `stableFromCenterMs` | 30 / 90 ms | Live recognition waits for the pad set to settle (longer when the touch started on the centre) |
+| `commitMs` | 350 ms | Centre held this long = a press, not a swipe |
+| `holdMs` | 800 ms | Long press / swipe-and-hold |
+| `repeatDelayMs` / `repeatMs` | 500 / 180 ms | Auto-repeat after swipe-and-hold |
+
+Centroid thresholds are in 1/60 of the pad pitch: **60** (one pad) while the finger is down, **45** (¾ pad) when judging a finished touch.
+
+Events: `EV_SWIPE`, `EV_SWIPE_HOLD` (finger kept down after a swipe), `EV_SWIPE_REPEAT`, `EV_TAP`, `EV_LONG`, `EV_STRAY`.
+
+The recogniser has host unit tests (`ZerokeyOS/tests/`) that replay simulated pad sequences: clean swipes, flicks, gaps between pads, sloppy presses, all-five presses.
+
+---
+
+## From gesture to action
+
+A swipe on a screen whose content moves as a whole **drags** it, like scrolling a phone, so the action is the opposite of the finger's direction (`gestureAction()`):
+
+| Finger | Accounts, menu, text pages, setup cards | PIN pad | Editor, 2FA date/time, search |
+|--------|----------------------------------------|---------|-------------------------------|
+| Bottom → top | Down (next field / option) | Up (next value on the wheel) | Up |
+| Top → bottom | Up (previous; on the site field: open the search) | Down | Down |
+| Right → left | Right (next account / step; menu → account 1) | Right (add the digit; on ✓, confirm) | Left |
+| Left → right | Left (previous / back; account 1 → menu) | Left (erase the last digit) | Right |
+| Tap centre | Centre | nothing | Centre |
+| Hold centre | Long Centre (edit field, authorise) | — | Long Centre |
+
+On the PIN pad the digits form a strip that drags like the accounts (right to left adds), while the wheel follows the finger (swipe up = next value rising from below). A tap does nothing there, so the PIN can never be confirmed by accident.
+
+Swipe-and-hold:
+
+| Screen | Effect |
+|--------|--------|
+| Menu, PIN wheel, text pages | Vertical auto-repeat |
+| Search, 2FA date/time | Auto-repeat in every direction |
+| Editor keyboard rows | Horizontal auto-repeat |
+| Accounts | Sideways = jump 10 accounts (1 from the swipe + 9), like a long press in Buttons mode |
+| PIN screen | Left-to-right and hold = the hidden "re-run setup" (Left long press in Buttons mode) |
+
+Critical confirmation pages (factory reset, bootloader, import/export authorisation) fire while the centre is still held, after `HOLD_CONFIRM_MS` = **1.5 s**, with the same filling border. Holding the centre for **10 s** on the PIN screen toggles the HID screen reader (`SCREEN_READER_HOLD_MS`). The stray-touch hint stays up for `GESTURE_HINT_MS` = 1.2 s.
 
 ---
 
 ## PIN screen controls
 
-On the PIN entry screen, the controls change:
+| Action | Gestures | Buttons |
+|--------|----------|---------|
+| Change the value on the wheel | Swipe up / down | Up / Down |
+| Add the value to the PIN (max 16 digits) | Swipe right → left | Right |
+| Erase the last digit (also with ✓ selected) | Swipe left → right | Left |
+| Confirm (wheel on ✓) | Swipe right → left | Right, or Centre |
+| Toggle the screen reader | Hold centre 10 s | Hold Centre 10 s |
 
-| Pad | Action |
-|-----|--------|
-| **Up / Down** | Change the current digit (0–9) |
-| **Right** | Add the current digit to the PIN (up to 16 digits) |
-| **Left** | Delete the last entered digit |
-| **Center** | Submit the PIN for verification |
-| **Long-press Center** | Type the device serial number |
+After each digit the wheel stops on ✓. In the setup wizard, erasing with no digit entered goes back to the "Create your PIN" card.
 
 ---
 
 ## Error handling
 
-- If the TS06 is not detected at boot, `ts06_ok` is set to `false` and the status register read returns `0x00` — effectively disabling touch input.
-- The firmware does not show a touch error screen; instead, the serial log reports the issue for debugging.
-- Touch is silently disabled during lockout delays (`waitFromEeprom()`) and during long-running operations like credential erasure.
-
-<Note>
-The TS06 operates independently of EEPROM or ATECC608A operations. Since all share the same I²C bus at 100 kHz, touch polling is interleaved with other I²C traffic in the cooperative main loop.
-</Note>
+- If the TS06 is not detected at boot, touch input is disabled and the serial log says so; there is no on-screen error.
+- Touch is ignored during lock-out delays and long operations (credential erase).
+- The TS06 shares the I²C bus with the EEPROM, the ATECC608A and the OLED; polling is interleaved with that traffic in the cooperative main loop.

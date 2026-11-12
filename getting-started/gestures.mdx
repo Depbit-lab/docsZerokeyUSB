@@ -1,0 +1,125 @@
+---
+title: "Gestures"
+description: "How to move around ZeroKeyUSB by swiping across the gold dots: the same few moves on every screen."
+---
+
+Since firmware **1.1.0**, ZeroKeyUSB is driven by **swiping** your finger across the gold dots instead of pressing them one by one. You no longer have to hit a small dot exactly: what counts is the direction your finger travels. If you prefer the classic way, you can switch back to pressing the dots in **Menu → Settings → Control** (see [Buttons or Gestures](#buttons-or-gestures)).
+
+<Tip>
+You can try every move in the [online simulator](https://zerokeyusb.com/simulador.html) before using the device: drag the mouse (or your finger) across the dots.
+</Tip>
+
+---
+
+## Every screen looks the same
+
+Every screen has the same three parts, so once you know one you know them all:
+
+| Part | Where | What it tells you |
+|------|-------|-------------------|
+| **Where you are** | Top row, small | The account, the menu or the step you are on (`#3 Gmail > User`, `SETTINGS > Hand`, `2/7 HAND`) |
+| **What matters** | The big lit band | The value you can act on: the site, the user, the option… |
+| **What comes next** | Bottom row (and right edge) | What is below (`↓ Password`), or an animated arrow showing the move to make |
+
+<img src="/images/v1-1/en/cuenta_sitio.png" alt="Account screen: path row, big band, next field" />
+
+---
+
+## The moves
+
+| Move | What it does — on every screen |
+|------|--------------------------------|
+| **Swipe right to left** | **Go on**: next account, next step, from the menu to your accounts |
+| **Swipe left to right** | **Go back**: previous account, previous step, back out of a submenu. From account 1 it opens the menu |
+| **Swipe up or down** | **Change what is in the band**: the next or previous field, option or value |
+| **Tap the centre** | **Act** on what is in the band: type it on the computer, open the submenu, apply the setting |
+| **Hold the centre** | The strong action: edit the field; confirm something irreversible |
+
+Think of it as dragging the screen, like on a phone: when you swipe right to left, the next account slides in from the right. On the few screens with a cursor — the on-device editor, the 2FA date and time, the search — the cursor simply follows your finger.
+
+<img src="/images/v1-1/en/transicion_cuenta_1_a_2.gif" alt="Account 1 to account 2: the screen is dragged from right to left" />
+
+A swipe goes **across the centre dot**: from one edge dot, through the centre, to the opposite edge dot. Taps are forgiving too: touching the centre together with a neighbour, or all five dots at once, still counts as a centre tap.
+
+### Nothing changes without moving
+
+Whatever changes slides in the direction of your finger: the next field rises from below, the next account comes in from the right. Only the part that changes moves — the top row stays still.
+
+<img src="/images/v1-1/en/transicion_campo_siguiente.gif" alt="From the site to the user: the field rises from below" />
+
+### Keep your finger down
+
+- In lists (the menu, the PIN wheel), swipe and **keep your finger on the last dot** to keep moving.
+- On your accounts, swipe sideways and keep your finger down to **jump 10 accounts** at once.
+
+### Touched a single edge dot?
+
+Touching only an edge dot does nothing — it would be too easy to do by accident. Instead, a small picture appears showing the swipe that does what you wanted.
+
+<img src="/images/v1-1/en/aviso_desliza_izquierda.png" alt="Hint: swipe to move" />
+
+---
+
+## Entering the PIN
+
+The PIN screen follows the same rules. On the right there is a **wheel**: the selected number is lit, with the one before it above and the next one below. The digits you have entered sit to its left.
+
+<img src="/images/v1-1/en/pin_flecha_animada.gif" alt="PIN wheel with the beating arrow" />
+
+| Move | What it does |
+|------|--------------|
+| **Swipe up or down** | Turns the wheel: the number rolls the way your finger goes |
+| **Swipe right to left** | Pushes the selected number into the row, which slides left to make room |
+| **Swipe left to right** | Pulls the last number back into the wheel, ready to correct it |
+| **Right to left on ✓** | After each number the wheel stops on the ✓. The same swipe confirms the PIN |
+
+| Add a number | Erase the last one |
+|---|---|
+| <img src="/images/v1-1/en/pin_anadir.gif" alt="Adding a digit" /> | <img src="/images/v1-1/en/pin_borrar.gif" alt="Erasing a digit" /> |
+
+A tap does nothing on the PIN screen, so the PIN can never be confirmed by accident.
+
+---
+
+## The tutorial
+
+The first time you set up the device, a short animated tutorial teaches each move: it shows the swipe, waits for you to do it and says **Great!** when you get it right. Hold the centre to skip a lesson. You can replay it any time from **Menu → Settings → Tutorial**.
+
+| Lesson | Tap | Hold |
+|---|---|---|
+| <img src="/images/v1-1/en/tutorial_gestos_1_arriba.gif" alt="Lesson: swipe" /> | <img src="/images/v1-1/en/tutorial_gestos_5_aceptar.gif" alt="Lesson: tap the centre" /> | <img src="/images/v1-1/en/tutorial_gestos_6_mantener.gif" alt="Lesson: hold the centre" /> |
+
+---
+
+## Buttons or Gestures
+
+**Menu → Settings → Control** switches between:
+
+- **Gestures** (default): everything described on this page.
+- **Buttons**: the classic way — each dot is a button you press (Up, Down, Left, Right, Centre). The screens and the menus are the same; on the PIN screen the arrow points at the Right dot, which adds the number.
+
+Switching to Gestures runs the tutorial straight away. To switch back, open the same entry and tap the centre — that works in both modes.
+
+<img src="/images/v1-1/en/ajustes_control.png" alt="Settings > Control" />
+
+---
+
+## Right- or left-handed
+
+**Menu → Settings → Hand** turns the screen round so you can hold the device with the dots on either side (Right-handed is the default). The moves stay the same for your finger: "up" is always towards the top of the screen as you read it.
+
+---
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Initial setup" icon="wand-magic-sparkles" href="/getting-started/setup-wizard">
+    The 7 steps you see the first time you plug the device in.
+  </Card>
+  <Card title="Navigate the menu" icon="bars" href="/getting-started/menu-navigation">
+    Tools, Settings, Danger Zone and Info.
+  </Card>
+  <Card title="How the touch input works" icon="microchip" href="/firmware/io-touch-handling">
+    Technical detail: how swipes are recognised (Software section).
+  </Card>
+</CardGroup>

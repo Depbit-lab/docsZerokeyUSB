@@ -1,151 +1,128 @@
 ---
-title: "Tutorial inicial"
-description: "Recorrido pantalla a pantalla del asistente que aparece la primera vez que enchufas tu ZeroKeyUSB. Orientación, layout del teclado y PIN maestro."
+title: "Configuración inicial"
+description: "Los 7 pasos que aparecen la primera vez que conectas tu ZeroKeyUSB: idioma, mano, tutorial, teclado y PIN maestro."
 ---
 
-La primera vez que enchufas tu ZeroKeyUSB en un puerto USB-C, arranca automáticamente un asistente de configuración en español de 9 páginas. Esta guía te lleva paso a paso desde la pantalla de bienvenida hasta tener el dispositivo listo para guardar credenciales.
+La primera vez que conectas tu ZeroKeyUSB a un puerto USB-C (y después de un reset de fábrica), empieza sola una configuración breve. Tiene **7 pasos** y todos funcionan igual, con [gestos](/es/getting-started/gestures):
 
----
+- **Desliza arriba o abajo** para cambiar el valor de la banda grande.
+- **Desliza de derecha a izquierda** para pasar al paso siguiente.
+- **Desliza de izquierda a derecha** para volver.
 
-## Paso 1 — Pantalla de bienvenida
-
-Al conectar el cable, la pantalla se enciende mostrando el logo durante unos segundos. Es la confirmación de que el dispositivo ha arrancado correctamente y ha pasado su comprobación de seguridad del firmware.
-
-<img src="/images/steps/setup-wizard-01-splash.svg" alt="Pantalla de bienvenida ZEROKEY USB" />
-
-*Espera unos 2 segundos. El asistente aparece automáticamente — no tienes que pulsar nada.*
-
----
-
-## Paso 2 — Página 1: Bienvenida
-
-Primera página del asistente. La barra superior invertida muestra el título y el indicador de página `<1/9>`. El cuerpo describe brevemente qué es el dispositivo y qué hacer.
-
-<img src="/images/steps/setup-wizard-02-welcome.svg" alt="Bienvenida del asistente" />
-
-*Pulsa **Derecha** para avanzar. Si el cuerpo tiene más texto del que cabe en pantalla, usa **Arriba/Abajo** para hacer scroll antes de continuar.*
-
----
-
-## Paso 3 — Página 2: Navegación
-
-Explica qué hace cada uno de los 5 pads. Es la única página que verás que describe los controles explícitamente.
-
-<img src="/images/steps/setup-wizard-03-navigation.svg" alt="Página de navegación del wizard" />
-
-*Lee la página y pulsa **Derecha** para avanzar a la siguiente.*
-
----
-
-## Paso 4 — Página 3: Girar pantalla
-
-Si los puntos dorados quedan a tu izquierda en lugar de a la derecha, dale la vuelta al dispositivo físicamente — o gira la pantalla por software con **Centro**. La orientación se guarda en el dispositivo y persiste entre apagados.
-
-<img src="/images/steps/setup-wizard-04-rotate-screen.svg" alt="Girar pantalla" />
-
-*Pulsa **Centro** para alternar la orientación (verás `NORMAL ↔ ROTADA` en pantalla). Cuando los controles te queden bien, pulsa **Derecha** para continuar.*
-
----
-
-## Paso 5 — Página 4: Distribución del teclado
-
-ZeroKeyUSB emula un teclado USB. Para que las contraseñas con símbolos especiales (`@`, `!`, `#`, etc.) se tecleen correctamente en tu ordenador, tiene que conocer **tu** layout de teclado.
-
-<img src="/images/steps/setup-wizard-05-keyboard-layout.svg" alt="Selección del layout del teclado" />
-
-*Pulsa **Centro** para ciclar entre EN-US, ES-ES, FR-FR, DE-DE, IT-IT, PT-PT, DA-DK, SV-SE, HU-HU. Cuando aparezca el tuyo, pulsa **Derecha**.*
-
-<Tip>Puedes cambiarlo más adelante desde **Menú → Ajustes → Teclado**.</Tip>
-
----
-
-## Paso 6 — Página 5: PIN maestro (explicación)
-
-Esta página explica las reglas del PIN antes de pedirlo. Elige entre 4 y 16 dígitos (0–9). Es lo único que separa al atacante de tus credenciales.
-
-<img src="/images/steps/setup-wizard-06-pin-master.svg" alt="Explicación del PIN maestro" />
-
-*Pulsa **Centro** para pasar a la pantalla de introducción del PIN.*
-
-<Warning>
-**No hay recuperación de PIN.** Si lo olvidas, la única opción es un reset de fábrica que borra **todas** tus credenciales. Memoriza el PIN — o apúntalo en un lugar físico seguro.
-</Warning>
-
----
-
-## Paso 7 — Introducir el PIN
-
-Pantalla del numpad. Cada dígito se introduce con **Arriba/Abajo** (para elegir 0–9) y **Derecha** (para confirmar y avanzar al siguiente dígito). Las flechas pequeñas a los lados del dígito activo te recuerdan los movimientos disponibles.
-
-<img src="/images/steps/setup-wizard-07-pin-numpad.svg" alt="Numpad de introducción del PIN" />
-
-*Por cada dígito de tu PIN: **Arriba/Abajo** hasta el número correcto, luego **Derecha** para confirmarlo. Cuando termines el último dígito, el cursor saltará al símbolo de tick (✓). Pulsa **Centro** sobre el tick para guardar el PIN.*
-
-<Tip>Para borrar el último dígito si te equivocas, pulsa **Izquierda**.</Tip>
-
----
-
-## Paso 8 — Página 6: PIN guardado
-
-Tras introducir el PIN, el asistente te lo muestra **una sola vez** para que lo memorices. Esta es tu última oportunidad de verlo en claro.
-
-<img src="/images/steps/setup-wizard-08-pin-saved.svg" alt="PIN guardado" />
-
-*Apunta el PIN o memorízalo. Cuando lo tengas, pulsa **Derecha**.*
-
----
-
-## Paso 9 — Página 7: Desbloqueo
-
-Te explica que a partir de ahora cada vez que conectes el USB tendrás que introducir el PIN. Y que los fallos repetidos activan una espera exponencial.
-
-<img src="/images/steps/setup-wizard-09-unlocking.svg" alt="Cómo desbloquear el dispositivo" />
-
-*Lee la página y pulsa **Derecha** para continuar.*
+Nunca se avanza tocando, así que un toque sin querer no se salta ningún paso. Las flechas animadas de cada pantalla muestran el movimiento: la que se desliza por abajo dice "desliza así para seguir"; la doble flecha que crece en el borde derecho dice "desliza arriba o abajo para cambiar".
 
 <Note>
-**Backoff exponencial:** primer fallo = 5 s de espera, segundo = 10 s, tercero = 20 s… hasta un máximo de ~43 min. El contador se resetea al meter el PIN correcto. Nada se borra automáticamente.
+Esta página describe el firmware **1.1.0**. La configuración usa siempre gestos; si prefieres pulsar los puntos uno a uno, cámbialo después en **Menú → Ajustes → Control**.
 </Note>
 
 ---
 
-## Paso 10 — Página 8: Cuentas
+## Paso 1 — Idioma
 
-Vista previa de la pantalla principal — cómo se navegan las credenciales una vez que estés dentro.
+Elige **Español** o **English** deslizando arriba o abajo. El título sale en los dos idiomas porque aún no has elegido.
 
-<img src="/images/steps/setup-wizard-10-accounts.svg" alt="Cómo navegar credenciales" />
+<img src="/images/v1-1/es/asistente_1_idioma_animado.gif" alt="Paso 1: idioma" />
 
-*Pulsa **Derecha**.*
-
----
-
-## Paso 11 — Página 9: Todo listo
-
-Última página. Te recuerda que puedes acceder al menú principal con **Izquierda** estando en la primera credencial (o **Derecha** estando en la última, pasando antes por "Anadir Nuevo").
-
-<img src="/images/steps/setup-wizard-11-all-set.svg" alt="Tutorial completado" />
-
-*Pulsa **Centro** para salir del asistente y llegar a la pantalla de PIN. Ya está — el dispositivo está configurado.*
+*Desliza arriba o abajo para cambiar y de derecha a izquierda para seguir.*
 
 ---
 
-## Paso 12 — Listo para usar
+## Paso 2 — Mano
 
-Tras pulsar Centro, el dispositivo te lleva a la pantalla del numpad para introducir el PIN que acabas de crear (la **misma** que verás cada vez que enchufes el dispositivo desde ahora). Cuando metas el PIN correctamente, llegarás a la pantalla principal — pero como no hay credenciales aún, aparecerá directamente la pantalla **Anadir Nuevo**.
+Elige **Diestro** o **Zurdo**. La pantalla gira en el momento, así ves qué te resulta cómodo antes de seguir.
 
-<img src="/images/steps/setup-wizard-12-add-new.svg" alt="Pantalla Anadir Nuevo" />
+<img src="/images/v1-1/es/asistente_2_mano.png" alt="Paso 2: mano" />
 
-*Pulsa **Centro** para crear tu primera credencial — o sigue la guía dedicada en [Crear tu primera credencial](/es/getting-started/first-credential).*
+*Desliza arriba o abajo para cambiar y de derecha a izquierda para seguir.*
 
 ---
 
-## Próximos pasos
+## Paso 3 — Tutorial
+
+Un tutorial animado y breve enseña los movimientos de uno en uno: deslizar hacia arriba, abajo, izquierda y derecha, tocar el centro y mantenerlo. Cada lección muestra el movimiento y espera a que lo hagas; cuando aciertas dice **Bien!**. Mantener el centro salta la lección.
+
+<img src="/images/v1-1/es/tutorial_gestos_1_arriba.gif" alt="Lección del tutorial" />
+
+La última tarjeta resume cómo usar tus cuentas. Desliza de derecha a izquierda para cerrarla.
+
+<img src="/images/v1-1/es/tutorial_resumen_animado.gif" alt="Tarjeta final del tutorial" />
+
+<Tip>Puedes repetir el tutorial cuando quieras desde **Menú → Ajustes → Tutorial**.</Tip>
+
+---
+
+## Paso 4 — Teclado del PC
+
+ZeroKeyUSB escribe tus contraseñas como si fuera un teclado USB. Para que símbolos como `@`, `!` o `#` salgan bien, necesita saber la distribución del teclado de **tu ordenador**.
+
+<img src="/images/v1-1/es/asistente_4_teclado.png" alt="Paso 4: teclado del PC" />
+
+*Desliza arriba o abajo para pasar por EN-US, DA-DK, DE-DE, ES-ES, FR-FR, HU-HU, IT-IT, PT-PT y SV-SE. Cuando salga el tuyo, desliza de derecha a izquierda.*
+
+<Tip>Puedes cambiarlo después en **Menú → Ajustes → Teclado**.</Tip>
+
+---
+
+## Paso 5 — Crea tu PIN
+
+Tu PIN maestro tiene **de 4 a 16 cifras**. Es lo único que desbloquea el dispositivo.
+
+<img src="/images/v1-1/es/asistente_5_pin_animado.gif" alt="Paso 5: crea tu PIN" />
+
+*Desliza de derecha a izquierda para abrir la rueda del PIN.*
+
+En la rueda:
+
+| Movimiento | Qué hace |
+|------------|----------|
+| Deslizar arriba o abajo | Gira la rueda hasta el número que quieres |
+| Deslizar de derecha a izquierda | Añade el número a tu PIN |
+| Deslizar de izquierda a derecha | Borra el último número (si no hay ninguno, vuelve a la tarjeta anterior) |
+| De derecha a izquierda sobre **✓** | Guarda el PIN; tras cada número la rueda se para en el ✓ |
+
+| Añadir un número | Guardar en el ✓ |
+|---|---|
+| <img src="/images/v1-1/es/pin_anadir.gif" alt="Añadir un dígito" /> | <img src="/images/v1-1/es/pin_confirmar.png" alt="Confirmar en el ✓" /> |
+
+<Warning>
+**El PIN no se puede recuperar.** Si lo olvidas, la única salida es un reset de fábrica, que borra **todas** tus credenciales.
+</Warning>
+
+---
+
+## Paso 6 — PIN guardado
+
+El dispositivo te enseña el PIN que acabas de crear, en grande, **una sola vez**, para que lo compruebes. La fila de arriba te lo recuerda: olvidarlo lo borra todo.
+
+<img src="/images/v1-1/es/asistente_6_pin_guardado.png" alt="Paso 6: PIN guardado" />
+
+*Memorízalo y desliza de derecha a izquierda.*
+
+---
+
+## Paso 7 — Listo
+
+<img src="/images/v1-1/es/asistente_7_listo.png" alt="Paso 7: listo" />
+
+*Desliza de derecha a izquierda. Aparece la pantalla del PIN: mete el PIN que acabas de crear, de la misma forma, y llegarás a tus cuentas. Como aún no tienes ninguna, la primera pantalla es **+ Nueva**.*
+
+<img src="/images/v1-1/es/cuenta_nueva.png" alt="Nueva cuenta" />
+
+*Toca el centro para crear tu primera credencial: ver [Crea tu primera credencial](/es/getting-started/first-credential).*
+
+<Note>
+A partir de ahora, cada vez que conectes el dispositivo te pedirá el PIN. Un PIN equivocado solo te hace esperar antes de volver a intentarlo (5 s, luego 10 s, 20 s… hasta unos 43 minutos); nunca se borra nada automáticamente.
+</Note>
+
+---
+
+## Siguientes pasos
 
 <CardGroup cols={2}>
-  <Card title="Crear tu primera credencial" icon="key" href="/es/getting-started/first-credential">
-    Guarda tu primera contraseña paso a paso con el editor del dispositivo.
+  <Card title="Gestos" icon="hand-pointer" href="/es/getting-started/gestures">
+    Todos los movimientos, en todas las pantallas.
   </Card>
-  <Card title="Navegar el menú" icon="bars" href="/es/getting-started/menu-navigation">
-    Conoce las opciones de Tools, Ajustes, Peligro e Info.
+  <Card title="Crea tu primera credencial" icon="key" href="/es/getting-started/first-credential">
+    Guarda tu primera contraseña con el editor del dispositivo.
   </Card>
 </CardGroup>

@@ -1,132 +1,116 @@
 ---
-title: "Navegar el menú"
-description: "Cómo acceder al menú principal desde la lista de credenciales y moverte por Tools, Ajustes, Peligro e Info."
+title: "Navegar por el menú"
+description: "Cómo llegar al menú principal desde tus cuentas y moverte por Herramientas, Ajustes, Zona crítica e Info."
 ---
 
-El menú principal contiene las acciones que **no** son credenciales: herramientas (copias de seguridad y la cartera Bitcoin), ajustes de pantalla y layout, opciones peligrosas (reset de fábrica) e información del firmware. Esta guía te enseña a llegar allí y a moverte dentro.
+El menú principal reúne todo lo que **no** es una cuenta: herramientas (copias de seguridad, el monedero Bitcoin, el enlace con el navegador), ajustes, las opciones peligrosas (reset de fábrica) e información del dispositivo. Esta guía explica cómo llegar y cómo moverte dentro.
 
----
-
-## Ruta A — Desde la primera credencial
-
-Estando en la credencial 1, **Izquierda** abre el menú directamente.
-
-<img src="/images/steps/menu-navigation-01-from-cred-1.svg" alt="Acceso al menú desde la primera credencial" />
-
-*Pulsa **Izquierda** estando en la credencial número 1.*
+Los movimientos son los de siempre (ver [Gestos](/es/getting-started/gestures)). En modo **Botones**, usa el punto que va entre paréntesis.
 
 ---
 
-## Ruta B — Desde la última credencial (vía "Anadir Nuevo")
+## Llegar al menú
 
-Si estás cerca del final de tu lista, otra forma de llegar es **Derecha** repetidamente: tras la última credencial aparece "Anadir Nuevo", y otra **Derecha** salta al menú.
+Tus cuentas y el menú están en una misma tira: el menú queda a la izquierda de la cuenta 1, y **+ Nueva** después de tu última cuenta.
 
-<img src="/images/steps/menu-navigation-02-add-new.svg" alt="Acceso al menú vía Anadir Nuevo" />
+- Desde la **cuenta 1**, desliza **de izquierda a derecha** (Izquierda). El menú entra por la izquierda.
+- Desde **+ Nueva**, desliza **de derecha a izquierda** (Derecha).
 
-*Desde "Anadir Nuevo", pulsa **Derecha** para llegar al menú (sin crear nada). Si en lugar de pasar quieres crear una credencial, pulsa **Centro**.*
+<img src="/images/v1-1/es/transicion_abrir_menu.gif" alt="Abrir el menú desde la cuenta 1" />
 
----
-
-## Saltar de 10 en 10
-
-Mantén pulsado **Izquierda** o **Derecha** (pulsación larga) mientras navegas las credenciales para saltar **10 huecos usados** de golpe en esa dirección, en lugar de uno. Un toque corto sigue moviendo un hueco. Útil cuando tienes muchas credenciales.
-
----
-
-## Pantalla del menú
-
-Una vez dentro, ves cuatro opciones en el menú raíz. La barra `MENU` invertida ocupa los primeros 10 píxeles a la izquierda como marca visual.
-
-<img src="/images/steps/menu-navigation-03-root-menu.svg" alt="Menú raíz" />
-
-| Item | Qué hace |
-|------|----------|
-| **Tools** | `Exportar` / `Importar` credenciales por USB, más la cartera **Bitcoin** |
-| **Ajustes** | Rotar pantalla, idioma de la UI, layout del teclado, modo lector de pantalla y re-lanzar el tutorial |
-| **Peligro** | Reset de fábrica (borra **todo**) y modo bootloader (para reflashear) |
-| **Info** | Versión del firmware, número de serie y estado |
-
-*Navega entre items con **Arriba/Abajo**. Para entrar en un submenú, pulsa **Centro**. Para volver al menú padre, pulsa **Izquierda**.*
+<Tip>
+Para recorrer muchas cuentas rápido, desliza de lado y **deja el dedo en el último punto**: salta de 10 en 10 (en modo Botones, mantén Izquierda o Derecha).
+</Tip>
 
 ---
 
-## Entrar a un submenú
+## La pantalla del menú
 
-Por ejemplo, dentro de **Ajustes**:
+El menú es como cualquier otra pantalla: arriba, en pequeño, dónde estás; en la banda, en grande, la opción elegida; debajo, la siguiente (`↓ …`); y a la derecha, una barra con tu posición en la lista.
 
-<img src="/images/steps/menu-navigation-04-settings.svg" alt="Submenú Ajustes" />
+<img src="/images/v1-1/es/menu_principal.png" alt="Menú principal" />
 
-| Item | Acción |
-|------|--------|
-| Rotar pantalla | Gira la pantalla 180° (también gira los controles) |
-| Idioma: XX | Cicla el idioma de la UI (Español ↔ Inglés) |
-| Teclado: XX-XX | Cicla el layout del teclado USB |
-| Reader: On/Off | Hace persistente el [modo lector de pantalla](/es/getting-started/recovery-no-screen) entre reinicios |
-| Pwd: XX | Elige el formato de contraseña aleatoria que usa `Rand` (Symbols, Numeric, a-z 0-9, Aa-z 0-9, Words, Words+Num) |
-| Tutorial | Relanza el wizard de primer encendido |
-| `< Volver` | Vuelve al menú padre (equivalente a pulsar Izquierda) |
+| Opción | Qué contiene |
+|--------|--------------|
+| **Herramientas** | Exportar e Importar credenciales por USB, el monedero **Bitcoin** y el enlace con el navegador (**Chrome: On/Off**) |
+| **Ajustes** | Control, Tutorial, Mano, Teclado, Idioma, lector de pantalla, formato de contraseña |
+| **Zona crítica** | Reset de fábrica y modo bootloader |
+| **Info** | Versión del firmware, número de serie, huecos libres y fecha de compilación |
 
-*Selecciona un item con **Arriba/Abajo** y pulsa **Centro** para ejecutarlo. **Izquierda** vuelve al menú raíz.*
-
----
-
-## Salir del menú
-
-Desde el menú raíz, pulsar **Izquierda** te lleva a la pantalla "Anadir Nuevo" (saltando una credencial atrás), y otra **Izquierda** a la última credencial. Pulsar **Derecha** te lleva directamente a la primera credencial.
-
-| Acción en el menú raíz | Resultado |
-|------------------------|-----------|
-| **Izquierda** | "Anadir Nuevo" → otra IZQ → última credencial |
-| **Derecha** | Primera credencial |
-| **Arriba/Abajo** | Navegar items |
-| **Centro** | Entrar al submenú/ejecutar item |
-
-<Note>
-La navegación es **circular**: credenciales → "Anadir Nuevo" → menú → primera credencial → … No hay esquinas sin salida.
-</Note>
+| Movimiento | Qué hace |
+|------------|----------|
+| Deslizar arriba o abajo (Arriba / Abajo) | Opción anterior o siguiente |
+| Tocar el centro (Centro) | Abrir el submenú o ejecutar la opción |
+| Deslizar de izquierda a derecha (Izquierda) | Volver al menú anterior; desde el menú principal, a tus cuentas (**+ Nueva**) |
+| Deslizar de derecha a izquierda (Derecha) | Salir a la cuenta 1, desde cualquier menú |
 
 ---
 
-## Submenús — referencia rápida
+## Ajustes
 
-### Tools
+<img src="/images/v1-1/es/ajustes_control.png" alt="Submenú Ajustes" />
 
-| Item | Acción |
-|------|--------|
-| Exportar | Envía todas las credenciales por USB-CDC (ver [guía](/es/getting-started/creating-backups)) |
-| Importar | Recibe credenciales por USB-CDC (ver [guía](/es/getting-started/importing-credentials)) |
-| Bitcoin | Cartera Bitcoin en el dispositivo: crear, ver seed, export watch-only y firma de PSBT (ver [guía](/es/getting-started/bitcoin)) |
+Cada opción muestra su valor actual. Toca el centro para cambiarlo; un aviso breve confirma el valor nuevo.
 
-### Peligro
+| Opción | Qué hace |
+|--------|----------|
+| **Control: Gestos / Botones** | Deslizar por los puntos o pulsarlos uno a uno. Al cambiar a Gestos se abre el tutorial |
+| **Tutorial** | Repite el tutorial animado |
+| **Mano: Diestro / Zurdo** | Da la vuelta a la pantalla (Diestro es el predeterminado) |
+| **Teclado: XX-XX** | La distribución del teclado de tu ordenador, para que los símbolos salgan bien |
+| **Idioma: Espanol / English** | El idioma del dispositivo |
+| **Reader: On/Off** | Mantiene el [modo lector de pantalla](/es/getting-started/recovery-no-screen) activo entre reinicios |
+| **Pwd: …** | El formato de las contraseñas aleatorias (Symbols, Numeric, a-z 0-9, Aa-z 0-9, Words, Words+Num) |
+
+---
+
+## Herramientas
+
+| Opción | Qué hace |
+|--------|----------|
+| Exportar | Envía todas tus credenciales al ordenador por USB (ver [Crear una copia](/es/getting-started/creating-backups)) |
+| Importar | Recibe credenciales desde el ordenador (ver [Importar credenciales](/es/getting-started/importing-credentials)) |
+| Bitcoin | El monedero Bitcoin: crearlo, ver la semilla, exportar solo lectura, firmar transacciones (ver [Monedero Bitcoin](/es/getting-started/bitcoin)) |
+| Chrome: On/Off | Permite que la [extensión del navegador](/es/getting-started/browser-extension) encuentre la cuenta correcta |
+
+---
+
+## Zona crítica
 
 <Warning>
-Las acciones del submenú **Peligro** son irreversibles. El reset de fábrica, el bootloader y el Importar/Exportar de credenciales ahora requieren **mantener pulsado Centro** (~1,5 s) para confirmar — un toque no las activa, y **Izquierda** cancela. Un borde de progreso se va completando alrededor de la pantalla mientras mantienes pulsado.
+Estas acciones no se pueden deshacer. Piden confirmación **manteniendo el centro** (unos 1,5 s): un toque no hace nada, y deslizar de izquierda a derecha cancela. Mientras mantienes, un borde se va llenando alrededor de la pantalla.
 </Warning>
 
-| Item | Acción |
-|------|--------|
-| Reset fabrica | Borra **todas** las credenciales y resetea el PIN. El dispositivo vuelve al tutorial inicial. |
-| Bootloader | Reinicia el dispositivo en modo flash para subir un firmware nuevo. |
+<img src="/images/v1-1/es/confirmar_reset_gestos.png" alt="Confirmación del reset de fábrica" />
 
-### Info
+| Opción | Qué hace |
+|--------|----------|
+| Reset de fábrica | Borra **todas** las credenciales, el PIN y la configuración. Al terminar, la pantalla te pide que desconectes el dispositivo, y no hace nada más hasta que lo hagas. Al volver a conectarlo empieza la [configuración inicial](/es/getting-started/setup-wizard) |
+| Modo bootloader | Reinicia el dispositivo listo para recibir una actualización de firmware |
 
-Muestra la versión del firmware (`v1.0`), el número de serie del dispositivo y un check de integridad. Solo informativo — los items son no-interactivos excepto `< Volver`.
+<img src="/images/v1-1/es/reset_completado.png" alt="Reset completado: desconéctalo" />
 
 ---
 
-## Próximos pasos
+## Info
+
+Muestra la versión del firmware (`SW: 1.1.0`), el número de serie del dispositivo, los identificadores del microcontrolador y del chip de seguridad, cuántos de los 61 huecos están usados y la fecha de compilación. Es solo de lectura.
+
+---
+
+## Siguientes pasos
 
 <CardGroup cols={2}>
-  <Card title="Cartera Bitcoin" icon="bitcoin-sign" href="/es/getting-started/bitcoin">
-    Crear una cartera, exportar watch-only y firmar transacciones.
+  <Card title="Gestos" icon="hand-pointer" href="/es/getting-started/gestures">
+    Todos los movimientos, en todas las pantallas.
   </Card>
-  <Card title="Pantalla rota / sin pantalla" icon="eye-low-vision" href="/es/getting-started/recovery-no-screen">
+  <Card title="Monedero Bitcoin" icon="bitcoin-sign" href="/es/getting-started/bitcoin">
+    Crea un monedero, exporta solo lectura y firma transacciones.
+  </Card>
+  <Card title="Crear una copia" icon="cloud-arrow-down" href="/es/getting-started/creating-backups">
+    Primer uso de Herramientas → Exportar.
+  </Card>
+  <Card title="Pantalla rota o sin pantalla" icon="eye-low-vision" href="/es/getting-started/recovery-no-screen">
     Lee la pantalla por USB si el display falla.
-  </Card>
-  <Card title="Hacer una copia de seguridad" icon="cloud-arrow-down" href="/es/getting-started/creating-backups">
-    El primer uso del submenú Tools → Exportar.
-  </Card>
-  <Card title="Importar credenciales" icon="cloud-arrow-up" href="/es/getting-started/importing-credentials">
-    Recuperar de una copia o migrar de otro gestor.
   </Card>
 </CardGroup>

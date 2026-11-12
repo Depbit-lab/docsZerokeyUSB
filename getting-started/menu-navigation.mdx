@@ -1,132 +1,116 @@
 ---
 title: "Navigate the Menu"
-description: "How to access the main menu from the credential list and move through Tools, Settings, Danger and Info."
+description: "How to reach the main menu from your accounts and move through Tools, Settings, Danger Zone and Info."
 ---
 
-The main menu holds the actions that are **not** credentials: tools (backups and the Bitcoin wallet), screen/layout settings, dangerous options (factory reset) and firmware info. This guide shows you how to get there and how to move inside it.
+The main menu holds everything that is **not** an account: tools (backups, the Bitcoin wallet, the browser link), settings, the dangerous options (factory reset) and device information. This guide shows how to get there and how to move inside it.
 
----
-
-## Route A — From the first credential
-
-When you're on credential 1, **Left** opens the menu directly.
-
-<img src="/images/steps/menu-navigation-01-from-cred-1.svg" alt="Access menu from credential 1" />
-
-*Press **Left** while on credential number 1.*
+The moves are the same as everywhere else (see [Gestures](/getting-started/gestures)). In **Buttons** mode, use the dot named in brackets.
 
 ---
 
-## Route B — From the last credential (via "Add New")
+## Getting to the menu
 
-If you're near the end of your list, another way is **Right** repeatedly: after the last credential the "Add New" screen appears, and another **Right** jumps to the menu.
+Your accounts and the menu sit on one strip: the menu is to the left of account 1, and **+ Add new** is after your last account.
 
-<img src="/images/steps/menu-navigation-02-add-new.svg" alt="Access menu via Add New" />
+- From **account 1**, swipe **left to right** (Left). The menu slides in from the left.
+- From **+ Add new**, swipe **right to left** (Right).
 
-*From "Add New", press **Right** to reach the menu (without creating anything). If instead you want to create a credential, press **Center**.*
+<img src="/images/v1-1/en/transicion_abrir_menu.gif" alt="Opening the menu from account 1" />
+
+<Tip>
+To get through many accounts quickly, swipe sideways and **keep your finger on the last dot**: it jumps 10 accounts at a time (in Buttons mode, hold Left or Right).
+</Tip>
 
 ---
 
-## Jump 10 at a time
+## The menu screen
 
-Hold **Left** or **Right** (long-press) while browsing credentials to jump **10 used slots** at once in that direction, instead of one. A short tap still moves one slot. Handy when you have many credentials.
+The menu looks like every other screen: where you are in small letters at the top, the selected option big in the band, the next option under it (`↓ …`), and a bar on the right showing your place in the list.
+
+<img src="/images/v1-1/en/menu_principal.png" alt="Main menu" />
+
+| Item | What is inside |
+|------|----------------|
+| **Tools** | Export and Import credentials over USB, the **Bitcoin** wallet, and the browser link (**Chrome: On/Off**) |
+| **Settings** | Control, Tutorial, Hand, Keyboard, Language, screen reader, password format |
+| **Danger Zone** | Factory reset and bootloader mode |
+| **Info** | Firmware version, serial number, free slots and build date |
+
+| Move | What it does |
+|------|--------------|
+| Swipe up or down (Up / Down) | Next or previous option |
+| Tap the centre (Centre) | Open the submenu, or run the option |
+| Swipe left to right (Left) | Back to the previous menu; from the main menu, back to your accounts (**+ Add new**) |
+| Swipe right to left (Right) | Out to account 1, from any menu |
 
 ---
 
-## Menu screen
+## Settings
 
-Once inside, you see four options in the root menu. The inverted `MENU` bar occupies the leftmost 10 pixels as a visual marker.
+<img src="/images/v1-1/en/ajustes_control.png" alt="Settings submenu" />
 
-<img src="/images/steps/menu-navigation-03-root-menu.svg" alt="Root menu" />
+Each entry shows its current value. Tap the centre to change it; a short notice confirms the new value.
+
+| Entry | What it does |
+|-------|--------------|
+| **Control: Gestures / Buttons** | Swipe across the dots, or press them one by one. Switching to Gestures runs the tutorial |
+| **Tutorial** | Replays the animated tutorial |
+| **Hand: Right-handed / Left-handed** | Turns the screen round (Right-handed is the default) |
+| **Keyboard: XX-XX** | The keyboard layout of your computer, so symbols are typed correctly |
+| **Language: English / Español** | The language of the device |
+| **Reader: On/Off** | Keeps the [screen-reader mode](/getting-started/recovery-no-screen) on across restarts |
+| **Pwd: …** | The format of random passwords (Symbols, Numeric, a-z 0-9, Aa-z 0-9, Words, Words+Num) |
+
+---
+
+## Tools
 
 | Item | What it does |
 |------|--------------|
-| **Tools** | `Export` / `Import` credentials over USB, plus the **Bitcoin** wallet |
-| **Settings** | Rotate screen, UI language, keyboard layout, screen-reader mode and re-launch tutorial |
-| **Danger** | Factory reset (wipes **everything**) and bootloader mode (for reflashing) |
-| **Info** | Firmware version, serial number and status |
-
-*Move between items with **Up/Down**. To enter a submenu, press **Center**. To go back to the parent menu, press **Left**.*
+| Export | Sends all your credentials to the computer over USB (see [Create a backup](/getting-started/creating-backups)) |
+| Import | Receives credentials from the computer (see [Import credentials](/getting-started/importing-credentials)) |
+| Bitcoin | The Bitcoin wallet: create it, see the seed, export watch-only, sign transactions (see [Bitcoin wallet](/getting-started/bitcoin)) |
+| Chrome: On/Off | Lets the [browser extension](/getting-started/browser-extension) find the right account |
 
 ---
 
-## Enter a submenu
-
-For example, inside **Settings**:
-
-<img src="/images/steps/menu-navigation-04-settings.svg" alt="Settings submenu" />
-
-| Item | Action |
-|------|--------|
-| Rotate screen | Rotates the display 180° (controls flip too) |
-| Language: XX | Cycles UI language (Spanish ↔ English) |
-| Keyboard: XX-XX | Cycles the USB keyboard layout |
-| Reader: On/Off | Persists the [screen-reader mode](/getting-started/recovery-no-screen) across reboots |
-| Pwd: XX | Chooses the random-password format used by `Rand` (Symbols, Numeric, a-z 0-9, Aa-z 0-9, Words, Words+Num) |
-| Tutorial | Re-launches the first-boot wizard |
-| `< Back` | Returns to the parent menu (equivalent to pressing Left) |
-
-*Pick an item with **Up/Down** and press **Center** to run it. **Left** returns to the root menu.*
-
----
-
-## Leaving the menu
-
-From the root menu, pressing **Left** takes you to the "Add New" screen (jumping one credential back), and another **Left** to the last credential. Pressing **Right** takes you directly to the first credential.
-
-| Action in root menu | Result |
-|---------------------|--------|
-| **Left** | "Add New" → another LEFT → last credential |
-| **Right** | First credential |
-| **Up/Down** | Navigate items |
-| **Center** | Enter submenu / run item |
-
-<Note>
-Navigation is **circular**: credentials → "Add New" → menu → first credential → … No dead ends.
-</Note>
-
----
-
-## Submenus — quick reference
-
-### Tools
-
-| Item | Action |
-|------|--------|
-| Export | Send all credentials over USB-CDC (see [guide](/getting-started/creating-backups)) |
-| Import | Receive credentials over USB-CDC (see [guide](/getting-started/importing-credentials)) |
-| Bitcoin | On-device Bitcoin wallet: create, view seed, watch-only export and PSBT signing (see [guide](/getting-started/bitcoin)) |
-
-### Danger
+## Danger Zone
 
 <Warning>
-Actions in the **Danger** submenu are irreversible. Factory reset, bootloader and the credential Import/Export now require **holding Center** (~1.5 s) to confirm — a single tap will not trigger them, and **Left** cancels. A progress border fills around the screen while you hold.
+These actions cannot be undone. They ask for confirmation by **holding the centre** (about 1.5 s) — a tap does nothing, and swiping left to right cancels. A border fills around the screen while you hold.
 </Warning>
 
-| Item | Action |
-|------|--------|
-| Factory reset | Wipes **all** credentials and resets the PIN. The device returns to the initial tutorial. |
-| Bootloader | Restarts the device in flash mode to upload new firmware. |
+<img src="/images/v1-1/en/confirmar_reset_gestos.png" alt="Factory reset confirmation" />
 
-### Info
+| Item | What it does |
+|------|--------------|
+| Factory reset | Erases **all** credentials, the PIN and the settings. When it finishes, the screen asks you to unplug the device — it does nothing else until you do. Plug it back in and the [initial setup](/getting-started/setup-wizard) starts |
+| Bootloader mode | Restarts the device ready to receive a firmware update |
 
-Shows firmware version (`v1.0`), device serial number and integrity check. Informational only — items are non-interactive except `< Back`.
+<img src="/images/v1-1/en/reset_completado.png" alt="Factory reset done: unplug it" />
+
+---
+
+## Info
+
+Shows the firmware version (`SW: 1.1.0`), the device serial number, the microcontroller and security-chip identifiers, how many of the 61 slots are used and the build date. It is read-only.
 
 ---
 
 ## Next steps
 
 <CardGroup cols={2}>
+  <Card title="Gestures" icon="hand-pointer" href="/getting-started/gestures">
+    All the moves, on every screen.
+  </Card>
   <Card title="Bitcoin wallet" icon="bitcoin-sign" href="/getting-started/bitcoin">
     Create a wallet, export watch-only and sign transactions.
   </Card>
+  <Card title="Create a backup" icon="cloud-arrow-down" href="/getting-started/creating-backups">
+    First use of Tools → Export.
+  </Card>
   <Card title="Broken / no screen" icon="eye-low-vision" href="/getting-started/recovery-no-screen">
     Read the screen over USB if the display fails.
-  </Card>
-  <Card title="Create a backup" icon="cloud-arrow-down" href="/getting-started/creating-backups">
-    First use of the Tools → Export submenu.
-  </Card>
-  <Card title="Import credentials" icon="cloud-arrow-up" href="/getting-started/importing-credentials">
-    Restore from a backup or migrate from another manager.
   </Card>
 </CardGroup>

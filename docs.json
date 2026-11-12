@@ -22,6 +22,7 @@
                 "pages": [
                   "quickstart",
                   "getting-started/setup-wizard",
+                  "getting-started/gestures",
                   "getting-started/first-credential",
                   "getting-started/edit-credential",
                   "getting-started/totp-codes",
@@ -130,6 +131,7 @@
                 "pages": [
                   "es/quickstart",
                   "es/getting-started/setup-wizard",
+                  "es/getting-started/gestures",
                   "es/getting-started/first-credential",
                   "es/getting-started/edit-credential",
                   "es/getting-started/totp-codes",

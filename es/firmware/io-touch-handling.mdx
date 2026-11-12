@@ -1,114 +1,143 @@
 ---
-title: "Manejo de entrada táctil"
-description: "Cómo se escanean las teclas capacitivas, se aplica debounce y se mapean a navegación de menú."
+title: "Gestión del táctil"
+description: "Cómo se leen los cinco puntos dorados: configuración del TS06, los dos modos de entrada (gestos y botones), el reconocedor de gestos y cómo cada gesto se convierte en una acción."
 ---
 
-ZeroKeyUSB reemplaza los botones mecánicos con **cinco pads táctiles de cobre** conectados a un **controlador capacitivo TS06** dedicado. El firmware sondea este controlador por I²C y traduce los toques en eventos de navegación.
+ZeroKeyUSB no tiene botones mecánicos. Cinco pads de cobre están conectados a un **controlador táctil capacitivo TS06**, que el firmware consulta por I²C. Desde el firmware **1.1.0** los mismos pads se pueden usar de dos formas, elegidas en **Ajustes → Control** y guardadas en la EEPROM:
 
----
+| Modo | Cómo lee los pads | Predeterminado |
+|------|-------------------|----------------|
+| **Gestos** | Deslizamientos por los pads, reconocidos a partir del conjunto de pads bajo el dedo a lo largo del tiempo | Sí; el asistente inicial siempre lo activa |
+| **Botones** | Cada pad es un botón: gana el primer pad que se estabiliza, pulsación corta o larga | Los equipos anteriores a 1.1.0 lo conservan hasta que se cambie |
 
-## Vista general del hardware
-
-| Componente | Detalle |
-|-----------|--------|
-| **Controlador** | TS06 — IC táctil capacitivo de 6 canales |
-| **Dirección I²C** | `0xD2 >> 1 = 0x69` |
-| **Pads usados** | 5 de 6 canales: Izquierda, Derecha, Arriba, Abajo, Centro |
-| **Registro de estado** | `0x25` — bitmask de canales actualmente tocados |
-| **Sensibilidad** | Puesta a `0x3F` (mínima) en canales 0–2 al arranque para evitar disparos falsos |
-
-El controlador gestiona la calibración de baseline internamente y reporta qué canales están activos vía el registro de estado.
+Los dos modos terminan en los mismos manejadores por pantalla (`dispatchPress()` / `dispatchLongPress()` en `zerokey-io.cpp`), así que cada pantalla se comporta igual sea cual sea el modo. Descripción para el usuario: [Gestos](/es/getting-started/gestures).
 
 ---
 
-## Inicialización táctil
+## Hardware
 
-Al arranque (`zerokey-setup.cpp`), el firmware:
+| Elemento | Detalle |
+|----------|---------|
+| **Controlador** | ADSemiconductor TS06, 6 canales (spec v2.2) |
+| **Registro de salida** | `0x25`: bits 0..5 = CH1..CH6 tocado, bit 6 = ND (aviso de ruido) |
+| **Pads** | 5 de los 6 canales. CH1 (bit 0) no está conectado |
+| **Canal → pad** | bit 1 Derecha · bit 2 Centro · bit 3 Abajo · bit 4 Izquierda · bit 5 Arriba |
+| **Modo** | Multisalida: cada pad bajo el dedo se informa por separado |
 
-1. Prueba el TS06 en `0x69` con hasta **5 reintentos** (separados 20 ms).
-2. Si lo detecta, escribe la sensibilidad mínima (`0x3F`) en los registros `0x00–0x02`.
-3. Configura el modo de operación vía registros `0x05–0x06`.
-4. Pone `ts06_ok = true` — si no se encuentra el controlador, el táctil queda deshabilitado y el log serie muestra `"TS06 not found on I2C"`.
-
----
-
-## Ciclo de polling
-
-```mermaid
-flowchart TD
-    A["Leer registro de estado 0x25"] --> B{"¿Algún canal activo?"}
-    B -->|No| C["Limpiar timers de pulsación"]
-    B -->|Sí| D{"¿Mismo canal que el lockeado?"}
-    D -->|No| E["Ignorar — lockout activo"]
-    D -->|Sí / Ninguno lockeado| F{"¿Duración de pulsación?"}
-    F -->|"< 80 ms"| G["Aún en debounce"]
-    F -->|"80–800 ms"| H["Evento de pulsación corta"]
-    F -->|"> 800 ms"| I["Evento de pulsación larga"]
-    
-    H --> J["Dispatch a la pantalla actual"]
-    I --> J
-    C --> A
-    G --> A
-    
-    style A fill:#dbeafe,stroke:#2563eb,color:#000
-    style H fill:#bbf7d0,stroke:#16a34a,color:#000
-    style I fill:#fef3c7,stroke:#d97706,color:#000
-```
-
-El método `handleButtonChecker()` corre en el bucle principal:
-
-1. Lee `STATUS_REGISTER` (0x25) vía `readRegister()` por I²C.
-2. Para cada bit de canal:
-   - Registra `pressStartTime` cuando un canal se vuelve activo por primera vez.
-   - Aplica un **debounce de 80 ms** (`DEBOUNCE_MS`) — las liberaciones más cortas que esto se ignoran.
-   - Aplica un **lockout de canal de 150 ms** (`CHANNEL_LOCKOUT_MS`) — tocar un pad distinto mientras hay uno activo se ignora.
-3. Al soltar:
-   - Si se mantuvo > `LONG_PRESS_THRESHOLD` (800 ms) → dispatcha el handler de pulsación larga.
-   - En otro caso → dispatcha el handler de pulsación corta.
+El firmware enmascara la salida con `0x3E` para los pads (`0x3F` al leer, para que el bit ND nunca cuente como toque).
 
 ---
 
-## Mapeo de gestos
+## Inicialización del TS06
 
-| Gesto | Disparador | Pantalla principal | Editor | Menú |
-|---------|---------|-------------|--------|------|
-| Tap Izquierda | < 800 ms | Slot anterior | Mover cursor izquierda | Volver / Salir de submenú |
-| Tap Derecha | < 800 ms | Slot siguiente | Mover cursor derecha / Entrar al teclado | Entrar al submenú / Salir a credenciales |
-| Tap Arriba | < 800 ms | Ciclar a vista Sitio | Cambiar carácter | Navegar arriba |
-| Tap Abajo | < 800 ms | Ciclar a vista 2FA | Cambiar página de teclado | Navegar abajo |
-| Tap Centro | < 800 ms | Tipear credencial al host | Insertar carácter | Seleccionar / Confirmar |
-| Hold Izquierda | ≥ 800 ms | Saltar 10 slots atrás | — | — |
-| Hold Derecha | ≥ 800 ms | Saltar 10 slots adelante | — | — |
-| Hold Centro | ≥ 800 ms | Entrar en modo edición | Guardar y salir del editor | Autorizar import/export |
+El TS06 no guarda su configuración al apagarse, así que `configureTouchController()` (`zerokey-setup.cpp`) se ejecuta en cada arranque, en el orden del flujo de encendido del datasheet, y **vuelve a leer cada registro**; si algo no se quedó, lo reintenta una vez.
 
----
-
-## Feedback visual de pulsación larga
-
-Cuando una pulsación larga está en progreso, `drawLongPressProgress()` renderiza una barra de progreso que se va llenando en el OLED. Esto da al usuario confirmación visual de que debe seguir manteniendo. Soltar antes de los 800 ms cancela la acción.
-
----
-
-## Controles en la pantalla de PIN
-
-En la pantalla de entrada de PIN, los controles cambian:
-
-| Pad | Acción |
-|-----|--------|
-| **Arriba / Abajo** | Cambia el dígito actual (0–9) |
-| **Derecha** | Añade el dígito actual al PIN (hasta 16 dígitos) |
-| **Izquierda** | Borra el último dígito introducido |
-| **Centro** | Envía el PIN para verificación |
-| **Pulsación larga Centro** | Teclea el número de serie del dispositivo |
-
----
-
-## Manejo de errores
-
-- Si el TS06 no se detecta al arranque, `ts06_ok` se pone a `false` y la lectura del registro de estado devuelve `0x00` — efectivamente deshabilitando la entrada táctil.
-- El firmware no muestra una pantalla de error táctil; en su lugar, el log serie reporta el problema para debug.
-- El táctil se deshabilita silenciosamente durante los delays de lockout (`waitFromEeprom()`) y durante operaciones largas como el borrado de credenciales.
+| Registro | Valor | Por qué |
+|----------|-------|---------|
+| `0x00`–`0x02` Sensibilidad | `0x3F` cada uno | Lo que llevan todos los equipos entregados. El nibble bajo (CH1, Centro, Izquierda) está en el ajuste menos sensible; el alto (Derecha, Abajo, Arriba), en el valor por defecto del chip |
+| `0x04` CTRL2 | `0x13` | Modo multisalida (S/M_SEL = 0, el reconocedor lo necesita), LED apagado, sin reposo, bits 1:0 = `11` como exige el datasheet. Bits verificados: LED_EN, S/M_SEL, IMP_SEL |
+| `0x06` Ch_hold | `0x00` | Tras el reset CH4–CH6 (Abajo, Izquierda, Arriba) están *retenidos*; esto libera todos los canales |
+| `0x05` Ref_rst | `0x00` | Deja de renovar la referencia de CH4–CH6 para que puedan detectar |
 
 <Note>
-El TS06 opera independientemente de las operaciones de EEPROM o ATECC608A. Como todos comparten el mismo bus I²C a 100 kHz, el polling táctil se entrelaza con otro tráfico I²C en el bucle principal cooperativo.
+Antes de la 1.1.0 el firmware solo escribía la sensibilidad, Ch_hold y Ref_rst; CTRL2 no se escribía nunca. Como además el chip es físicamente menos sensible en CH4–CH6, el pad **Izquierda** es el menos sensible y **Derecha** el que más. Cualquier cambio de sensibilidad hay que comprobarlo antes en el hardware.
 </Note>
+
+Si el controlador no responde al arrancar, el táctil queda desactivado y el log serie lo indica.
+
+---
+
+## Sondeo
+
+`handleButtonChecker()` se llama desde el bucle de Arduino. La espera del bucle depende del modo (`loopDelayMs()`): **10 ms** en Gestos (el reconocedor necesita tiempos finos), **30 ms** en Botones.
+
+### Modo Botones
+
+| Constante | Valor | Significado |
+|-----------|-------|-------------|
+| `DEBOUNCE_MS` | 80 ms | Pulsación mínima para registrarse |
+| `LONG_PRESS_THRESHOLD` | 800 ms | Pulsación larga |
+| Bloqueo de canal | gana el primero | Los demás pads tocados mientras tanto se ignoran |
+
+Una pulsación larga muestra un borde que se va llenando alrededor de la pantalla (`drawLongPressProgress()`); soltar antes la cancela.
+
+### Modo Gestos: el reconocedor
+
+El reconocedor (`zerokey-gesture.cpp`, espacio de nombres `zkgesture`) es lógica pura sin acceso al hardware. Recibe una máscara *lógica* de pads en cada sondeo, ya reasignada para la pantalla girada 180° del modo zurdo, así que "arriba" es siempre el pad que el usuario ve arriba.
+
+La yema del dedo es más ancha que el hueco entre pads, así que a menudo hay dos o tres bits activos a la vez. En lugar de "gana el primero", un toque es una **sesión** desde el primer pad hasta que todos llevan `releaseMs` apagados, y se juzga por dónde **empezó** y dónde **terminó**. Los pads se tratan como puntos (Arriba (0,+1), Abajo (0,−1), Izquierda (−1,0), Derecha (+1,0), Centro (0,0)) y se compara el centroide de cada conjunto:
+
+- **Deslizamiento**: el centroide se movió al menos un pad a lo largo de un eje (y el doble que en el otro), el dedo llegó a un pad que no estaba bajo él al empezar, en el lado hacia el que se movió, y, si el pad del lado opuesto del recorrido se tocó, se tocó primero. Por eso pulsar todo a la vez nunca es un deslizamiento, se suelten los pads en el orden que se suelten.
+- **Toque / Largo**: no hay deslizamiento y el centro formó parte del toque, solo, con vecinos o los cinco pads. Largo si el centro se mantuvo ≥ `holdMs`.
+- **Suelto**: no hay deslizamiento y solo se tocaron pads exteriores; no es una orden. La pantalla muestra un aviso con el deslizamiento que hace lo que habría hecho ese pad.
+
+Cuando el centro lleva `commitMs` mantenido sin moverse, el toque queda fijado como pulsación del centro y ya no puede convertirse en deslizamiento.
+
+| Tiempo (`kDefaultTiming`) | Valor | Para qué |
+|---------------------------|-------|----------|
+| `padOnMs` | 20 ms | Filtro de ruido: un pad debe leerse tocado este tiempo |
+| `startWindowMs` | 30 ms | Los pads que se suman en este tiempo tras el primero forman el conjunto de inicio |
+| `endWindowMs` | 70 ms | Los pads activos así de cerca de soltar forman el conjunto final |
+| `releaseMs` | 90 ms | Todos los pads apagados este tiempo = dedo levantado (salva los huecos entre pads) |
+| `releaseAfterSwipeMs` | 40 ms | Soltar más corto tras un deslizamiento, para encadenar deslizamientos rápidos |
+| `stableMs` / `stableFromCenterMs` | 30 / 90 ms | El reconocimiento en vivo espera a que el conjunto de pads se estabilice (más si el toque empezó en el centro) |
+| `commitMs` | 350 ms | Centro mantenido este tiempo = pulsación, no deslizamiento |
+| `holdMs` | 800 ms | Pulsación larga / deslizar y mantener |
+| `repeatDelayMs` / `repeatMs` | 500 / 180 ms | Repetición automática al deslizar y mantener |
+
+Los umbrales del centroide van en 1/60 de la separación entre pads: **60** (un pad) con el dedo apoyado, **45** (¾ de pad) al juzgar un toque terminado.
+
+Eventos: `EV_SWIPE`, `EV_SWIPE_HOLD` (dedo apoyado tras deslizar), `EV_SWIPE_REPEAT`, `EV_TAP`, `EV_LONG`, `EV_STRAY`.
+
+El reconocedor tiene pruebas unitarias en el PC (`ZerokeyOS/tests/`) que reproducen secuencias simuladas: deslizamientos limpios, golpes rápidos, huecos entre pads, pulsaciones imprecisas, los cinco pads a la vez.
+
+---
+
+## Del gesto a la acción
+
+En las pantallas cuyo contenido se mueve entero, deslizar **arrastra** el contenido, como en un móvil, así que la acción es la contraria a la dirección del dedo (`gestureAction()`):
+
+| Dedo | Cuentas, menú, páginas de texto, tarjetas del asistente | Teclado del PIN | Editor, fecha/hora del 2FA, búsqueda |
+|------|----------------------------------------------------------|-----------------|---------------------------------------|
+| De abajo a arriba | Abajo (campo / opción siguiente) | Arriba (valor siguiente de la rueda) | Arriba |
+| De arriba a abajo | Arriba (anterior; en el campo sitio, abre la búsqueda) | Abajo | Abajo |
+| De derecha a izquierda | Derecha (cuenta / paso siguiente; del menú a la cuenta 1) | Derecha (añadir el dígito; en ✓, confirmar) | Izquierda |
+| De izquierda a derecha | Izquierda (anterior / volver; de la cuenta 1 al menú) | Izquierda (borrar el último dígito) | Derecha |
+| Tocar el centro | Centro | nada | Centro |
+| Mantener el centro | Centro largo (editar campo, autorizar) | — | Centro largo |
+
+En el teclado del PIN los dígitos forman una tira que se arrastra como las cuentas (de derecha a izquierda se añade), mientras que la rueda sigue al dedo (deslizar hacia arriba = el valor siguiente sube desde abajo). Ahí un toque no hace nada, así que el PIN nunca se confirma sin querer.
+
+Deslizar y mantener:
+
+| Pantalla | Efecto |
+|----------|--------|
+| Menú, rueda del PIN, páginas de texto | Repetición vertical |
+| Búsqueda, fecha/hora del 2FA | Repetición en todas las direcciones |
+| Filas del teclado del editor | Repetición horizontal |
+| Cuentas | De lado = saltar 10 cuentas (1 del deslizamiento + 9), como la pulsación larga en modo Botones |
+| Pantalla del PIN | De izquierda a derecha y mantener = el "volver a configurar" oculto (Izquierda larga en modo Botones) |
+
+Las páginas de confirmación críticas (reset de fábrica, bootloader, autorización de importar/exportar) se disparan con el centro aún mantenido, tras `HOLD_CONFIRM_MS` = **1,5 s**, con el mismo borde que se llena. Mantener el centro **10 s** en la pantalla del PIN activa o desactiva el lector de pantalla HID (`SCREEN_READER_HOLD_MS`). El aviso por toque suelto se ve durante `GESTURE_HINT_MS` = 1,2 s.
+
+---
+
+## Controles de la pantalla del PIN
+
+| Acción | Gestos | Botones |
+|--------|--------|---------|
+| Cambiar el valor de la rueda | Deslizar arriba / abajo | Arriba / Abajo |
+| Añadir el valor al PIN (máx. 16 cifras) | Deslizar de derecha a izquierda | Derecha |
+| Borrar el último dígito (también con el ✓ elegido) | Deslizar de izquierda a derecha | Izquierda |
+| Confirmar (rueda en ✓) | Deslizar de derecha a izquierda | Derecha, o Centro |
+| Activar el lector de pantalla | Mantener el centro 10 s | Mantener Centro 10 s |
+
+Tras cada dígito la rueda se para en el ✓. En el asistente, borrar sin ningún dígito vuelve a la tarjeta "Crea tu PIN".
+
+---
+
+## Errores
+
+- Si el TS06 no se detecta al arrancar, el táctil queda desactivado y el log serie lo indica; no hay error en pantalla.
+- El táctil se ignora durante las esperas por PIN erróneo y las operaciones largas (borrado de credenciales).
+- El TS06 comparte el bus I²C con la EEPROM, el ATECC608A y la OLED; el sondeo se intercala con ese tráfico en el bucle principal cooperativo.

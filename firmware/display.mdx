@@ -15,11 +15,11 @@ The firmware keeps the interface intentionally minimal: large typography, clear 
 ```mermaid
 graph TD
     SPLASH["Splash Screen<br/>ZeroKeyUSB logo"]
-    SETUP["Setup Wizard<br/>10 scrollable pages"]
-    PIN["PIN Entry<br/>digit selector + dots"]
+    SETUP["Setup Wizard<br/>7 swipe-only cards + tutorial"]
+    PIN["PIN Entry<br/>rodillo wheel"]
     MAIN["Main Screen<br/>Site / User / Pass / 2FA"]
     EDIT["Editor<br/>3 keyboard pages"]
-    MENU["Menu<br/>scrollable list"]
+    MENU["Menu<br/>one entry in big text"]
     TOTP["TOTP View<br/>6-digit code + countdown"]
     TEXT["Text Page<br/>confirmations, info"]
     
@@ -56,20 +56,34 @@ flowchart LR
 
 ---
 
+## Screen anatomy (1.1.0)
+
+Since firmware 1.1.0 the menu, the accounts and the setup wizard share one layout, so the user learns it once:
+
+| Zone | Rows | Content | Font |
+|------|------|---------|------|
+| **Context** | 0–6 | Where you are: `#3 Gmail > User`, `SETTINGS > Hand`, `2/7 HAND` | 5×7 |
+| **Band** | 7–24 | The selected value, black on white | FreeSans **Bold** 9 pt; FreeSans 9 pt if it does not fit; 5×7 as a last resort (`drawBigText()`) |
+| **Cue** | 25–31 | What is below (`↓ Password`), or an animated gesture cue | 5×7 / animation |
+| **Position** | x 125–127 | Place in the list (menus) | — |
+
+Rules followed by every screen: one idea per screen, cues are animated symbols rather than words, two instructions never share a row, and nothing changes without sliding in the direction of the gesture.
+
+---
+
 ## Screen types
 
-### PIN entry screen
-- Shows the current digit selector (0–9) with Up/Down navigation.
-- Entered digits are shown as filled dots (●) for security.
-- PIN length is displayed as a count indicator.
+### PIN entry screen ("rodillo")
+- A **wheel** at x 98–117: the selected value lit in a 20×16 window (FreeSans Bold), the previous value above it and the next below it (5×7). After the first digit the wheel holds `0, ✓, 1 … 9`.
+- The digits already entered are drawn big to the left of the wheel, 20 px apart, the newest next to it; older ones scroll off the left edge.
+- An arrow beside the wheel beats towards the row (or, in Buttons mode, towards the Right pad).
+- Up/Down rolls the value inside its window (a box-limited vertical slide). Adding a digit animates it travelling from the window into the row while the row shifts left by one step (6 frames, ~110 ms); erasing plays the reverse. The animation is rebuilt from the state on screen — no extra copy of the PIN is kept.
 
 ### Main credential screen
-- **Four lines** showing the current slot:
-  - Line 0: Slot index indicator
-  - Line 1: Site name (scrolls if > ~20 chars)
-  - Line 2: Username
-  - Line 3: Password (masked by default)
-- A context indicator (`SITE`, `USER`, `PASS`, `2FA`) appears at the top.
+- Context row: `#N > Site` on the site field, `#N <site> > <field>` on the others.
+- Band: the selected field in big text — site, user, **password** or `2FA (OK)` / note. Values wider than the band scroll inside it (FreeSans 9 pt, ~40 px/s, 1.2 s pause at each end) via `refreshMainScrollIfNeeded()`.
+- Cue row: `↓ <user>` under the site, `↓ Password` under the user (the name, never the value), `↓ 2FA` under the password when the slot has one.
+- The virtual slot after the last account shows `NEW ACCOUNT` / `+ Add new`.
 
 ### Editor screen
 - **Three keyboard pages** selectable with Up/Down:
@@ -80,14 +94,19 @@ flowchart LR
 - Selected character highlighted with inverted colors
 
 ### Menu screen
-- Scrollable list with inverted highlight on selected item.
-- When items exceed 4 rows, a **scrollbar with thumb** appears on the right edge (3 px wide).
-- Thumb position updates proportionally to scroll position.
+- One entry at a time: the path (`SETTINGS > Hand`) in the context row, the value (`Right-handed`) big in the band, the next entry under it, and a 3 px position bar on the right.
+- Entries labelled `Name: value` show the name in the path and the value in the band.
 
-### Setup wizard pages
-- 10 pages of scrollable text with Up/Down navigation.
-- A step indicator (`1/9`, `2/9`, etc.) and footer hints appear on screen.
-- Pages with > 4 lines show a scrollbar thumb.
+### Setup wizard cards
+- Seven cards in the same layout: language, hand, (tutorial), keyboard, create PIN, PIN saved, ready.
+- Cards with a choice keep a 7 px column on the right for an animated double arrow that grows from the middle to both ends (`drawGrowArrowVertical()`: swipe up/down to change). Every card has an arrow gliding right-to-left along the bottom row (`drawGlideArrow()`: swipe that way to go on). The two cues take turns (~1 s each, 90 ms frames) so only one thing moves at a time.
+
+### Tutorial
+- Six interactive lessons (`zerokey-tutorial.cpp`): a pad cross on the left animates the move, the right pane names the action, and the user must perform it. A summary card closes with the same glide cue.
+
+### Notices and final screens
+- `renderBigNotice()`: small title bar, value in big text (e.g. `Hand` / `Left-handed` after a change).
+- After a factory reset the device shows a fixed `RESET DONE` / `Unplug it` card and stops answering the pads until it is unplugged.
 
 ### TOTP code screen
 - Large **2× text size** for the 6-digit code.
@@ -101,8 +120,9 @@ flowchart LR
 
 | Asset | Format | Size | Usage |
 |-------|--------|------|-------|
-| **Default font** | Adafruit GFX built-in | 6×8 px | Menus, labels, info text |
-| **Text size 2** | 2× scaled | 12×16 px | TOTP codes, large prompts |
+| **Default font** | Adafruit GFX built-in | 6×8 px | Context and cue rows, text pages |
+| **FreeSans 9 pt Bold / Regular** | Adafruit GFX fonts | cap height 12 px, ~1.9 KB each | The band, the PIN digits (1.1.0) |
+| **Text size 2** | 2× scaled | 12×16 px | TOTP codes, splash |
 | **Icons** | PROGMEM bitmaps | 16×16 px | Menu items (backup, settings, danger, info) |
 | **Device SVGs** | Vector in `/images/` | Various | Documentation touch pad illustrations |
 
@@ -110,20 +130,28 @@ All fonts and icons are stored in **Flash (PROGMEM)** — no runtime loading fro
 
 ---
 
+## Slide transitions (1.1.0)
+
+The screens are laid out as a strip — the menu left of account 1, accounts left to right, submenus to the right of their menu, the search above the account — and moving along it slides the new screen in from that side.
+
+1. Before a press is handled, `requestTransition()` copies the frame on screen (`slideFor()` in `zerokey-io.cpp` picks the direction).
+2. When the handler redraws, `zerokeydisplay()` pushes **5 in-between frames** that shift the old and new frames (columns for horizontal slides, bits of each column for vertical ones), then the final one. Each push takes ~13 ms (the driver runs the bus at 400 kHz for frame transfers), so a slide costs ~80 ms.
+3. The panel orientation is taken into account: in the right-handed default the panel is rotated 180°, so "from the right" for the user is "from the left" in the buffer.
+
+| Move | Slide |
+|------|-------|
+| Next / previous account | Horizontal, full screen |
+| Next / previous menu entry or account field | Vertical, rows 7–31 (the context row stays still) |
+| Open a submenu / go back | Horizontal |
+| Open the search / back to the account | Vertical, full screen |
+| PIN wheel | Vertical, only inside the value window (`requestBoxTransition()`) |
+
+If the handler did not change anything there is no animation. Auto-repeat (swipe-and-hold) does not slide, so lists move at full speed — except the PIN wheel, whose small roll fits within the 180 ms repeat.
+
 ## Scrolling
 
-Two types of scrolling are implemented:
-
-### Auto-scroll (credential names)
-- Names longer than the display width (~20 chars) scroll **horizontally** at a steady pace.
-- Managed by `refreshMainScrollIfNeeded()` in the main loop.
-- Scrolling pauses briefly at each end before reversing.
-
-### Vertical scroll (menus and wizard)
-- Menu items and wizard pages scroll vertically with Up/Down.
-- `menuScrollTop` tracks the first visible row.
-- `ensureMenuSelectedVisible()` keeps the highlighted item in view.
-- A filled scrollbar thumb proportional to content length appears at the right edge.
+- **Band marquee**: values wider than the band scroll horizontally (see the main screen above).
+- **Text pages**: confirmation and info pages scroll vertically with Up/Down and show a scrollbar thumb.
 
 ---
 
@@ -136,7 +164,8 @@ Two types of scrolling are implemented:
 | **Activity spinner** | Frame-based animation via `renderActivityScreen()` |
 | **Progress bar** | `renderProgress()` with title, subtitle, done/total |
 | **Typing indicator** | `renderTypingActivity()` shows characters typed vs. total |
-| **Context indicator** | Top bar shows current context (`MENU`, `SITE`, `TOTP`, `SETUP`) |
+| **Context row** | Top row shows where you are (`#3 Gmail > User`, `SETTINGS > Hand`) |
+| **Gesture hint** | `renderGestureHint()`: a pad cross with the swipe to make, shown for 1.2 s when an outer pad is touched alone in Gestures mode |
 
 ---
 

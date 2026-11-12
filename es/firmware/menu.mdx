@@ -20,14 +20,16 @@ graph TD
     ROOT --> DANGER["Danger Zone"]
     ROOT --> INFO["Info"]
     
-    TOOLS --> IMP["Import"]
     TOOLS --> EXP["Export"]
+    TOOLS --> IMP["Import"]
     TOOLS --> BTC["Bitcoin"]
     TOOLS --> CHR["Chrome: On/Off"]
     
-    SETTINGS --> ROT["Rotate Screen"]
-    SETTINGS --> KB["Keyboard: XX-XX"]
-    SETTINGS --> UILANG["UI Language"]
+    SETTINGS --> CTL["Control: Gestos/Botones"]
+    SETTINGS --> TUT["Tutorial"]
+    SETTINGS --> ROT["Mano: Diestro/Zurdo"]
+    SETTINGS --> KB["Teclado: XX-XX"]
+    SETTINGS --> UILANG["Idioma"]
     SETTINGS --> READER["Reader: On/Off"]
     SETTINGS --> PWD["Pwd: XX"]
     
@@ -45,15 +47,15 @@ graph TD
 
 ## Navegación del menú
 
-| Gesto | Acción |
-|---------|--------|
-| **Arriba ↑** | Mueve la selección arriba (envuelve al final) |
-| **Abajo ↓** | Mueve la selección abajo (envuelve al principio) |
-| **Centro ●** | Selecciona / Ejecuta el ítem resaltado |
-| **Izquierda ←** | Vuelve al menú padre o sale a credenciales |
-| **Derecha →** | Sale del menú, salta al slot 0 de credenciales |
+| Acción | Gestos | Efecto |
+|--------|--------|--------|
+| **Arriba ↑** | Deslizar de arriba a abajo | Opción anterior |
+| **Abajo ↓** | Deslizar de abajo a arriba | Opción siguiente |
+| **Centro ●** | Tocar el centro | Abrir el submenú / ejecutar la opción |
+| **Izquierda ←** | Deslizar de izquierda a derecha | Volver al menú padre; desde el menú principal, salir al hueco "+ Nueva" (o a la última cuenta si todos los huecos están usados) |
+| **Derecha →** | Deslizar de derecha a izquierda | Salir del menú a la cuenta 1, desde cualquier nivel |
 
-Cuando un menú tiene más ítems de los que caben en las 4 filas, aparece una **barra de scroll con thumb** en el borde derecho. La selección permanece visible al hacer scroll.
+Desde la 1.1.0 el menú muestra **una opción cada vez** en texto grande (`ZerokeyMenu::displayMenu()`): la ruta en la fila de arriba, el valor en la banda, la opción siguiente debajo y una barra de posición a la derecha. Arriba/Abajo se deslizan en vertical bajo la fila de ruta; entrar o salir de un submenú se desliza en horizontal (ver [Sistema de pantalla](/es/firmware/display)).
 
 ---
 
@@ -97,7 +99,9 @@ Export envía **credenciales en texto plano** por USB serie. Solo realiza esto e
 
 | Ítem | Acción |
 |------|--------|
-| **Rotate Screen** | Voltea la pantalla 180° para uso a izquierda/derecha. También invierte los controles táctiles. Guardado en EEPROM. |
+| **Control: Gestos / Botones** | Modo de entrada (1.1.0): deslizar por los pads o pulsarlos uno a uno. Guardado en EEPROM (`0x000E`; en blanco = Botones, así los equipos actualizados desde la 1.0 conservan su comportamiento). Al cambiar a Gestos se abre el tutorial. Ver [Gestión del táctil](/es/firmware/io-touch-handling). |
+| **Tutorial** | Repite el tutorial animado e interactivo (`runInputTutorial()`). |
+| **Mano: Diestro / Zurdo** | Gira la pantalla 180° y reasigna los pads para que "arriba" siga siendo el pad de arriba de la pantalla. Diestro (rotación del panel 2) es el predeterminado. Guardado en EEPROM. |
 | **Keyboard: XX-XX** | Cicla por los 9 layouts de teclado (EN-US → DA-DK → DE-DE → ES-ES → FR-FR → HU-HU → IT-IT → PT-PT → SV-SE → EN-US). Guardado en EEPROM. |
 | **UI Language** | Cicla el idioma de la interfaz en pantalla (Inglés ↔ Español). Guardado en EEPROM. |
 | **Reader: On/Off** | Alterna el [modo lector de pantalla](/es/firmware/screen-reader) HID persistente — teclea la pantalla por USB para que una unidad con el display muerto siga siendo usable. Guardado en EEPROM. |
@@ -117,11 +121,11 @@ El TOTP se accede desde la vista de credenciales, no desde el menú principal. A
 
 ### ⚠️ Danger Zone
 
-Toda acción en esta sección muestra una **página de confirmación** que requiere pulsar Centro para proceder o Izquierda para cancelar:
+Toda acción en esta sección muestra una **página de confirmación** que solo se dispara **manteniendo** el centro 1,5 s (un toque no hace nada); Izquierda cancela:
 
 | Ítem | Efecto | ¿Reversible? |
 |------|--------|-------------|
-| **Factory Reset** | Ejecuta `eraseAll()` (cuenta atrás de 3 segundos, blancos cifrados en los 61 slots + limpia metadatos TOTP) y resetea el flag de aprovisionamiento a `0x00`, así el próximo arranque inicia el asistente de setup. | ❌ No |
+| **Factory Reset** | Ejecuta `eraseAll()` (cuenta atrás de 3 segundos, blancos cifrados en los 61 slots + limpia metadatos TOTP) y resetea el flag de aprovisionamiento a `0x00`, así el próximo arranque inicia el asistente de setup. Después muestra una tarjeta fija de "desconéctalo" y se detiene: no responde a ningún pad hasta que se desconecta. | ❌ No |
 | **Bootloader Mode** | Pone la palabra mágica de doble reset (`0xF01669EF` en `0x20007FFC`) y luego ejecuta `NVIC_SystemReset()`. El dispositivo se reinicia en el bootloader USB DFU para flashear firmware. | ✅ Sí (reflasheo) |
 
 ---
@@ -129,39 +133,39 @@ Toda acción en esta sección muestra una **página de confirmación** que requi
 ### ℹ️ Info
 
 Submenú de solo lectura mostrando:
-- **SW: x.x.x** — versión del firmware desde `zerokeyInfo::getSoftwareVersion()`
+- **SW: x.x.x** — versión del firmware desde `zerokeyInfo::getSoftwareVersion()` (`1.1.0`)
 - **SN: XXXXXXXX** — serial hardware desde los registros de ID único del SAMD21
+- **MCU**, **Sec rev**, **Sec SN** — ID del microcontrolador y revisión y serie del ATECC608A
+- **Slots: usados/61** y **Built:** — ocupación de huecos y fecha de compilación
 
 ---
 
-## Asistente de setup
+## Asistente inicial
 
-El asistente de setup corre en el primer arranque (o tras reset de fábrica). Consta de **10 páginas internas** repartidas en **9 pasos visibles**:
+El asistente corre en el primer arranque (o tras un reset de fábrica). Desde la 1.1.0 son **7 pasos visibles**, cada uno una tarjeta con la disposición del menú, que se manejan **solo deslizando**: un toque en el centro solo reinicia la pista animada, así que un toque sin querer nunca se salta un paso. El asistente siempre activa el modo Gestos; Botones se puede elegir después en Ajustes.
 
 ```mermaid
 graph LR
-    W1["1. Bienvenida"] --> W2["2. Navegación"]
-    W2 --> W3["3. Rotar pantalla"]
-    W3 --> W4["4. Layout de teclado"]
-    W4 --> W5["5. Crear PIN"]
-    W5 --> W6["6. Confirmar PIN"]
-    W6 --> W7["7. Info desbloqueo"]
-    W7 --> W8["8. Info cuentas"]
-    W8 --> W9["9. Generar IV"]
-    W9 --> W10["10. ¡Listo!"]
+    W1["1. Idioma"] --> W2["2. Mano"]
+    W2 --> W3["3. Tutorial"]
+    W3 --> W4["4. Teclado del PC"]
+    W4 --> W5["5. Crea tu PIN"]
+    W5 --> W6["6. PIN guardado"]
+    W6 --> IV["Generar IV<br/>(oculto)"]
+    IV --> W7["7. Listo"]
     
     style W5 fill:#fef3c7,stroke:#d97706,color:#000
     style W6 fill:#fef3c7,stroke:#d97706,color:#000
-    style W9 fill:#fee2e2,stroke:#dc2626,color:#000
+    style IV fill:#fee2e2,stroke:#dc2626,color:#000
 ```
 
-Las páginas con más de 4 líneas de texto son **scrollables verticalmente** usando Arriba/Abajo. Aparece un thumb de scroll en el borde derecho.
+| Gesto en una tarjeta | Efecto |
+|----------------------|--------|
+| Deslizar arriba / abajo | Cambiar el valor (idioma, mano (la pantalla gira al momento) o teclado) |
+| Deslizar de derecha a izquierda | Paso siguiente. En "Crea tu PIN" abre la rueda del PIN; en "Listo" pasa a la pantalla del PIN |
+| Deslizar de izquierda a derecha | Paso anterior (al volver se salta el tutorial y la generación de claves) |
 
-Cada página del asistente soporta:
-- **Derecha** → avanza a la siguiente página
-- **Izquierda** → vuelve a la página anterior
-- **Centro** → acción (alternar orientación, cambiar layout, iniciar entrada de PIN)
-- **Arriba/Abajo** → scroll del contenido
+En la rueda del PIN del asistente, borrar sin ningún dígito vuelve a la tarjeta "Crea tu PIN". Guía de usuario: [Configuración inicial](/es/getting-started/setup-wizard).
 
 ---
 
@@ -169,8 +173,8 @@ Cada página del asistente soporta:
 
 El sistema de menú es intencionadamente minimalista:
 - Sin submenús profundos — cada opción está a **dos toques** del menú principal.
-- Todas las acciones destructivas requieren confirmación explícita en una página dedicada.
-- El layout y los gestos se mantienen consistentes entre versiones del firmware.
+- Todas las acciones destructivas requieren mantener el centro en una página de confirmación dedicada.
+- Una misma disposición y unos mismos movimientos en todas las pantallas: de derecha a izquierda se avanza, de izquierda a derecha se vuelve, arriba/abajo cambia, tocar actúa y mantener hace la acción fuerte.
 - Los ítems del menú actualizan dinámicamente sus etiquetas (p. ej., layout de teclado muestra la selección actual).
 
 <Note>

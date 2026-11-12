@@ -20,14 +20,16 @@ graph TD
     ROOT --> DANGER["Danger Zone"]
     ROOT --> INFO["Info"]
     
-    TOOLS --> IMP["Import"]
     TOOLS --> EXP["Export"]
+    TOOLS --> IMP["Import"]
     TOOLS --> BTC["Bitcoin"]
     TOOLS --> CHR["Chrome: On/Off"]
     
-    SETTINGS --> ROT["Rotate Screen"]
+    SETTINGS --> CTL["Control: Gestures/Buttons"]
+    SETTINGS --> TUT["Tutorial"]
+    SETTINGS --> ROT["Hand: Right/Left-handed"]
     SETTINGS --> KB["Keyboard: XX-XX"]
-    SETTINGS --> UILANG["UI Language"]
+    SETTINGS --> UILANG["Language"]
     SETTINGS --> READER["Reader: On/Off"]
     SETTINGS --> PWD["Pwd: XX"]
     
@@ -45,15 +47,15 @@ graph TD
 
 ## Navigating the menu
 
-| Gesture | Action |
-|---------|--------|
-| **Up ↑** | Move selection up (wraps to bottom) |
-| **Down ↓** | Move selection down (wraps to top) |
-| **Center ●** | Select / Execute the highlighted item |
-| **Left ←** | Go back to parent menu or exit to credentials |
-| **Right →** | Exit menu, jump to credential slot 0 |
+| Action | Gestures | Effect |
+|--------|----------|--------|
+| **Up ↑** | Swipe top → bottom | Previous entry |
+| **Down ↓** | Swipe bottom → top | Next entry |
+| **Center ●** | Tap the centre | Open the submenu / run the entry |
+| **Left ←** | Swipe left → right | Back to the parent menu; from the main menu, out to the "+ Add new" slot (or the last account when every slot is used) |
+| **Right →** | Swipe right → left | Out of the menu to account 1, from any level |
 
-When a menu has more items than fit on the 4-row display, a **scrollbar with thumb** appears on the right edge. The selection stays visible as you scroll.
+Since 1.1.0 the menu shows **one entry at a time** in big text (`ZerokeyMenu::displayMenu()`): the path in the top row, the value in the band, the next entry under it and a position bar on the right. Up/Down slide vertically below the path row; entering or leaving a submenu slides horizontally (see [Display System](/firmware/display)).
 
 ---
 
@@ -97,7 +99,9 @@ Export sends **plaintext credentials** over USB serial. Only perform this on a t
 
 | Item | Action |
 |------|--------|
-| **Rotate Screen** | Flips the display 180° for left/right-handed use. Also inverts touch controls. Saved in EEPROM. |
+| **Control: Gestures / Buttons** | Input mode (1.1.0): swipe across the pads, or press them one by one. Saved in EEPROM (`0x000E`; blank = Buttons, so units updated from 1.0 keep their behaviour). Switching to Gestures runs the tutorial. See [Touch Input Handling](/firmware/io-touch-handling). |
+| **Tutorial** | Replays the animated interactive tutorial (`runInputTutorial()`). |
+| **Hand: Right-handed / Left-handed** | Turns the display 180° and remaps the pads so "up" stays the pad at the top of the screen. Right-handed (panel rotation 2) is the default. Saved in EEPROM. |
 | **Keyboard: XX-XX** | Cycles through 9 keyboard layouts (EN-US → DA-DK → DE-DE → ES-ES → FR-FR → HU-HU → IT-IT → PT-PT → SV-SE → EN-US). Saved in EEPROM. |
 | **UI Language** | Cycles the on-screen interface language (English ↔ Spanish). Saved in EEPROM. |
 | **Reader: On/Off** | Toggles the persistent HID [screen-reader mode](/firmware/screen-reader) — types the screen over USB so a unit with a dead display is still usable. Saved in EEPROM. |
@@ -117,11 +121,11 @@ TOTP is accessed from the credential view, not the main menu. When viewing a cre
 
 ### ⚠️ Danger Zone
 
-Every action in this section shows a **confirmation page** that requires pressing Center to proceed or Left to cancel:
+Every action in this section shows a **confirmation page** that fires only while the centre is **held** for 1.5 s (a tap does nothing); Left cancels:
 
 | Item | Effect | Reversible? |
 |------|--------|-------------|
-| **Factory Reset** | Runs `eraseAll()` (3-second countdown, encrypted blanks over all 61 slots + clears TOTP metadata) and resets the provisioning flag to `0x00`, so the next boot starts the setup wizard. | ❌ No |
+| **Factory Reset** | Runs `eraseAll()` (3-second countdown, encrypted blanks over all 61 slots + clears TOTP metadata) and resets the provisioning flag to `0x00`, so the next boot starts the setup wizard. It then shows a fixed "unplug it" card and halts — no pad is answered until the device is unplugged. | ❌ No |
 | **Bootloader Mode** | Sets double-reset magic word (`0xF01669EF` at `0x20007FFC`), then issues `NVIC_SystemReset()`. Device reboots into USB DFU bootloader for firmware flashing. | ✅ Yes (reflash) |
 
 ---
@@ -129,39 +133,39 @@ Every action in this section shows a **confirmation page** that requires pressin
 ### ℹ️ Info
 
 Read-only submenu showing:
-- **SW: x.x.x** — firmware version from `zerokeyInfo::getSoftwareVersion()`
+- **SW: x.x.x** — firmware version from `zerokeyInfo::getSoftwareVersion()` (`1.1.0`)
 - **SN: XXXXXXXX** — hardware serial from the SAMD21 unique ID registers
+- **MCU**, **Sec rev**, **Sec SN** — microcontroller ID and the ATECC608A revision and serial
+- **Slots: used/61** and **Built:** — slot usage and build date
 
 ---
 
 ## Setup wizard
 
-The setup wizard runs on first boot (or after factory reset). It consists of **10 internal pages** across **9 visible steps**:
+The setup wizard runs on first boot (or after a factory reset). Since 1.1.0 it is **7 visible steps**, each a card in the menu layout, driven **only by swipes** — a centre tap just restarts the animated cue, so a stray tap can never skip a step. The wizard always switches the input mode to Gestures; Buttons can be chosen afterwards in Settings.
 
 ```mermaid
 graph LR
-    W1["1. Welcome"] --> W2["2. Navigation"]
-    W2 --> W3["3. Rotate Screen"]
-    W3 --> W4["4. Keyboard Layout"]
+    W1["1. Language"] --> W2["2. Hand"]
+    W2 --> W3["3. Tutorial"]
+    W3 --> W4["4. PC keyboard"]
     W4 --> W5["5. Create PIN"]
-    W5 --> W6["6. Confirm PIN"]
-    W6 --> W7["7. Unlock Info"]
-    W7 --> W8["8. Accounts Info"]
-    W8 --> W9["9. Generate IV"]
-    W9 --> W10["10. Ready!"]
+    W5 --> W6["6. PIN saved"]
+    W6 --> IV["Generate IV<br/>(hidden)"]
+    IV --> W7["7. Ready"]
     
     style W5 fill:#fef3c7,stroke:#d97706,color:#000
     style W6 fill:#fef3c7,stroke:#d97706,color:#000
-    style W9 fill:#fee2e2,stroke:#dc2626,color:#000
+    style IV fill:#fee2e2,stroke:#dc2626,color:#000
 ```
 
-Pages with more than 4 lines of text are **vertically scrollable** using Up/Down. A scrollbar with thumb appears on the right edge.
+| Gesture on a card | Effect |
+|-------------------|--------|
+| Swipe up / down | Change the value (language, hand — the screen turns at once — or keyboard layout) |
+| Swipe right → left | Next step. On "Create PIN" it opens the PIN wheel; on "Ready" it goes to the PIN screen |
+| Swipe left → right | Previous step (going back skips the tutorial and the key generation) |
 
-Each wizard page supports:
-- **Right** → advance to next page
-- **Left** → go back to previous page
-- **Center** → action (toggle orientation, change layout, start PIN entry)
-- **Up/Down** → scroll content
+On the wizard's PIN wheel, erasing with no digit entered returns to the "Create PIN" card. User guide: [Initial Setup](/getting-started/setup-wizard).
 
 ---
 
@@ -169,8 +173,8 @@ Each wizard page supports:
 
 The menu system is intentionally minimalist:
 - No deep submenus — every option is **two taps away** from the main menu.
-- All destructive actions require explicit Center confirmation on a dedicated page.
-- Layout and gestures remain consistent across firmware versions.
+- All destructive actions require holding the centre on a dedicated confirmation page.
+- One layout and one set of moves on every screen: swipe right to left to go on, left to right to go back, up/down to change, tap to act, hold for the strong action.
 - Menu items dynamically update their labels (e.g., keyboard layout shows current selection).
 
 <Note>
