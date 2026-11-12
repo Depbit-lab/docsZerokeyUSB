@@ -1,99 +1,88 @@
 ---
 title: "Códigos 2FA (TOTP)"
-description: "Cómo introducir la fecha/hora la primera vez, ver el código de 6 dígitos con cuenta atrás y teclearlo automáticamente al ordenador."
+description: "Cómo meter la fecha y la hora la primera vez, ver el código de 6 cifras y hacer que se escriba en tu ordenador."
 ---
 
-ZeroKeyUSB puede generar **códigos TOTP (RFC 6238)** completamente offline — los mismos que verías en Google Authenticator, pero sin móvil. Esta guía cubre el flujo de uso. Para añadir un secreto TOTP a una credencial, ver [Importar credenciales](/es/getting-started/importing-credentials).
+ZeroKeyUSB puede generar **códigos 2FA (TOTP)** sin conexión, los mismos códigos de 6 cifras que verías en una app de autenticación, sin necesidad de móvil. Esta guía explica cómo usarlos. Para añadir un secreto 2FA a una cuenta, ver [Importar credenciales](/es/getting-started/importing-credentials).
 
 <Note>
-**Antes de empezar:** la credencial tiene que tener un secreto TOTP cargado (en el campo `2FA`). Si verás `2FA --` en pantalla, no lo tiene. Carga el secreto desde el web manager o por USB-CDC primero.
+**Antes de empezar:** la cuenta tiene que tener un secreto 2FA cargado. En su campo 2FA verás entonces `2FA (OK)`; `2FA --` significa que no tiene. Carga antes el secreto desde el web manager.
 </Note>
 
----
-
-## Paso 1 — Navegar al campo 2FA
-
-Desde la pantalla principal de la credencial, pulsa **Abajo** hasta llegar al campo 2FA. El icono pasa de candado (Pass) a llave (2FA). Si la credencial tiene secreto cargado, verás `2FA (OK)`. Si no, `2FA --`.
-
-<img src="/images/steps/totp-codes-01-nav-2fa.svg" alt="Campo 2FA seleccionado" />
-
-*Con el campo 2FA seleccionado (icono llave invertido), pulsa **Centro** corto para empezar a calcular el código.*
+En las ilustraciones una **flecha azul** es un deslizamiento y el **punto central iluminado** un toque; en modo Botones pulsa el punto que va entre paréntesis.
 
 ---
 
-## Paso 2 — Introducir la fecha (primera vez de la sesión)
+## Paso 1 — Ir al campo 2FA
 
-El ATECC608A no tiene RTC. Necesita la fecha y hora **una sola vez** por sesión (entre apagados). El dispositivo te pide primero la fecha en formato `DD/MM/AA`.
+En la cuenta, desliza **hacia arriba** (Abajo) para pasar del sitio al usuario, a la clave y luego a **2FA**. Toca el centro (Centro).
 
-<img src="/images/steps/totp-codes-02-date.svg" alt="Introducir fecha" />
-
-| Botón | Acción |
-|-------|--------|
-| **Arriba/Abajo** | Subir/bajar el dígito actual (0–9) |
-| **Izquierda/Derecha** | Mover el cursor entre dígitos (saltando los `/`) |
-| **Centro** | Confirmar la fecha y pasar a la hora |
-
-*Pon la fecha de hoy y pulsa **Centro**.*
+<img src="/images/steps/v1-1/es/totp-codes-01-nav-2fa.svg" alt="Campo 2FA: toca el centro" />
 
 ---
 
-## Paso 3 — Introducir la hora
+## Paso 2 — Meter la fecha (una vez por sesión)
 
-Mismo flujo, ahora con formato `HH:MM` (hora local 24h).
+El dispositivo no tiene un reloj que siga en hora mientras está desconectado, así que pide la fecha y la hora **una vez** cada vez que lo conectas. Primero la fecha, como `DD/MM/AA`.
 
-<img src="/images/steps/totp-codes-03-time.svg" alt="Introducir hora" />
+<img src="/images/steps/v1-1/es/totp-codes-02-date.svg" alt="Meter la fecha: desliza hacia arriba para subir la cifra" />
 
-*Mismos botones que en la fecha. Cuando termines, pulsa **Centro** para calcular el código.*
+| Movimiento | Gestos | Botones |
+|------------|--------|---------|
+| Cambiar la cifra elegida | Deslizar arriba / abajo | Arriba / Abajo |
+| Pasar a la cifra siguiente / anterior | Deslizar a la derecha / izquierda | Derecha / Izquierda |
+| Confirmar la fecha | Tocar el centro | Centro |
+
+En esta pantalla la selección sigue al dedo (deslizar hacia arriba = la cifra sube). Deja el dedo en el último punto para que siga avanzando.
+
+---
+
+## Paso 3 — Meter la hora
+
+Igual, ahora `HH:MM` en hora local de 24 horas. Toca el centro para calcular el código.
+
+<img src="/images/steps/v1-1/es/totp-codes-03-time.svg" alt="Meter la hora y tocar el centro" />
 
 <Tip>
-La hora puede ser tu hora local exacta — el dispositivo no aplica zona horaria. Si el servicio espera UTC y tú vives en otro huso, ajusta manualmente.
+Usa tu hora local tal como la marca tu reloj; el dispositivo no aplica zona horaria.
 </Tip>
 
 ---
 
-## Paso 4 — Ver el código TOTP
+## Paso 4 — El código
 
-Tras introducir hora y fecha, el ATECC608A calcula el HMAC-SHA1 del secreto + epoch/30 y muestra el resultado de 6 dígitos. La barra inferior se vacía conforme se acerca el final del intervalo de 30 segundos.
+Aparece el código de 6 cifras. Se renueva solo cada 30 segundos mientras está en pantalla.
 
-<img src="/images/steps/totp-codes-04-view-code.svg" alt="Código TOTP en pantalla" />
+<img src="/images/steps/v1-1/es/totp-codes-04-view-code.svg" alt="El código 2FA" />
 
-*Con el cursor sobre el campo de tu app (donde te pide el código 2FA), pulsa **Centro** corto. El dispositivo teclea los 6 dígitos del código al ordenador como si fueran un teclado normal.*
-
-<Note>
-Si la cuenta atrás llega a 0 antes de que confirmes, el código se regenera automáticamente — no tienes que volver a meter la hora.
-</Note>
+*Pon el cursor en la casilla 2FA de la web o la app y **toca el centro**: el dispositivo escribe las 6 cifras en tu ordenador y vuelve al campo 2FA de la cuenta.*
 
 ---
 
-## Paso 5 — Siguientes códigos en la misma sesión
+## Siguientes códigos
 
-Mientras el dispositivo siga enchufado, no tendrás que volver a meter fecha y hora. La próxima vez que entres a un campo 2FA (en cualquier credencial), saltarás directamente al paso 4 con un código calculado con el tiempo actual.
-
-<img src="/images/steps/totp-codes-05-next-code.svg" alt="Siguiente código en la sesión" />
-
-*Pulsa **Centro** corto para teclear el código al ordenador, o **Izquierda** para volver a la vista principal de la credencial sin teclear nada.*
+Mientras el dispositivo siga conectado, recuerda la fecha y la hora: la próxima vez que toques el centro en un campo 2FA (de cualquier cuenta) el código sale directamente.
 
 ---
 
-## Tabla rápida
+## Referencia rápida
 
-| Pantalla | Botones útiles |
-|----------|----------------|
-| Campo `2FA (OK)` | **Centro** → entrar al flujo TOTP |
-| Campo `2FA --` | (sin secreto cargado, nada que hacer) |
-| Introducir fecha | **Arr/Abj**: dígito · **Izd/Drc**: cursor · **Centro**: confirmar |
-| Introducir hora | Igual que la fecha |
-| Ver código | **Centro**: teclear al ordenador · **Izquierda**: salir |
+| Pantalla | Gestos | Botones |
+|----------|--------|---------|
+| Campo `2FA (OK)` | Tocar el centro → código | Centro |
+| Campo `2FA --` | Sin secreto cargado: nada que hacer | — |
+| Fecha / hora | Deslizar arriba/abajo: cifra · derecha/izquierda: siguiente/anterior · tocar: confirmar | Arriba/Abajo · Derecha/Izquierda · Centro |
+| El código | Tocar el centro: escribirlo y volver | Centro |
 
 ---
 
-## Próximos pasos
+## Siguientes pasos
 
 <CardGroup cols={2}>
-  <Card title="Importar secretos TOTP" icon="cloud-arrow-up" href="/es/getting-started/importing-credentials">
-    Cómo cargar el secreto Base32 de tu servicio en una credencial.
+  <Card title="Importar secretos 2FA" icon="cloud-arrow-up" href="/es/getting-started/importing-credentials">
+    Cómo cargar en una cuenta el secreto de tu servicio.
   </Card>
-  <Card title="Crear primera credencial" icon="key" href="/es/getting-started/first-credential">
-    Si aún no tienes credenciales con TOTP, empieza por crear una.
+  <Card title="Crea tu primera credencial" icon="key" href="/es/getting-started/first-credential">
+    Si aún no tienes cuentas, empieza aquí.
   </Card>
 </CardGroup>

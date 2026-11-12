@@ -3,7 +3,7 @@ title: "Hacer una copia de seguridad"
 description: "Exporta todas tus credenciales como CSV por USB serie. Pantalla a pantalla, desde el menú hasta el fichero guardado."
 ---
 
-Una copia de seguridad te protege contra pérdida o daño del dispositivo. ZeroKeyUSB hace que el proceso sea **deliberado**: ninguna credencial sale del dispositivo sin que pulses el botón de autorización físicamente.
+Una copia de seguridad te protege contra pérdida o daño del dispositivo. ZeroKeyUSB hace que el proceso sea **deliberado**: ninguna credencial sale del dispositivo sin que mantengas el punto central para autorizarlo.
 
 <Warning>
 La copia de seguridad sale en **texto plano** por USB serie. Cífrala inmediatamente después de guardarla (GPG, age, 7z con contraseña…) y guárdala offline.
@@ -21,59 +21,62 @@ La copia de seguridad sale en **texto plano** por USB serie. Cífrala inmediatam
 
 ---
 
+Hay dos formas de empezar una exportación. Las dos terminan con que **mantienes el centro** en el dispositivo: nada sale de él sin eso.
+
+- **Desde el web manager** (lo más sencillo): pide la exportación al dispositivo y este te pide que la autorices; ver [desde el web manager](#desde-el-web-manager) más abajo.
+- **Desde el menú del dispositivo**: Herramientas → Exportar, como en los pasos siguientes. Ten ya conectada y escuchando tu herramienta serie, porque los datos salen enseguida.
+
+En las ilustraciones una **flecha azul** es un deslizamiento, el **punto central iluminado** un toque y un **halo** mantenerlo; en modo Botones pulsa el punto que va entre paréntesis.
+
 ## Paso 1 — Abrir el menú
 
-Desde la primera credencial, pulsa **Izquierda**. (También puedes llegar pulsando **Derecha** desde la última credencial → "Anadir Nuevo" → Derecha.) Ver [Navegar el menú](/es/getting-started/menu-navigation) si tienes dudas.
+Desde la cuenta 1, desliza **de izquierda a derecha** (Izquierda): el menú entra por la izquierda. Ver [Navegar por el menú](/es/getting-started/menu-navigation) si tienes dudas.
 
-<img src="/images/steps/creating-backups-01-from-cred.svg" alt="Abrir el menú desde la credencial 1" />
-
-*Pulsa **Izquierda** estando en la credencial 1.*
+<img src="/images/steps/v1-1/es/creating-backups-01-from-cred.svg" alt="Abrir el menú desde la cuenta 1" />
 
 ---
 
-## Paso 2 — Seleccionar "Tools"
+## Paso 2 — Herramientas
 
-<Note>En el firmware actual este menú se llama **Tools** (se llamaba **Backup** cuando se hicieron estas capturas, y ahora contiene también la cartera Bitcoin). La posición y los pasos son idénticos — Export/Import están dentro de él.</Note>
+**Herramientas** es la primera opción del menú. Toca el centro (Centro) para abrirla.
 
-En el menú raíz, **Tools** ya está seleccionado por defecto. Pulsa **Centro** para entrar al submenú.
-
-<img src="/images/steps/creating-backups-02-backup-menu.svg" alt="Menú raíz con Backup seleccionado" />
-
-*Pulsa **Centro**.*
+<img src="/images/steps/v1-1/es/creating-backups-02-tools.svg" alt="Menú principal, Herramientas" />
 
 ---
 
-## Paso 3 — Seleccionar "Exportar"
+## Paso 3 — Exportar
 
-Dentro de Backup tienes `Importar`, `Exportar` y `< Volver`. Pulsa **Abajo** una vez para resaltar `Exportar` y luego **Centro**.
+**Exportar** es la primera opción de Herramientas. Toca el centro.
 
-<img src="/images/steps/creating-backups-03-export-selected.svg" alt="Exportar seleccionado" />
-
-*Pulsa **Abajo** para llegar a `Exportar`, después **Centro** para activar.*
+<img src="/images/steps/v1-1/es/creating-backups-03-export.svg" alt="Herramientas, Exportar" />
 
 ---
 
-## Paso 4 — Autorización física
+## Paso 4 — Confirmar manteniendo
 
-Tras pulsar Centro aparece la pantalla de autorización. Es una **medida de seguridad**: el dispositivo no exporta hasta que mantengas Centro pulsado más de 800 ms (verás el halo grande del botón).
+Una página de confirmación te recuerda que se enviarán **todas** las credenciales al ordenador en claro. Solo sigue si **mantienes el centro unos 1,5 segundos**: mientras mantienes, un borde se llena alrededor de la pantalla. Un toque no hace nada; deslizar de izquierda a derecha (Izquierda) cancela.
 
-<img src="/images/steps/creating-backups-04-authorization.svg" alt="Pantalla de autorización" />
-
-*Antes de continuar, abre tu terminal serie en el host y conéctate al dispositivo (115200 bps), o abre el [web manager](https://zerokeyusb.com/manager). Cuando esté listo para recibir, **mantén Centro ~1 segundo**.*
-
-<Tip>
-Si te lo piensas mejor, **suelta antes de los 800 ms** o pulsa **Izquierda** — la operación se cancela y vuelves al menú.
-</Tip>
+<img src="/images/steps/v1-1/es/creating-backups-04-confirm.svg" alt="Confirmar la exportación: mantén el centro" />
 
 ---
 
-## Paso 5 — Progreso del envío
+## Paso 5 — Envío
 
-Tras autorizar, el dispositivo descifra cada credencial (una por una) y la envía como una línea CSV por USB. La pantalla muestra el progreso.
+El dispositivo lee cada hueco y lo envía como una línea CSV por USB, mostrando el progreso. No tienes que hacer nada.
 
-<img src="/images/steps/creating-backups-05-progress.svg" alt="Progreso de exportación" />
+<img src="/images/steps/v1-1/es/creating-backups-05-progress.svg" alt="Progreso de la exportación" />
 
-*No tienes que pulsar nada. El dispositivo recorre los 61 huecos y al terminar muestra "Exportacion completa" durante 1 segundo antes de volver al menú.*
+*Recorre los 61 huecos y vuelve al menú.*
+
+---
+
+## Desde el web manager
+
+Cuando el [web manager](https://zerokeyusb.com/manager) empieza una exportación, el dispositivo muestra:
+
+<img src="/images/steps/v1-1/es/creating-backups-web-auth.svg" alt="El web manager pide exportar: mantén el centro" />
+
+*Mantén el centro alrededor de un segundo para autorizarla (Botones: mantén Centro). El dispositivo indica que está enviando y, al terminar, "Exportacion lista".*
 
 ---
 
@@ -94,7 +97,7 @@ Mientras el dispositivo envía, en tu terminal serie verás aparecer línea a l�
 | Campo | Significado |
 |-------|-------------|
 | Línea 0 | Número total de huecos (siempre `61`) |
-| `slotIndex` | 0–61 |
+| `slotIndex` | 0–60 |
 | `site` | Sitio (≤32 chars) |
 | `username` | Usuario (≤32 chars) |
 | `password` | Contraseña |
@@ -132,7 +135,7 @@ del zerokeyusb-2026-05-27.csv
 |--------|---------|
 | Tras añadir o importar varias credenciales | Para no perder el trabajo nuevo |
 | Antes de hacer Reset de fábrica o flashear firmware | El reset es irreversible |
-| Antes de cualquier acción del submenú **Peligro** | Idem |
+| Antes de cualquier acción de la **Zona crítica** | Idem |
 | Periódicamente | Como parte de tu rutina de seguridad |
 
 ---

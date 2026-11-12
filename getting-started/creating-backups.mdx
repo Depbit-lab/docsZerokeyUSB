@@ -3,7 +3,7 @@ title: "Create a Backup"
 description: "Export all your credentials as CSV over USB serial. Screen by screen, from the menu to the saved file."
 ---
 
-A backup protects you against loss or damage of the device. ZeroKeyUSB makes the process **deliberate**: no credential leaves the device until you physically press the authorization button.
+A backup protects you against loss or damage of the device. ZeroKeyUSB makes the process **deliberate**: no credential leaves the device until you physically hold the centre dot to authorise it.
 
 <Warning>
 The backup is emitted as **plaintext** over USB serial. Encrypt it right after capturing it (GPG, age, 7z with password…) and store it offline.
@@ -21,59 +21,62 @@ The backup is emitted as **plaintext** over USB serial. Encrypt it right after c
 
 ---
 
+There are two ways to start an export. Both end with you **holding the centre** on the device: nothing leaves it without that.
+
+- **From the web manager** (easiest): it asks the device for the export, and the device asks you to authorise it — see [the web manager way](#the-web-manager-way) below.
+- **From the device menu**: Tools → Export, as in the steps that follow. Have your serial tool already connected and listening, because the data is sent straight away.
+
+In the illustrations a **blue arrow** is a swipe, a **lit centre dot** a tap and a **halo** a hold; in Buttons mode press the dot named in brackets.
+
 ## Step 1 — Open the menu
 
-From the first credential, press **Left**. (You can also get there by pressing **Right** from the last credential → "Add New" → Right.) See [Navigate the menu](/getting-started/menu-navigation) if in doubt.
+From account 1, swipe **left to right** (Left): the menu slides in from the left. See [Navigate the menu](/getting-started/menu-navigation) if in doubt.
 
-<img src="/images/steps/creating-backups-01-from-cred.svg" alt="Open menu from credential 1" />
-
-*Press **Left** while on credential 1.*
+<img src="/images/steps/v1-1/en/creating-backups-01-from-cred.svg" alt="Open the menu from account 1" />
 
 ---
 
-## Step 2 — Select "Tools"
+## Step 2 — Tools
 
-<Note>On current firmware this menu is labelled **Tools** (it was **Backup** when these screenshots were taken, and it now also contains the Bitcoin wallet). The position and steps are identical — Export/Import live inside it.</Note>
+**Tools** is the first entry of the menu. Tap the centre (Centre) to open it.
 
-In the root menu, **Tools** is selected by default. Press **Center** to enter the submenu.
-
-<img src="/images/steps/creating-backups-02-backup-menu.svg" alt="Root menu with Backup selected" />
-
-*Press **Center**.*
+<img src="/images/steps/v1-1/en/creating-backups-02-tools.svg" alt="Main menu, Tools" />
 
 ---
 
-## Step 3 — Select "Export"
+## Step 3 — Export
 
-Inside Backup you have `Import`, `Export` and `< Back`. Press **Down** once to highlight `Export`, then **Center**.
+**Export** is the first entry of Tools. Tap the centre.
 
-<img src="/images/steps/creating-backups-03-export-selected.svg" alt="Export selected" />
-
-*Press **Down** to reach `Export`, then **Center** to activate.*
+<img src="/images/steps/v1-1/en/creating-backups-03-export.svg" alt="Tools, Export" />
 
 ---
 
-## Step 4 — Physical authorization
+## Step 4 — Confirm by holding
 
-After pressing Center, the authorization screen appears. This is a **security measure**: the device doesn't export until you hold Center for more than 800 ms (you'll see the large button halo).
+A confirmation page reminds you that **all** credentials will be sent to the computer in plain form. It only goes ahead if you **hold the centre for about 1.5 seconds**: a border fills around the screen while you hold. A tap does nothing; swiping left to right (Left) cancels.
 
-<img src="/images/steps/creating-backups-04-authorization.svg" alt="Authorization screen" />
-
-*Before continuing, open your serial terminal on the host and connect to the device (115200 bps), or open the [web manager](https://zerokeyusb.com/manager). When it's ready to receive, **hold Center for ~1 second**.*
-
-<Tip>
-Changed your mind? **Release before 800 ms** or press **Left** — the operation is cancelled and you return to the menu.
-</Tip>
+<img src="/images/steps/v1-1/en/creating-backups-04-confirm.svg" alt="Export confirmation: hold the centre" />
 
 ---
 
-## Step 5 — Send progress
+## Step 5 — Sending
 
-After authorizing, the device decrypts each credential (one by one) and sends it as a CSV line over USB. The screen shows the progress.
+The device reads each slot and sends it as a CSV line over USB, showing its progress. You don't have to do anything.
 
-<img src="/images/steps/creating-backups-05-progress.svg" alt="Export progress" />
+<img src="/images/steps/v1-1/en/creating-backups-05-progress.svg" alt="Export progress" />
 
-*You don't have to press anything. The device walks through all 61 slots and on completion shows "Export complete" for 1 second before returning to the menu.*
+*It goes through all 61 slots and then returns to the menu.*
+
+---
+
+## The web manager way
+
+When the [web manager](https://zerokeyusb.com/manager) starts an export, the device shows:
+
+<img src="/images/steps/v1-1/en/creating-backups-web-auth.svg" alt="The web manager asks for an export: hold the centre" />
+
+*Hold the centre for about a second to authorise it (Buttons: hold Centre). The device shows that it is sending, and "Export complete" when it has finished.*
 
 ---
 
@@ -94,7 +97,7 @@ While the device sends, on your serial terminal you'll see lines appear:
 | Field | Meaning |
 |-------|---------|
 | Line 0 | Total number of slots (always `61`) |
-| `slotIndex` | 0–61 |
+| `slotIndex` | 0–60 |
 | `site` | Site (≤32 chars) |
 | `username` | Username (≤32 chars) |
 | `password` | Password |

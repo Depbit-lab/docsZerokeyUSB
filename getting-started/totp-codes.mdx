@@ -1,99 +1,88 @@
 ---
 title: "2FA Codes (TOTP)"
-description: "How to enter date/time the first time, view the 6-digit code with countdown and have it typed automatically to your computer."
+description: "How to enter the date and time the first time, view the 6-digit code and have it typed on your computer."
 ---
 
-ZeroKeyUSB can generate **TOTP codes (RFC 6238)** fully offline — the same ones you'd see in Google Authenticator, without a phone. This guide covers the usage flow. To add a TOTP secret to a credential, see [Importing credentials](/getting-started/importing-credentials).
+ZeroKeyUSB can generate **2FA codes (TOTP)** fully offline — the same 6-digit codes you'd see in an authenticator app, without a phone. This guide covers how to use them. To add a 2FA secret to an account, see [Import credentials](/getting-started/importing-credentials).
 
 <Note>
-**Before you start:** the credential must have a TOTP secret loaded (in the `2FA` field). If you see `2FA --` on screen, it doesn't have one. Load the secret from the web manager or over USB-CDC first.
+**Before you start:** the account must have a 2FA secret loaded. On its 2FA field you then see `2FA (OK)`; `2FA --` means it has none. Load the secret from the web manager first.
 </Note>
 
----
-
-## Step 1 — Navigate to the 2FA field
-
-From the credential's main screen, press **Down** until you reach the 2FA field. The icon switches from padlock (Pass) to key (2FA). If the credential has a secret loaded, you'll see `2FA (OK)`. Otherwise, `2FA --`.
-
-<img src="/images/steps/totp-codes-01-nav-2fa.svg" alt="2FA field selected" />
-
-*With the 2FA field selected (inverted key icon), press **Center** (short) to start calculating the code.*
+In the illustrations a **blue arrow** is a swipe and a **lit centre dot** a tap; in Buttons mode press the dot named in brackets.
 
 ---
 
-## Step 2 — Enter the date (first time per session)
+## Step 1 — Go to the 2FA field
 
-The ATECC608A has no RTC. It needs date and time **just once** per session (between power cycles). The device asks for the date first in `DD/MM/YY` format.
+On the account, swipe **up** (Down) to go from the site to the user, the password and then **2FA**. Tap the centre (Centre).
 
-<img src="/images/steps/totp-codes-02-date.svg" alt="Enter date" />
+<img src="/images/steps/v1-1/en/totp-codes-01-nav-2fa.svg" alt="2FA field: tap the centre" />
 
-| Button | Action |
-|--------|--------|
-| **Up/Down** | Increase/decrease the current digit (0–9) |
-| **Left/Right** | Move the cursor between digits (skipping the `/`) |
-| **Center** | Confirm the date and move to the time |
+---
 
-*Set today's date and press **Center**.*
+## Step 2 — Enter the date (once per session)
+
+The device has no clock that keeps time while it is unplugged, so it asks for the date and time **once** each time you plug it in. First the date, as `DD/MM/YY`.
+
+<img src="/images/steps/v1-1/en/totp-codes-02-date.svg" alt="Enter the date: swipe up to raise the digit" />
+
+| Move | Gestures | Buttons |
+|------|----------|---------|
+| Change the selected digit | Swipe up / down | Up / Down |
+| Move to the next / previous digit | Swipe right / left | Right / Left |
+| Confirm the date | Tap the centre | Centre |
+
+On this screen the selection follows your finger (swipe up = the digit goes up). Keep your finger on the last dot to keep it moving.
 
 ---
 
 ## Step 3 — Enter the time
 
-Same flow, now in `HH:MM` (24h local time) format.
+The same way, now `HH:MM` in 24-hour local time. Tap the centre to calculate the code.
 
-<img src="/images/steps/totp-codes-03-time.svg" alt="Enter time" />
-
-*Same buttons as the date. When done, press **Center** to compute the code.*
+<img src="/images/steps/v1-1/en/totp-codes-03-time.svg" alt="Enter the time, then tap the centre" />
 
 <Tip>
-The time can be your exact local time — the device does not apply a timezone. If the service expects UTC and you live elsewhere, adjust manually.
+Use your local time as shown on your clock; the device does not apply a time zone.
 </Tip>
 
 ---
 
-## Step 4 — View the TOTP code
+## Step 4 — The code
 
-After entering date and time, the ATECC608A computes HMAC-SHA1 of secret + epoch/30 and shows the resulting 6 digits. The bottom bar empties as the 30-second window approaches its end.
+The 6-digit code appears. It renews by itself every 30 seconds while it is on screen.
 
-<img src="/images/steps/totp-codes-04-view-code.svg" alt="TOTP code on screen" />
+<img src="/images/steps/v1-1/en/totp-codes-04-view-code.svg" alt="The 2FA code" />
 
-*With your cursor on the 2FA input field of your app, short-press **Center**. The device types the 6 code digits to the host as if from a normal keyboard.*
-
-<Note>
-If the countdown reaches 0 before you confirm, the code regenerates automatically — you don't have to re-enter the time.
-</Note>
+*Put the cursor in the 2FA box of the website or app and **tap the centre**: the device types the 6 digits on your computer and goes back to the account's 2FA field.*
 
 ---
 
-## Step 5 — Subsequent codes in the same session
+## Next codes
 
-While the device stays plugged in, you won't have to re-enter date and time. The next time you enter a 2FA field (in any credential), you jump straight to step 4 with a code computed using the current time.
-
-<img src="/images/steps/totp-codes-05-next-code.svg" alt="Next code in session" />
-
-*Short-press **Center** to type the code to the host, or **Left** to return to the credential's main view without typing anything.*
+While the device stays plugged in, it remembers the date and time: the next time you tap the centre on a 2FA field (in any account) the code appears straight away.
 
 ---
 
 ## Quick reference
 
-| Screen | Useful buttons |
-|--------|----------------|
-| `2FA (OK)` field | **Center** → enter TOTP flow |
-| `2FA --` field | (no secret loaded, nothing to do) |
-| Enter date | **Up/Down**: digit · **Left/Right**: cursor · **Center**: confirm |
-| Enter time | Same as date |
-| View code | **Center**: type to host · **Left**: exit |
+| Screen | Gestures | Buttons |
+|--------|----------|---------|
+| `2FA (OK)` field | Tap the centre → code | Centre |
+| `2FA --` field | No secret loaded: nothing to do | — |
+| Date / time | Swipe up/down: digit · right/left: next/previous · tap: confirm | Up/Down · Right/Left · Centre |
+| The code | Tap the centre: type it and go back | Centre |
 
 ---
 
 ## Next steps
 
 <CardGroup cols={2}>
-  <Card title="Import TOTP secrets" icon="cloud-arrow-up" href="/getting-started/importing-credentials">
-    How to load the Base32 secret from your service into a credential.
+  <Card title="Import 2FA secrets" icon="cloud-arrow-up" href="/getting-started/importing-credentials">
+    How to load the secret from your service into an account.
   </Card>
   <Card title="Create your first credential" icon="key" href="/getting-started/first-credential">
-    If you don't have credentials with TOTP yet, start by creating one.
+    If you have no accounts yet, start here.
   </Card>
 </CardGroup>
