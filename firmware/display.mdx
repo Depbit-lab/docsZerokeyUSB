@@ -109,10 +109,10 @@ Rules followed by every screen: one idea per screen, cues are animated symbols r
 - After a factory reset the device shows a fixed `RESET DONE` / `Unplug it` card and stops answering the pads until it is unplugged.
 
 ### TOTP code screen
-- Large **2× text size** for the 6-digit code.
-- Countdown in seconds: `"Expires in: XXs"`.
-- Refreshes automatically every second.
-- Touch any pad to return to credentials.
+- The 6-digit code in **2× text size** (rows 16–31) under the header.
+- Seconds left, right-aligned on the header row (`23s`), and a 2-px bar at rows 10–11 that empties over the 30-s window (1.1.0; before, the countdown was printed at y = 40, below the panel, and never visible).
+- The main loop checks it every 200 ms and redraws when the second or the code changes; a new code is computed at each 30-s step.
+- Only Center acts here: it types the code over USB HID and returns to the account's 2FA field. The other pads do nothing.
 
 ---
 

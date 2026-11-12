@@ -109,10 +109,10 @@ Reglas que cumple cada pantalla: una idea por pantalla, pistas con símbolos ani
 - Tras un reset de fábrica el dispositivo muestra una tarjeta fija `RESET COMPLETADO` / `Desconectalo` y deja de responder a los pads hasta que se desconecta.
 
 ### Pantalla de código TOTP
-- **Texto a doble tamaño** para el código de 6 dígitos.
-- Cuenta atrás en segundos: `"Expires in: XXs"`.
-- Se refresca automáticamente cada segundo.
-- Tocar cualquier pad vuelve a las credenciales.
+- El código de 6 dígitos a **doble tamaño** (filas 16–31) bajo el título.
+- Los segundos que quedan, alineados a la derecha en la fila del título (`23s`), y una barra de 2 px en las filas 10–11 que se vacía durante la ventana de 30 s (1.1.0; antes la cuenta atrás se imprimía en y = 40, por debajo del panel, y nunca se veía).
+- El bucle principal lo comprueba cada 200 ms y redibuja cuando cambia el segundo o el código; cada paso de 30 s se calcula un código nuevo.
+- Aquí solo responde Centro: teclea el código por USB HID y vuelve al campo 2FA de la cuenta. Los demás pads no hacen nada.
 
 ---
 

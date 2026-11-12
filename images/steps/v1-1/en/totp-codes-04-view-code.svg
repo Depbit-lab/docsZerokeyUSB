@@ -17,7 +17,7 @@
   <!-- Fondo negro del OLED (la pantalla 128:32 no llena todo el recorte 491:149 — el
        letterbox arriba/abajo tiene que verse negro puro, no el color del marco). -->
   <rect x="219" y="437" width="491" height="149" fill="#000"/>
-    <image href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAAAgCAIAAABVQOdyAAABL0lEQVR4nO2ZQRLCIAxFqdOVR+D+Z8sRuq2LjgwjJIQSROG/cZwa06/ij6Rxo+N0Ef65OedC8ONhCMaRK6cdOk4rqX/iWsr0Xn42zbF6J6uxx6bjDKjJyfJRSULER7Jpzvz1wTlaOA43vaYQobdUj9r6ZfbbZ1b5sZjso30lu+6zVsD9L6CK4vJRaVefcvXzX0BsxpaPneoIEZ8cTLzoAAAAAAAAAAAG0uVSUx6icde3lIxFObXs6LT4WrKOPseWR1d1MGYYJ3u8Nu4Zn4ZpUlFTo6PJ6QEqYI1xNAclHrTV1DNq8ooKWOYPmWxP4kXfcZVRu8foKwxd0HJ0/+HTd/cx7Z1JbU7vbocDe8C8e4DsKauOm754Vg9QAfPOgqxcSc0znHsKcr4VqAAAgBvHC07ZC6h899GsAAAAAElFTkSuQmCC" x="219" y="437" width="491" height="149"
+    <image href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAAAgCAIAAABVQOdyAAABZ0lEQVR4nO2ZSxKDIAyGsePKI3D/s3EEt3bhlEkNCYgEqv2/6XRsGiOPhKTpFNbNEfwyOeei8PAxCqlk17lOWLdWpkaRXTfxHv6uf8t1Go7+puhrIs1uptsiOWCJjj6meJck8cQs17lFfCjDo4NPHx7S7inX8aU89XCtSMLHlEVsdSO5JlTCZzRXP+yUP2aVPckryXX//QiQRhjzgV8mOs1dPo8dXCSb1X989ctnTc8iv0yJDeC7VAe3o0g8u7jjoh/ciM/FonoEAIBqvn7TAgm78/plZBcAAAAAGUySu15ZSRVFYG1RyVqydZp9lm6nXKctqIIGY9KM0338rNwLfhq7SVmbJXZKdCxABAymUztaIjAfbGuznFG9SUTAYPr9IZOsSbzqd1JknM0x5RGGKujvMD/4yqt7yvXK5KyOdbUjgRzw3Byg+1Srijt0vMsCRMBze0GtvDJc7uHUWdD1W4EIAAC4cbwBJjdNFzPKZukAAAAASUVORK5CYII=" x="219" y="437" width="491" height="149"
          image-rendering="pixelated" style="image-rendering:pixelated"
          preserveAspectRatio="xMidYMid meet"/>
   <circle cx="823" cy="447" r="22" fill="#5a6478"/>
