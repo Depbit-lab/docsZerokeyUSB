@@ -1,106 +1,76 @@
 ---
 title: "Sensor táctil"
-description: "Los cinco puntos dorados que sustituyen a los botones — una interfaz duradera e intuitiva para un control sin fisuras."
+description: "Los cinco puntos dorados que sustituyen a los botones: un controlador capacitivo bajo la resina, que se lee como deslizamientos o como pulsaciones."
 ---
 
-## Diseñado para durar
+## Sin partes móviles
 
-ZeroKeyUSB **no tiene partes móviles**.\
-En lugar de botones o interruptores frágiles, usa un **controlador táctil capacitivo de seis canales (TS06)** que detecta el contacto preciso del dedo a través de la superficie de resina del dispositivo.
-
-El resultado: una **interfaz sellada y a prueba de desgaste** que permanece perfectamente sensible incluso después de años de uso diario.
+ZeroKeyUSB **no tiene botones mecánicos**. Cinco puntos de contacto dorados están conectados a un **controlador táctil capacitivo de seis canales (TS06)**, que detecta el dedo a través de la superficie de resina del dispositivo. No hay nada que haga clic, así que no hay desgaste mecánico.
 
 ---
 
 ## Cómo funciona
 
-El **controlador táctil TS06** monitoriza continuamente pequeños cambios eléctricos en cinco puntos dorados de contacto situados en la superficie frontal del dispositivo.\
-Cuando tu dedo se acerca, el chip detecta un cambio de capacitancia — identificando al instante qué área se ha tocado.
+El TS06 mide pequeños cambios de capacitancia en cada punto de contacto e informa, en un registro, de **todos los puntos que se están tocando** (modo multisalida). El firmware lee ese registro cada **10 ms** en modo Gestos (30 ms en modo Botones) y deduce qué ha hecho el dedo.
 
-Esta detección ocurre **miles de veces por segundo**, permitiendo una navegación fluida sin retraso ni disparos falsos.
+Como informa de todos los puntos bajo el dedo a la vez (una yema suele cubrir dos o tres), el firmware puede seguir un dedo que **se desliza por los puntos**, no solo pulsaciones sueltas. Eso es lo que hace posibles los [gestos](/es/getting-started/gestures).
 
 ---
 
 ## Distribución táctil
 
-Los cinco puntos dorados están dispuestos ergonómicamente en cruz:
+Los cinco puntos dorados forman una cruz junto a la pantalla:
 
-| Dirección      | Función                         |
-| -------------- | -------------------------------- |
-| **Arriba (↑)**     | Scroll o cambiar carácter       |
-| **Abajo (↓)**   | Scroll inverso o decrementar |
-| **Izquierda (←)**   | Volver / Pantalla anterior        |
-| **Derecha (→)**  | Continuar / Confirmar / Siguiente        |
-| **Centro (•)** | Seleccionar o ejecutar acción         |
+| Punto | Acción (modo Botones) | En modo Gestos |
+|-------|-----------------------|----------------|
+| **Arriba (↑)** | Arriba: campo, opción o valor anterior | Parte del deslizamiento vertical |
+| **Abajo (↓)** | Abajo: campo, opción o valor siguiente | Parte del deslizamiento vertical |
+| **Izquierda (←)** | Volver / anterior | Parte del deslizamiento horizontal |
+| **Derecha (→)** | Avanzar / siguiente | Parte del deslizamiento horizontal |
+| **Centro (•)** | Actuar sobre lo seleccionado | Tocarlo o mantenerlo; todo deslizamiento pasa por él |
 
-El sexto canal oculto se usa internamente para estabilizar las lecturas y filtrar ruido ambiental.
-
----
-
-## Pulsación corta vs. larga
-
-Cada toque se puede interpretar como **toque corto** o **pulsación larga**, según la duración:
-
-| Tipo de pulsación      | Tiempo | Uso típico                                                                            |
-| --------------- | --------- | -------------------------------------------------------------------------------------- |
-| **Pulsación corta** | \< 800 ms | Mover, seleccionar, confirmar                                                                  |
-| **Pulsación larga**  | \> 800 ms | Disparar acciones especiales (p. ej., abrir menú, siguiente credencial, confirmar reset de fábrica) |
-
-El firmware usa un **filtro adaptativo de debounce** para asegurar entrada fiable incluso con dedos mojados o contacto ligero.
+De los seis canales del TS06, cinco están conectados a los puntos; el sexto (CH1) no está conectado. El controlador también activa un aviso de ruido, que el firmware no toma como toque.
 
 ---
 
-## Feedback visual
+## Pulsaciones y gestos
 
-Cuando tocas un punto, la pantalla OLED reacciona al instante con:
+| Entrada | Cómo | Uso típico |
+|---------|------|------------|
+| **Deslizar** | Del punto de un borde, por el centro, al punto contrario | Moverse entre cuentas, opciones y pasos |
+| **Tocar** | El centro, o el centro con un vecino, o los cinco puntos | Escribir el campo, abrir, aplicar |
+| **Mantener** | El centro 0,8 s | Editar el campo |
+| **Mantener para confirmar** | El centro 1,5 s en una página de confirmación | Reset de fábrica, bootloader, autorizar una exportación |
 
-- **Animación de resaltado** para la opción seleccionada.
-- **Indicador de progreso** para pulsaciones largas.
-- **Transiciones suaves** entre pantallas del menú.
+En modo Botones cada punto es un botón: una pulsación de al menos 80 ms cuenta, y 800 ms la convierten en pulsación larga. Ver [Gestión del táctil](/es/firmware/io-touch-handling) para los tiempos y las reglas.
 
-Este feedback inmediato ayuda a los usuarios a tener seguridad de que cada acción se ha registrado — incluso sin sonido ni vibración.
+---
+
+## Respuesta visual
+
+- La pantalla se desliza en la dirección del gesto, así ves que el movimiento se ha entendido.
+- Mientras mantienes, un borde se va llenando alrededor de la pantalla.
+- Tocar solo un punto del borde muestra un dibujo del deslizamiento que toca hacer.
 
 ---
 
 ## Por qué táctil en vez de botones
 
-| Característica            | Botones físicos | Sistema táctil de ZeroKeyUSB                     |
-| ------------------ | ---------------- | ------------------------------------------- |
-| Desgaste mecánico    | Alto             | Ninguno                                        |
-| Resistencia al agua   | Limitada          | Totalmente sellado                                |
-| Protección contra polvo    | Requiere juntas | Encapsulado herméticamente                   |
-| Ruido              | Click audible    | Silencioso                                      |
-| Vida útil           | ~100k pulsaciones    | Prácticamente ilimitada                       |
-| Flexibilidad de diseño | Fija            | Detección capacitiva invisible a través de la resina |
+| Característica | Botones físicos | Puntos táctiles de ZeroKeyUSB |
+|----------------|-----------------|-------------------------------|
+| Desgaste mecánico | Sí | Ninguno |
+| Salpicaduras y polvo | Huecos alrededor de las teclas | Bajo la resina: resistente a salpicaduras y polvo (no apto para sumergir) |
+| Ruido | Clic audible | Silencioso |
+| Objetivos pequeños | Hay que acertar la tecla | Los gestos solo necesitan la dirección |
 
 ---
 
-## Sensibilidad adaptativa
+## Sensibilidad
 
-ZeroKeyUSB calibra automáticamente la sensibilidad táctil durante el arranque.\
-Esto garantiza un rendimiento estable en distintos entornos — ya sea en aire seco, en condiciones húmedas o incluso con guantes ligeros.
+El TS06 no guarda su configuración al apagarse, así que el firmware lo configura en **cada arranque** y vuelve a leer los ajustes para comprobarlos: la sensibilidad de cada canal, el modo multisalida y la liberación de los canales que el chip retiene tras un reset. El controlador sigue por sí mismo la referencia de cada canal.
 
-El firmware ajusta dinámicamente los umbrales para rechazar toques accidentales de objetos cercanos o ruido eléctrico.
-
----
-
-## Consumo energético mínimo
-
-A pesar de escanear todos los canales continuamente, el sistema táctil consume solo unos pocos microamperios.\
-Esto permite que ZeroKeyUSB siga siendo **altamente responsivo** mientras se mantiene **extremadamente eficiente energéticamente** — perfecto para un dispositivo USB siempre listo.
-
----
-
-## Construido para durar
-
-Como no hay partes mecánicas, la interfaz táctil contribuye directamente a la vida útil y fiabilidad del dispositivo.\
-Incluso después de años de uso, la respuesta sigue siendo idéntica al primer día.
-
-Combinado con el encapsulado a prueba de agua, este diseño garantiza que **ZeroKeyUSB seguirá funcionando perfectamente mucho después de que la mayoría de los dispositivos electrónicos fallen**.
-
----
+La sensibilidad no es idéntica en todos los puntos: el izquierdo es el menos sensible y el derecho el que más. Con los gestos esto importa mucho menos, porque un deslizamiento se juzga por hacia dónde fue el dedo, no por acertar un punto concreto.
 
 <Note>
-  La interfaz táctil se diseñó para interacción humana — ignora electricidad estática, humedad o contactos aleatorios de objetos.\
-  Solo se reconocen los toques intencionados.
+Los ajustes de registro detallados están en [Gestión del táctil](/es/firmware/io-touch-handling#inicialización-del-ts06).
 </Note>

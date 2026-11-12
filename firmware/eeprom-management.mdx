@@ -38,8 +38,12 @@ block-beta
 | Address | Size | Content | Source in code |
 |---------|------|---------|---------------|
 | `0x0000` | 1 B | Config wizard flag (`0x42` = done) | `zerokey-setup.cpp` |
-| `0x0001` | 1 B | Screen orientation (0 = normal, 1 = inverted) | `EEPROM_SCREEN_MODE_ADDR` |
+| `0x0001` | 1 B | Hand: `1` = left-handed (rotation 0); any other value = right-handed, the default (rotation 2, pads remapped) | `EEPROM_SCREEN_MODE_ADDR` |
 | `0x0002` | 1 B | Failed-attempts counter (persistent backoff, re-applied at boot) | `FAILED_ATTEMPTS_ADDR` |
+| `0x0003` | 1 B | Screen-reader mode persisted across reboots | `EEPROM_SCREEN_READER_ADDR` |
+| `0x0004` | 1 B | Random-password format | `EEPROM_PWTYPE_ADDR` |
+| `0x000D` | 1 B | Browser link (Chrome: On/Off) | `EEPROM_CHROMELINK_ADDR` |
+| `0x000E` | 1 B | Input mode (1.1.0): Gestures or Buttons. Blank (`0xFF`) reads as Buttons, so a unit updated from 1.0 keeps its behaviour until changed; the setup wizard sets Gestures | `EEPROM_INPUT_MODE_ADDR` |
 | `0x0010–0x001F` | 16 B | AES-CBC Initialization Vector | `EEPROM_IV_ADDR` |
 | `0x0020–0x0023` | 4 B | *Reserved.* Legacy PIN-attempt threshold from the removed Counter0 lockout; no longer read or written. | — |
 | `0x0024` | 1 B | Provisioning flag (`0xA5` = provisioned) | `EEPROM_PROVISION_FLAG` |

@@ -1,106 +1,76 @@
 ---
 title: "Touch Sensor"
-description: "The five golden points that replace buttons — a durable, intuitive interface for seamless control."
+description: "The five gold points that replace buttons: a capacitive controller under the resin, read as swipes or as presses."
 ---
 
-## Designed for durability
+## No moving parts
 
-ZeroKeyUSB has **no moving parts**.\
-Instead of fragile buttons or switches, it uses a **six-channel capacitive touch controller (TS06)** that detects precise finger contact through the device’s resin surface.
-
-The result: a **sealed, wear-proof interface** that remains perfectly responsive even after years of daily use.
+ZeroKeyUSB has **no mechanical buttons**. Five gold contact points are wired to a **six-channel capacitive touch controller (TS06)**, which senses the finger through the device's resin surface. Nothing clicks, so nothing wears out mechanically.
 
 ---
 
 ## How it works
 
-The **TS06 touch controller** continuously monitors small electrical changes on five golden contact points located on the front surface of the device.\
-When your finger approaches, the chip detects a shift in capacitance — instantly identifying which area has been touched.
+The TS06 measures small changes in capacitance on each contact point and reports, in one register, **every point that is being touched** (multi-output mode). The firmware reads that register every **10 ms** in Gestures mode (30 ms in Buttons mode) and works out what the finger did.
 
-This detection happens **thousands of times per second**, allowing smooth navigation without delay or misfires.
+Because it reports all the points under the finger at once — a fingertip often covers two or three — the firmware can follow a finger **sliding across the points**, not only single presses. That is what makes [gestures](/getting-started/gestures) possible.
 
 ---
 
 ## Touch layout
 
-The five golden points are arranged ergonomically in a cross pattern:
+The five gold points form a cross beside the screen:
 
-| Direction      | Function                         |
-| -------------- | -------------------------------- |
-| **Up (↑)**     | Scroll or change character       |
-| **Down (↓)**   | Reverse scroll or decrease value |
-| **Left (←)**   | Go back / Previous screen        |
-| **Right (→)**  | Continue / Confirm / Next        |
-| **Center (•)** | Select or execute action         |
+| Point | Action (Buttons mode) | In Gestures mode |
+|-------|-----------------------|------------------|
+| **Up (↑)** | Up: previous field, option or value | Part of the vertical swipe |
+| **Down (↓)** | Down: next field, option or value | Part of the vertical swipe |
+| **Left (←)** | Back / previous | Part of the horizontal swipe |
+| **Right (→)** | Go on / next | Part of the horizontal swipe |
+| **Centre (•)** | Act on what is selected | Tap or hold it; every swipe goes through it |
 
-The sixth hidden channel is used internally to stabilize readings and filter out environmental noise.
+Of the TS06's six channels, five are wired to the points; the sixth (CH1) is not connected. The controller also raises a noise flag, which the firmware ignores as a touch.
 
 ---
 
-## Short vs. long press
+## Presses and gestures
 
-Each touch can be interpreted as a **short tap** or a **long press**, depending on duration:
+| Input | How | Typical use |
+|-------|-----|-------------|
+| **Swipe** | Slide from one edge point, through the centre, to the opposite one | Move between accounts, options and steps |
+| **Tap** | Centre, or the centre with a neighbour, or all five points | Type the field, open, apply |
+| **Hold** | Centre for 0.8 s | Edit the field |
+| **Hold to confirm** | Centre for 1.5 s on a confirmation page | Factory reset, bootloader, authorising an export |
 
-| Press type      | Hold time | Typical use                                                                            |
-| --------------- | --------- | -------------------------------------------------------------------------------------- |
-| **Short press** | \< 800 ms | Move, select, confirm                                                                  |
-| **Long press**  | \> 800 ms | Trigger special actions (e.g., open menu, next credential, factory reset confirmation) |
-
-The firmware uses an **adaptive debounce filter** to ensure reliable input even with wet fingers or slight contact.
+In Buttons mode each point is a button instead: a press of at least 80 ms registers, and 800 ms makes it a long press. See [Touch Input Handling](/firmware/io-touch-handling) for the timings and rules.
 
 ---
 
 ## Visual feedback
 
-When you touch a point, the OLED display reacts instantly with:
-
-- **Highlight animation** for the selected option.
-- **Progress indicator** for long presses.
-- **Soft transitions** between menu screens.
-
-This immediate feedback helps users feel confident that every action has been registered — even without sound or vibration.
+- The screen slides in the direction of the swipe, so you see that the move was understood.
+- A border fills around the screen while a hold is in progress.
+- Touching an edge point alone shows a small picture of the swipe to make.
 
 ---
 
 ## Why touch instead of buttons?
 
-| Feature            | Physical buttons | ZeroKeyUSB touch system                     |
-| ------------------ | ---------------- | ------------------------------------------- |
-| Mechanical wear    | High             | None                                        |
-| Water resistance   | Limited          | Fully sealed                                |
-| Dust protection    | Requires gaskets | Hermetically encapsulated                   |
-| Noise              | Audible click    | Silent                                      |
-| Lifespan           | ~100k presses    | Practically unlimited                       |
-| Design flexibility | Fixed            | Invisible, capacitive sensing through resin |
+| Feature | Physical buttons | ZeroKeyUSB touch points |
+|---------|------------------|-------------------------|
+| Mechanical wear | Yes | None |
+| Splashes and dust | Gaps around the keys | Under the resin: splash and dust resistant (not rated for submersion) |
+| Noise | Audible click | Silent |
+| Small targets | Must hit the key | Gestures only need the direction |
 
 ---
 
-## Adaptive sensitivity
+## Sensitivity
 
-ZeroKeyUSB automatically calibrates the touch sensitivity during startup.\
-This ensures stable performance across different environments — whether you’re using it in dry air, humid conditions, or even with light gloves.
+The TS06 keeps no settings when it is powered off, so the firmware configures it on **every start** and reads the settings back to check them: the sensitivity of each channel, the multi-output mode, and releasing the channels the chip holds after a reset. The controller tracks each channel's baseline by itself.
 
-The firmware dynamically adjusts thresholds to reject accidental touches from nearby objects or power noise.
-
----
-
-## Minimal energy consumption
-
-Despite scanning all channels continuously, the touch system consumes only a few microamps.\
-This allows ZeroKeyUSB to remain **highly responsive** while staying **extremely power-efficient** — perfect for an always-ready USB device.
-
----
-
-## Built to last
-
-Because there are no mechanical parts, the touch interface contributes directly to the device’s lifespan and reliability.\
-Even after years of use, the responsiveness remains identical to day one.
-
-Combined with the waterproof encapsulation, this design ensures that **ZeroKeyUSB will continue to function flawlessly long after most electronic devices fail**.
-
----
+The sensitivity is not identical on every point: the left point is the least sensitive and the right one the most. Gestures make this matter much less, because a swipe is judged by where the finger went, not by hitting one point exactly.
 
 <Note>
-  The touch interface was designed for human interaction — it ignores static electricity, moisture, or random contact from objects.\
-  Only intentional touches are recognized.
+The detailed register settings are in [Touch Input Handling](/firmware/io-touch-handling#ts06-initialisation).
 </Note>

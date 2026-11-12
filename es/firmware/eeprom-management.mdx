@@ -38,8 +38,12 @@ block-beta
 | Dirección | Tamaño | Contenido | Fuente en código |
 |---------|------|---------|---------------|
 | `0x0000` | 1 B | Flag del asistente de config (`0x42` = hecho) | `zerokey-setup.cpp` |
-| `0x0001` | 1 B | Orientación de pantalla (0 = normal, 1 = invertida) | `EEPROM_SCREEN_MODE_ADDR` |
+| `0x0001` | 1 B | Mano: `1` = zurdo (rotación 0); cualquier otro valor = diestro, el predeterminado (rotación 2, pads reasignados) | `EEPROM_SCREEN_MODE_ADDR` |
 | `0x0002` | 1 B | Contador de intentos fallidos (backoff persistente, reaplicado al arrancar) | `FAILED_ATTEMPTS_ADDR` |
+| `0x0003` | 1 B | Modo lector de pantalla guardado entre reinicios | `EEPROM_SCREEN_READER_ADDR` |
+| `0x0004` | 1 B | Formato de contraseña aleatoria | `EEPROM_PWTYPE_ADDR` |
+| `0x000D` | 1 B | Enlace con el navegador (Chrome: On/Off) | `EEPROM_CHROMELINK_ADDR` |
+| `0x000E` | 1 B | Modo de entrada (1.1.0): Gestos o Botones. En blanco (`0xFF`) se lee como Botones, así un equipo actualizado desde la 1.0 conserva su comportamiento hasta que se cambie; el asistente inicial pone Gestos | `EEPROM_INPUT_MODE_ADDR` |
 | `0x0010–0x001F` | 16 B | Vector de inicialización AES-CBC | `EEPROM_IV_ADDR` |
 | `0x0020–0x0023` | 4 B | *Reservado.* Umbral de intentos legacy del lockout por Counter0 ya eliminado; no se lee ni escribe. | — |
 | `0x0024` | 1 B | Flag de aprovisionamiento (`0xA5` = aprovisionado) | `EEPROM_PROVISION_FLAG` |
